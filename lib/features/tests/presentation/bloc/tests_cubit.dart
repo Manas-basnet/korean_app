@@ -194,63 +194,6 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
   
-
-  Future<void> getUnpublishedTests() async {
-
-    if (state.currentOperation.isInProgress) {
-      dev.log('Load operation already in progress, skipping...');
-      return;
-    }
-
-    _operationStopwatch.reset();
-    _operationStopwatch.start();
-
-    try {
-
-      final userId = authService.getCurrentUserId();
-      final result = await repository.getUnpublishedTests(userId: userId);
-
-      result.fold(
-        onSuccess: (tests) {
-
-          final uniqueTests = _removeDuplicates(tests);
-          _operationStopwatch.stop();
-
-          emit(TestsState(
-            tests: uniqueTests,
-            hasMore: false,
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.loadUnpublishedTests,
-              status: TestsOperationStatus.completed,
-            ),
-          ));
-          _clearOperationAfterDelay();
-
-        },
-        onFailure: (message, type) {
-          _operationStopwatch.stop();
-          dev.log('loadInitialTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
-
-          emit(state.copyWithBaseState(
-            error: message,
-            errorType: type,
-            isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.loadUnpublishedTests,
-            status: TestsOperationStatus.failed,
-          )));
-          _clearOperationAfterDelay();
-        },
-      );
-
-
-    } catch (e) {
-      _operationStopwatch.stop();
-      dev.log('Error loading initial tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to load unpublished tests: $e', TestsOperationType.loadUnpublishedTests);
-    }
-  }
-
   Future<void> loadMoreTests() async {    
     if (!state.hasMore || !_isConnected || state.currentOperation.isInProgress) {
       dev.log('loadMoreTests skipped - hasMore: ${state.hasMore}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');

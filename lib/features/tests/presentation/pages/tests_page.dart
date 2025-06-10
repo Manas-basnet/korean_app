@@ -52,7 +52,6 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     
     _pageController = PageController();
     
-    // Initialize scroll controllers for each tab
     for (int i = 0; i < _tabCategories.length; i++) {
       _scrollControllers.add(ScrollController());
     }
@@ -65,7 +64,6 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
       });
     });
     
-    // Add scroll listeners to all controllers
     for (int i = 0; i < _scrollControllers.length; i++) {
       _scrollControllers[i].addListener(() => _onScroll(i));
     }
@@ -228,15 +226,50 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
           icon: const Icon(Icons.search),
           onPressed: () => _showSearchDelegate(),
         ),
-        IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () {
-            context.push(Routes.testResults);
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (value) {
+            switch (value) {
+              case 'unpublished':
+                context.push(Routes.unpublishedTests);
+                break;
+              case 'results':
+                context.push(Routes.testResults);
+                break;
+            }
           },
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '내 결과',
-            english: 'My Results',
-          ),
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'unpublished',
+              child: Row(
+                children: [
+                  const Icon(Icons.unpublished_outlined, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    _languageCubit.getLocalizedText(
+                      korean: '미게시 시험',
+                      english: 'Unpublished Tests',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'results',
+              child: Row(
+                children: [
+                  const Icon(Icons.history, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    _languageCubit.getLocalizedText(
+                      korean: '내 결과',
+                      english: 'My Results',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -406,7 +439,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                 GridView.builder(
                   controller: _scrollControllers[tabIndex],
                   padding: const EdgeInsets.all(16),
-                  physics: const AlwaysScrollableScrollPhysics(), // Add this line
+                  physics: const AlwaysScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.8,
@@ -455,7 +488,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     return RefreshIndicator(
       onRefresh: _refreshData,
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(), // Add this line
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

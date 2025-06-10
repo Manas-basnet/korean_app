@@ -6,7 +6,6 @@ abstract class TestsRepository {
   // Test management (read-only operations)
   Future<ApiResult<List<TestItem>>> getTests({int page = 0, int pageSize = 5});
   Future<ApiResult<List<TestItem>>> getTestsByCategory(TestCategory category, {int page = 0, int pageSize = 5});
-  Future<ApiResult<List<TestItem>>> getUnpublishedTests({required String userId});
   Future<ApiResult<bool>> hasMoreTests(int currentCount);
   Future<ApiResult<bool>> hasMoreTestsByCategory(TestCategory category, int currentCount);
   Future<ApiResult<List<TestItem>>> hardRefreshTests({int pageSize = 5});

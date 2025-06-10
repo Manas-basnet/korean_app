@@ -17,7 +17,6 @@ import 'package:korean_language_app/core/providers/admin_providers.dart';
 import 'package:korean_language_app/core/providers/book_providers.dart';
 import 'package:korean_language_app/core/presentation/snackbar/widgets/snackbar_widget.dart';
 
-//Entry point
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,7 +31,7 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override 
+  @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [

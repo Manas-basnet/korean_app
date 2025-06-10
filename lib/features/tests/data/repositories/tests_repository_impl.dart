@@ -124,28 +124,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<List<TestItem>>> getUnpublishedTests({required String userId}) async {
-    
-    final result = await handleRepositoryCall(
-      () async {
-        final remoteTests = await remoteDataSource.getUnpublishedTests(userId: userId);
-        return ApiResult.success(remoteTests);
-      },
-    );
-
-    if (result.isSuccess && result.data != null) {
-      final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
-      if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithImages(result.data!);
-        return ApiResult.success(processedTests);
-      }
-    }
-    
-    return result;
-
-  }
-
-  @override
   Future<ApiResult<bool>> hasMoreTests(int currentCount) async {
     return handleCacheFirstCall<bool>(
       () async {

@@ -99,30 +99,6 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
   }
 
   @override
-  Future<List<TestItem>> getUnpublishedTests({required String userId}) async {
-    try {
-      Query query = firestore.collection(testsCollection)
-          .where('isPublished', isEqualTo: false)
-          .where('creatorUid', isEqualTo: userId)
-          .orderBy('createdAt', descending: true);
-
-      final querySnapshot = await query.get();
-      final docs = querySnapshot.docs;
-
-      return docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return TestItem.fromJson(data);
-      }).toList();
-
-    } on FirebaseException catch (e) {
-      throw ExceptionMapper.mapFirebaseException(e);
-    } catch(e) {
-      throw Exception('Failed to fetch unpublished tests: $e');
-    }
-  }
-
-  @override
   Future<bool> hasMoreTests(int currentCount) async {
     try {
       if (_totalTestsCount != null && 
