@@ -6,6 +6,8 @@ import 'package:korean_language_app/core/enums/question_type.dart';
 import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/core/shared/widgets/audio_player.dart';
+import 'package:korean_language_app/core/shared/widgets/audio_recorder.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
 class QuestionEditorPage extends StatefulWidget {
@@ -33,14 +35,20 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
   
   int _correctAnswer = 0;
   File? _questionImage;
+  File? _questionAudio;
   final List<File?> _answerImages = List.generate(4, (i) => null);
+  final List<File?> _answerAudios = List.generate(4, (i) => null);
   final List<AnswerOption> _options = [];
-  bool _isQuestionImage = false;
+  QuestionType _questionType = QuestionType.text;
   
   String? _existingQuestionImageUrl;
   String? _existingQuestionImagePath;
+  String? _existingQuestionAudioUrl;
+  String? _existingQuestionAudioPath;
   final List<String?> _existingAnswerImageUrls = List.generate(4, (i) => null);
   final List<String?> _existingAnswerImagePaths = List.generate(4, (i) => null);
+  final List<String?> _existingAnswerAudioUrls = List.generate(4, (i) => null);
+  final List<String?> _existingAnswerAudioPaths = List.generate(4, (i) => null);
   
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -58,10 +66,12 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     _questionController.text = question.question;
     _explanationController.text = question.explanation ?? '';
     _correctAnswer = question.correctAnswerIndex;
-    _isQuestionImage = question.hasQuestionImage;
+    _questionType = question.questionType;
     
     _existingQuestionImageUrl = question.questionImageUrl;
     _existingQuestionImagePath = question.questionImagePath;
+    _existingQuestionAudioUrl = question.questionAudioUrl;
+    _existingQuestionAudioPath = question.questionAudioPath;
     
     for (int i = 0; i < question.options.length && i < 4; i++) {
       final option = question.options[i];
@@ -70,16 +80,18 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       
       _existingAnswerImageUrls[i] = option.imageUrl;
       _existingAnswerImagePaths[i] = option.imagePath;
+      _existingAnswerAudioUrls[i] = option.audioUrl;
+      _existingAnswerAudioPaths[i] = option.audioPath;
     }
     
     while (_options.length < 4) {
-      _options.add(const AnswerOption(text: '', isImage: false));
+      _options.add(const AnswerOption(text: '', type: AnswerOptionType.text));
     }
   }
 
   void _initializeEmptyOptions() {
     for (int i = 0; i < 4; i++) {
-      _options.add(const AnswerOption(text: '', isImage: false));
+      _options.add(const AnswerOption(text: '', type: AnswerOptionType.text));
     }
   }
 
@@ -165,7 +177,6 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         ),
         const SizedBox(height: 16),
         
-        // Question Type Toggle
         Row(
           children: [
             Text(
@@ -177,12 +188,27 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
             const SizedBox(width: 12),
             Expanded(
               child: ToggleButtons(
-                isSelected: [!_isQuestionImage, _isQuestionImage],
+                isSelected: [
+                  _questionType == QuestionType.text,
+                  _questionType == QuestionType.image,
+                  _questionType == QuestionType.audio,
+                ],
                 onPressed: (index) {
                   setState(() {
-                    _isQuestionImage = index == 1;
-                    if (!_isQuestionImage) {
-                      _questionImage = null;
+                    switch (index) {
+                      case 0:
+                        _questionType = QuestionType.text;
+                        _questionImage = null;
+                        _questionAudio = null;
+                        break;
+                      case 1:
+                        _questionType = QuestionType.image;
+                        _questionAudio = null;
+                        break;
+                      case 2:
+                        _questionType = QuestionType.audio;
+                        _questionImage = null;
+                        break;
                     }
                   });
                 },
@@ -190,27 +216,38 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
                 selectedColor: colorScheme.onPrimary,
                 fillColor: colorScheme.primary,
                 color: colorScheme.onSurfaceVariant,
-                constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+                constraints: const BoxConstraints(minHeight: 40, minWidth: 60),
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.text_fields, size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.text_fields, size: 16),
+                        const SizedBox(width: 6),
                         Text(widget.languageCubit.getLocalizedText(korean: '텍스트', english: 'Text')),
                       ],
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.image, size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.image, size: 16),
+                        const SizedBox(width: 6),
                         Text(widget.languageCubit.getLocalizedText(korean: '이미지', english: 'Image')),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.audiotrack, size: 16),
+                        const SizedBox(width: 6),
+                        Text(widget.languageCubit.getLocalizedText(korean: '오디오', english: 'Audio')),
                       ],
                     ),
                   ),
@@ -222,19 +259,22 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         
         const SizedBox(height: 20),
         
-        if (_isQuestionImage) ...[
+        if (_questionType == QuestionType.image) ...[
           _buildQuestionImageDisplay(),
+          const SizedBox(height: 16),
+        ] else if (_questionType == QuestionType.audio) ...[
+          _buildQuestionAudioDisplay(),
           const SizedBox(height: 16),
         ],
         
         TextField(
           controller: _questionController,
           decoration: InputDecoration(
-            labelText: _isQuestionImage
+            labelText: _questionType != QuestionType.text
                 ? widget.languageCubit.getLocalizedText(korean: '문제 설명 (선택사항)', english: 'Question Description (Optional)')
                 : widget.languageCubit.getLocalizedText(korean: '문제 내용', english: 'Question Content'),
-            hintText: _isQuestionImage
-                ? widget.languageCubit.getLocalizedText(korean: '이미지에 대한 추가 설명', english: 'Additional description for the image')
+            hintText: _questionType != QuestionType.text
+                ? widget.languageCubit.getLocalizedText(korean: '추가 설명', english: 'Additional description')
                 : widget.languageCubit.getLocalizedText(korean: '문제를 입력하세요', english: 'Enter your question'),
             alignLabelWithHint: true,
           ),
@@ -245,15 +285,12 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
   }
 
   Widget _buildQuestionImageDisplay() {
-    // Determine what to show: new image, existing image, or placeholder
     if (_questionImage != null) {
-      // Show new local image with remove option
       return _buildNewImageDisplay(
         image: _questionImage!,
         onRemove: () => setState(() => _questionImage = null),
       );
     } else if (_hasExistingQuestionImage()) {
-      // Show existing image with edit/remove options
       return _buildExistingImageDisplay(
         imageUrl: _existingQuestionImageUrl,
         imagePath: _existingQuestionImagePath,
@@ -264,12 +301,47 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         }),
       );
     } else {
-      // Show placeholder for new image selection
       return _buildImagePlaceholder(
         onTap: _pickQuestionImage,
         label: widget.languageCubit.getLocalizedText(
           korean: '문제 이미지 선택',
           english: 'Select Question Image',
+        ),
+      );
+    }
+  }
+
+  Widget _buildQuestionAudioDisplay() {
+    if (_questionAudio != null) {
+      return AudioPlayerWidget(
+        audioPath: _questionAudio!.path,
+        label: widget.languageCubit.getLocalizedText(korean: '새 오디오', english: 'New Audio'),
+        onRemove: () => setState(() => _questionAudio = null),
+        onEdit: () => _showAudioRecorderDialog(isQuestion: true),
+      );
+    } else if (_hasExistingQuestionAudio()) {
+      return AudioPlayerWidget(
+        audioUrl: _existingQuestionAudioUrl,
+        audioPath: _existingQuestionAudioPath,
+        label: widget.languageCubit.getLocalizedText(korean: '기존 오디오', english: 'Existing Audio'),
+        onRemove: () => setState(() {
+          _existingQuestionAudioUrl = null;
+          _existingQuestionAudioPath = null;
+        }),
+        onEdit: () => _showAudioRecorderDialog(isQuestion: true),
+      );
+    } else {
+      return AudioRecorderWidget(
+        onAudioSelected: (audioFile) {
+          setState(() {
+            _questionAudio = audioFile;
+            _existingQuestionAudioUrl = null;
+            _existingQuestionAudioPath = null;
+          });
+        },
+        label: widget.languageCubit.getLocalizedText(
+          korean: '문제 오디오 선택',
+          english: 'Select Question Audio',
         ),
       );
     }
@@ -367,44 +439,70 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
               ],
               const Spacer(),
               ToggleButtons(
-                isSelected: [!_options[index].isImage, _options[index].isImage],
+                isSelected: [
+                  _options[index].type == AnswerOptionType.text,
+                  _options[index].type == AnswerOptionType.image,
+                  _options[index].type == AnswerOptionType.audio,
+                ],
                 onPressed: (toggleIndex) {
-                  if (toggleIndex == 0) {
-                    _setOptionAsText(index);
-                  } else {
-                    _setOptionAsImage(index);
-                  }
+                  setState(() {
+                    switch (toggleIndex) {
+                      case 0:
+                        _setOptionAsText(index);
+                        break;
+                      case 1:
+                        _setOptionAsImage(index);
+                        break;
+                      case 2:
+                        _setOptionAsAudio(index);
+                        break;
+                    }
+                  });
                 },
                 borderRadius: BorderRadius.circular(6),
                 selectedColor: colorScheme.onPrimary,
                 fillColor: colorScheme.primary,
                 color: colorScheme.onSurfaceVariant,
-                constraints: const BoxConstraints(minHeight: 32, minWidth: 60),
+                constraints: const BoxConstraints(minHeight: 32, minWidth: 50),
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.text_fields, size: 14),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.text_fields, size: 12),
+                        const SizedBox(width: 3),
                         Text(
                           widget.languageCubit.getLocalizedText(korean: '텍스트', english: 'Text'),
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 10),
                         ),
                       ],
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.image, size: 14),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.image, size: 12),
+                        const SizedBox(width: 3),
                         Text(
                           widget.languageCubit.getLocalizedText(korean: '이미지', english: 'Image'),
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.audiotrack, size: 12),
+                        const SizedBox(width: 3),
+                        Text(
+                          widget.languageCubit.getLocalizedText(korean: '오디오', english: 'Audio'),
+                          style: const TextStyle(fontSize: 10),
                         ),
                       ],
                     ),
@@ -416,8 +514,10 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
           
           const SizedBox(height: 12),
           
-          if (_options[index].isImage) ...[
+          if (_options[index].type == AnswerOptionType.image) ...[
             _buildAnswerImageDisplay(index),
+          ] else if (_options[index].type == AnswerOptionType.audio) ...[
+            _buildAnswerAudioDisplay(index),
           ] else ...[
             TextField(
               controller: _optionControllers[index],
@@ -440,14 +540,12 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
 
   Widget _buildAnswerImageDisplay(int index) {
     if (_answerImages[index] != null) {
-      // Show new local image
       return _buildNewImageDisplay(
         image: _answerImages[index]!,
         onRemove: () => setState(() => _answerImages[index] = null),
         height: 100,
       );
     } else if (_hasExistingAnswerImage(index)) {
-      // Show existing image
       return _buildExistingImageDisplay(
         imageUrl: _existingAnswerImageUrls[index],
         imagePath: _existingAnswerImagePaths[index],
@@ -459,7 +557,6 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         height: 100,
       );
     } else {
-      // Show placeholder
       return _buildImagePlaceholder(
         onTap: () => _pickAnswerImage(index),
         label: widget.languageCubit.getLocalizedText(
@@ -467,6 +564,44 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
           english: 'Select Image',
         ),
         height: 100,
+      );
+    }
+  }
+
+  Widget _buildAnswerAudioDisplay(int index) {
+    if (_answerAudios[index] != null) {
+      return AudioPlayerWidget(
+        audioPath: _answerAudios[index]!.path,
+        label: widget.languageCubit.getLocalizedText(korean: '새 오디오', english: 'New Audio'),
+        height: 50,
+        onRemove: () => setState(() => _answerAudios[index] = null),
+        onEdit: () => _showAudioRecorderDialog(answerIndex: index),
+      );
+    } else if (_hasExistingAnswerAudio(index)) {
+      return AudioPlayerWidget(
+        audioUrl: _existingAnswerAudioUrls[index],
+        audioPath: _existingAnswerAudioPaths[index],
+        label: widget.languageCubit.getLocalizedText(korean: '기존 오디오', english: 'Existing Audio'),
+        height: 50,
+        onRemove: () => setState(() {
+          _existingAnswerAudioUrls[index] = null;
+          _existingAnswerAudioPaths[index] = null;
+        }),
+        onEdit: () => _showAudioRecorderDialog(answerIndex: index),
+      );
+    } else {
+      return AudioRecorderWidget(
+        onAudioSelected: (audioFile) {
+          setState(() {
+            _answerAudios[index] = audioFile;
+            _existingAnswerAudioUrls[index] = null;
+            _existingAnswerAudioPaths[index] = null;
+          });
+        },
+        label: widget.languageCubit.getLocalizedText(
+          korean: '오디오 선택',
+          english: 'Select Audio',
+        ),
       );
     }
   }
@@ -499,7 +634,6 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     );
   }
 
-  // Helper UI components for cleaner separation
   Widget _buildNewImageDisplay({
     required File image,
     required VoidCallback onRemove,
@@ -651,10 +785,14 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     );
   }
 
-  // Helper methods for cleaner business logic
   bool _hasExistingQuestionImage() {
     return (_existingQuestionImageUrl != null && _existingQuestionImageUrl!.isNotEmpty) ||
            (_existingQuestionImagePath != null && _existingQuestionImagePath!.isNotEmpty);
+  }
+
+  bool _hasExistingQuestionAudio() {
+    return (_existingQuestionAudioUrl != null && _existingQuestionAudioUrl!.isNotEmpty) ||
+           (_existingQuestionAudioPath != null && _existingQuestionAudioPath!.isNotEmpty);
   }
 
   bool _hasExistingAnswerImage(int index) {
@@ -662,18 +800,32 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
            (_existingAnswerImagePaths[index] != null && _existingAnswerImagePaths[index]!.isNotEmpty);
   }
 
+  bool _hasExistingAnswerAudio(int index) {
+    return (_existingAnswerAudioUrls[index] != null && _existingAnswerAudioUrls[index]!.isNotEmpty) ||
+           (_existingAnswerAudioPaths[index] != null && _existingAnswerAudioPaths[index]!.isNotEmpty);
+  }
+
   void _setOptionAsText(int index) {
     setState(() {
-      _options[index] = _options[index].copyWith(isImage: false);
+      _options[index] = _options[index].copyWith(type: AnswerOptionType.text);
       _answerImages[index] = null;
-      // Don't clear existing image info when switching to text
+      _answerAudios[index] = null;
     });
   }
 
   void _setOptionAsImage(int index) {
     setState(() {
-      _options[index] = _options[index].copyWith(isImage: true, text: '');
+      _options[index] = _options[index].copyWith(type: AnswerOptionType.image, text: '');
       _optionControllers[index].clear();
+      _answerAudios[index] = null;
+    });
+  }
+
+  void _setOptionAsAudio(int index) {
+    setState(() {
+      _options[index] = _options[index].copyWith(type: AnswerOptionType.audio, text: '');
+      _optionControllers[index].clear();
+      _answerImages[index] = null;
     });
   }
 
@@ -699,8 +851,38 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     }
   }
 
+  void _showAudioRecorderDialog({bool isQuestion = false, int? answerIndex}) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: AudioRecorderWidget(
+            onAudioSelected: (audioFile) {
+              setState(() {
+                if (isQuestion) {
+                  _questionAudio = audioFile;
+                  _existingQuestionAudioUrl = null;
+                  _existingQuestionAudioPath = null;
+                } else if (answerIndex != null) {
+                  _answerAudios[answerIndex] = audioFile;
+                  _existingAnswerAudioUrls[answerIndex] = null;
+                  _existingAnswerAudioPaths[answerIndex] = null;
+                }
+              });
+              Navigator.pop(context);
+            },
+            label: isQuestion 
+                ? widget.languageCubit.getLocalizedText(korean: '문제 오디오', english: 'Question Audio')
+                : widget.languageCubit.getLocalizedText(korean: '답 오디오', english: 'Answer Audio'),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _saveQuestion() {
-    if (!_isQuestionImage && _questionController.text.trim().isEmpty) {
+    if (_questionType == QuestionType.text && _questionController.text.trim().isEmpty) {
       widget.snackBarCubit.showErrorLocalized(
         korean: '문제를 입력해주세요',
         english: 'Please enter a question',
@@ -708,7 +890,7 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       return;
     }
     
-    if (_isQuestionImage && 
+    if (_questionType == QuestionType.image && 
         _questionImage == null && 
         _existingQuestionImageUrl == null && 
         _existingQuestionImagePath == null) {
@@ -719,14 +901,35 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       return;
     }
 
+    if (_questionType == QuestionType.audio && 
+        _questionAudio == null && 
+        _existingQuestionAudioUrl == null && 
+        _existingQuestionAudioPath == null) {
+      widget.snackBarCubit.showErrorLocalized(
+        korean: '문제 오디오를 선택해주세요',
+        english: 'Please select a question audio',
+      );
+      return;
+    }
+
     for (int i = 0; i < 4; i++) {
-      if (_options[i].isImage) {
+      if (_options[i].type == AnswerOptionType.image) {
         if (_answerImages[i] == null && 
             _existingAnswerImageUrls[i] == null && 
             _existingAnswerImagePaths[i] == null) {
           widget.snackBarCubit.showErrorLocalized(
             korean: '모든 이미지 선택지를 선택해주세요',
             english: 'Please select all image options',
+          );
+          return;
+        }
+      } else if (_options[i].type == AnswerOptionType.audio) {
+        if (_answerAudios[i] == null && 
+            _existingAnswerAudioUrls[i] == null && 
+            _existingAnswerAudioPaths[i] == null) {
+          widget.snackBarCubit.showErrorLocalized(
+            korean: '모든 오디오 선택지를 선택해주세요',
+            english: 'Please select all audio options',
           );
           return;
         }
@@ -741,37 +944,26 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       }
     }
 
-    // Determine question type based on selections
-    QuestionType questionType;
-    final hasImageAnswers = _options.any((option) => option.isImage);
-    final hasTextAnswers = _options.any((option) => !option.isImage);
-    
-    if (_isQuestionImage && hasImageAnswers && !hasTextAnswers) {
-      questionType = QuestionType.imageQuestion_imageAnswers;
-    } else if (_isQuestionImage && hasTextAnswers && !hasImageAnswers) {
-      questionType = QuestionType.imageQuestion_textAnswers;
-    } else if (!_isQuestionImage && hasImageAnswers && !hasTextAnswers) {
-      questionType = QuestionType.textQuestion_imageAnswers;
-    } else if (!_isQuestionImage && hasTextAnswers && hasImageAnswers) {
-      questionType = QuestionType.textQuestion_mixedAnswers;
-    } else {
-      questionType = QuestionType.textQuestion_textAnswers;
-    }
-
-    // Create updated options
     final updatedOptions = <AnswerOption>[];
     for (int i = 0; i < 4; i++) {
-      if (_options[i].isImage) {
+      if (_options[i].type == AnswerOptionType.image) {
         updatedOptions.add(AnswerOption(
           text: '',
-          isImage: true,
+          type: AnswerOptionType.image,
           imagePath: _answerImages[i]?.path ?? _existingAnswerImagePaths[i],
           imageUrl: _answerImages[i] != null ? null : _existingAnswerImageUrls[i],
+        ));
+      } else if (_options[i].type == AnswerOptionType.audio) {
+        updatedOptions.add(AnswerOption(
+          text: '',
+          type: AnswerOptionType.audio,
+          audioPath: _answerAudios[i]?.path ?? _existingAnswerAudioPaths[i],
+          audioUrl: _answerAudios[i] != null ? null : _existingAnswerAudioUrls[i],
         ));
       } else {
         updatedOptions.add(AnswerOption(
           text: _optionControllers[i].text.trim(),
-          isImage: false,
+          type: AnswerOptionType.text,
         ));
       }
     }
@@ -779,14 +971,16 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     final newQuestion = TestQuestion(
       id: widget.question?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       question: _questionController.text.trim(),
+      questionType: _questionType,
       questionImagePath: _questionImage?.path ?? _existingQuestionImagePath,
       questionImageUrl: _questionImage != null ? null : _existingQuestionImageUrl,
+      questionAudioPath: _questionAudio?.path ?? _existingQuestionAudioPath,
+      questionAudioUrl: _questionAudio != null ? null : _existingQuestionAudioUrl,
       options: updatedOptions,
       correctAnswerIndex: _correctAnswer,
       explanation: _explanationController.text.trim().isEmpty 
           ? null 
           : _explanationController.text.trim(),
-      questionType: questionType,
     );
 
     widget.onSave(newQuestion);

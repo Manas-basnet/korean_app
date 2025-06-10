@@ -75,7 +75,6 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
       var updatedTest = test;
       bool hasUpdates = false;
 
-      // Regenerate cover image URL if needed
       if (test.imagePath != null && test.imagePath!.isNotEmpty) {
         final newCoverUrl = await remoteDataSource.regenerateUrlFromPath(test.imagePath!);
         if (newCoverUrl != null && newCoverUrl != test.imageUrl) {
@@ -84,13 +83,11 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
         }
       }
 
-      // Regenerate question and answer image URLs
       final updatedQuestions = <TestQuestion>[];
       for (final question in test.questions) {
         var updatedQuestion = question;
         bool questionHasUpdates = false;
 
-        // Regenerate question image URL
         if (question.questionImagePath != null && question.questionImagePath!.isNotEmpty) {
           final newQuestionUrl = await remoteDataSource.regenerateUrlFromPath(question.questionImagePath!);
           if (newQuestionUrl != null && newQuestionUrl != question.questionImageUrl) {
@@ -100,21 +97,38 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
           }
         }
 
-        // Regenerate answer image URLs
+        if (question.questionAudioPath != null && question.questionAudioPath!.isNotEmpty) {
+          final newQuestionAudioUrl = await remoteDataSource.regenerateUrlFromPath(question.questionAudioPath!);
+          if (newQuestionAudioUrl != null && newQuestionAudioUrl != question.questionAudioUrl) {
+            updatedQuestion = updatedQuestion.copyWith(questionAudioUrl: newQuestionAudioUrl);
+            questionHasUpdates = true;
+            hasUpdates = true;
+          }
+        }
+
         final updatedOptions = <AnswerOption>[];
         for (final option in question.options) {
+          var updatedOption = option;
+          
           if (option.isImage && option.imagePath != null && option.imagePath!.isNotEmpty) {
             final newAnswerUrl = await remoteDataSource.regenerateUrlFromPath(option.imagePath!);
             if (newAnswerUrl != null && newAnswerUrl != option.imageUrl) {
-              updatedOptions.add(option.copyWith(imageUrl: newAnswerUrl));
+              updatedOption = option.copyWith(imageUrl: newAnswerUrl);
               questionHasUpdates = true;
               hasUpdates = true;
-            } else {
-              updatedOptions.add(option);
             }
-          } else {
-            updatedOptions.add(option);
           }
+          
+          if (option.isAudio && option.audioPath != null && option.audioPath!.isNotEmpty) {
+            final newAnswerAudioUrl = await remoteDataSource.regenerateUrlFromPath(option.audioPath!);
+            if (newAnswerAudioUrl != null && newAnswerAudioUrl != option.audioUrl) {
+              updatedOption = updatedOption.copyWith(audioUrl: newAnswerAudioUrl);
+              questionHasUpdates = true;
+              hasUpdates = true;
+            }
+          }
+          
+          updatedOptions.add(updatedOption);
         }
 
         if (questionHasUpdates) {
@@ -127,7 +141,6 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
       if (hasUpdates) {
         updatedTest = updatedTest.copyWith(questions: updatedQuestions);
         
-        // Update the test with new URLs
         try {
           await remoteDataSource.updateTest(test.id, updatedTest);
         } catch (e) {
@@ -137,14 +150,13 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
         return ApiResult.success(updatedTest);
       }
 
-      return ApiResult.success(null); // No updates needed
+      return ApiResult.success(null);
     });
   }
 
   @override
   Future<ApiResult<bool>> verifyImageUrls(TestItem test) async {
     return handleRepositoryCall(() async {
-      // Check cover image
       if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
         final isWorking = await remoteDataSource.verifyUrlIsWorking(test.imageUrl!);
         if (!isWorking) {
@@ -152,9 +164,7 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
         }
       }
 
-      // Check question and answer images
       for (final question in test.questions) {
-        // Check question image
         if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
           final isWorking = await remoteDataSource.verifyUrlIsWorking(question.questionImageUrl!);
           if (!isWorking) {
@@ -162,10 +172,23 @@ class TestUploadRepositoryImpl extends BaseRepository implements TestUploadRepos
           }
         }
 
-        // Check answer images
+        if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+          final isWorking = await remoteDataSource.verifyUrlIsWorking(question.questionAudioUrl!);
+          if (!isWorking) {
+            return ApiResult.success(false);
+          }
+        }
+
         for (final option in question.options) {
           if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
             final isWorking = await remoteDataSource.verifyUrlIsWorking(option.imageUrl!);
+            if (!isWorking) {
+              return ApiResult.success(false);
+            }
+          }
+          
+          if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+            final isWorking = await remoteDataSource.verifyUrlIsWorking(option.audioUrl!);
             if (!isWorking) {
               return ApiResult.success(false);
             }

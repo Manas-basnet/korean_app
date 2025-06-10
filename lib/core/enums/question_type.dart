@@ -1,49 +1,38 @@
 enum QuestionType {
-  textQuestion_textAnswers,
-  textQuestion_imageAnswers, 
-  imageQuestion_textAnswers,
-  imageQuestion_imageAnswers,
-  textQuestion_mixedAnswers, // Some text, some image answers
+  text,
+  image,
+  audio,
 }
 
 extension QuestionTypeExtension on QuestionType {
   String get displayName {
     switch (this) {
-      case QuestionType.textQuestion_textAnswers:
-        return 'Text Question - Text Answers';
-      case QuestionType.textQuestion_imageAnswers:
-        return 'Text Question - Image Answers';
-      case QuestionType.imageQuestion_textAnswers:
-        return 'Image Question - Text Answers';
-      case QuestionType.imageQuestion_imageAnswers:
-        return 'Image Question - Image Answers';
-      case QuestionType.textQuestion_mixedAnswers:
-        return 'Text Question - Mixed Answers';
+      case QuestionType.text:
+        return 'Text';
+      case QuestionType.image:
+        return 'Image';
+      case QuestionType.audio:
+        return 'Audio';
     }
   }
-  
-  bool get hasQuestionImage {
+}
+
+enum AnswerOptionType {
+  text,
+  image,
+  audio,
+}
+
+extension AnswerOptionTypeExtension on AnswerOptionType {
+  String get displayName {
     switch (this) {
-      case QuestionType.imageQuestion_textAnswers:
-      case QuestionType.imageQuestion_imageAnswers:
-        return true;
-      default:
-        return false;
+      case AnswerOptionType.text:
+        return 'Text';
+      case AnswerOptionType.image:
+        return 'Image';
+      case AnswerOptionType.audio:
+        return 'Audio';
     }
-  }
-  
-  bool get hasAnswerImages {
-    switch (this) {
-      case QuestionType.textQuestion_imageAnswers:
-      case QuestionType.imageQuestion_imageAnswers:
-        return true;
-      default:
-        return false;
-    }
-  }
-  
-  bool get supportsMixedAnswers {
-    return this == QuestionType.textQuestion_mixedAnswers;
   }
 }
 
@@ -51,21 +40,41 @@ class AnswerOption {
   final String text;
   final String? imageUrl;
   final String? imagePath;
-  final bool isImage; // true if this option is image-based
+  final String? audioUrl;
+  final String? audioPath;
+  final AnswerOptionType type;
   
   const AnswerOption({
     required this.text,
     this.imageUrl,
     this.imagePath,
-    this.isImage = false,
+    this.audioUrl,
+    this.audioPath,
+    this.type = AnswerOptionType.text,
   });
   
+  bool get isImage => type == AnswerOptionType.image;
+  bool get isAudio => type == AnswerOptionType.audio;
+  bool get isText => type == AnswerOptionType.text;
+  
   factory AnswerOption.fromJson(Map<String, dynamic> json) {
+    AnswerOptionType type = AnswerOptionType.text;
+    if (json['type'] is String) {
+      type = AnswerOptionType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['type'],
+        orElse: () => AnswerOptionType.text,
+      );
+    } else if (json['isImage'] == true) {
+      type = AnswerOptionType.image;
+    }
+    
     return AnswerOption(
       text: json['text'] as String? ?? '',
       imageUrl: json['imageUrl'] as String?,
       imagePath: json['imagePath'] as String?,
-      isImage: json['isImage'] as bool? ?? false,
+      audioUrl: json['audioUrl'] as String?,
+      audioPath: json['audioPath'] as String?,
+      type: type,
     );
   }
   
@@ -74,6 +83,9 @@ class AnswerOption {
       'text': text,
       'imageUrl': imageUrl,
       'imagePath': imagePath,
+      'audioUrl': audioUrl,
+      'audioPath': audioPath,
+      'type': type.toString().split('.').last,
       'isImage': isImage,
     };
   }
@@ -82,13 +94,17 @@ class AnswerOption {
     String? text,
     String? imageUrl,
     String? imagePath,
-    bool? isImage,
+    String? audioUrl,
+    String? audioPath,
+    AnswerOptionType? type,
   }) {
     return AnswerOption(
       text: text ?? this.text,
       imageUrl: imageUrl ?? this.imageUrl,
       imagePath: imagePath ?? this.imagePath,
-      isImage: isImage ?? this.isImage,
+      audioUrl: audioUrl ?? this.audioUrl,
+      audioPath: audioPath ?? this.audioPath,
+      type: type ?? this.type,
     );
   }
 
@@ -99,7 +115,9 @@ class AnswerOption {
         other.text == text &&
         other.imageUrl == imageUrl &&
         other.imagePath == imagePath &&
-        other.isImage == isImage;
+        other.audioUrl == audioUrl &&
+        other.audioPath == audioPath &&
+        other.type == type;
   }
 
   @override
@@ -107,11 +125,13 @@ class AnswerOption {
     return text.hashCode ^
         imageUrl.hashCode ^
         imagePath.hashCode ^
-        isImage.hashCode;
+        audioUrl.hashCode ^
+        audioPath.hashCode ^
+        type.hashCode;
   }
 
   @override
   String toString() {
-    return 'AnswerOption(text: $text, imageUrl: $imageUrl, imagePath: $imagePath, isImage: $isImage)';
+    return 'AnswerOption(text: $text, imageUrl: $imageUrl, imagePath: $imagePath, audioUrl: $audioUrl, audioPath: $audioPath, type: $type)';
   }
 }

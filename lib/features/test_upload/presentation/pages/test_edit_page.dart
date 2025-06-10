@@ -4,13 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/core/enums/book_level.dart';
+import 'package:korean_language_app/core/enums/question_type.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
-import 'package:korean_language_app/features/test_upload/presentation/widgets/question_editor_page.dart';
+import 'package:korean_language_app/features/test_upload/presentation/pages/question_editor_page.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
 
 class TestEditPage extends StatefulWidget {
@@ -787,7 +788,7 @@ class _TestEditPageState extends State<TestEditPage> {
                         Text(
                           question.question.isNotEmpty 
                               ? question.question 
-                              : _languageCubit.getLocalizedText(korean: '이미지 문제', english: 'Image Question'),
+                              : _getQuestionTypeLabel(question),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium?.copyWith(
@@ -803,23 +804,7 @@ class _TestEditPageState extends State<TestEditPage> {
                                 color: colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            if (question.hasQuestionImage) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'IMG',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ..._buildQuestionTypeBadges(question),
                           ],
                         ),
                       ],
@@ -857,6 +842,60 @@ class _TestEditPageState extends State<TestEditPage> {
         ],
       ],
     );
+  }
+
+  String _getQuestionTypeLabel(TestQuestion question) {
+    switch (question.questionType) {
+      case QuestionType.image:
+        return _languageCubit.getLocalizedText(korean: '이미지 문제', english: 'Image Question');
+      case QuestionType.audio:
+        return _languageCubit.getLocalizedText(korean: '오디오 문제', english: 'Audio Question');
+      default:
+        return _languageCubit.getLocalizedText(korean: '텍스트 문제', english: 'Text Question');
+    }
+  }
+
+  List<Widget> _buildQuestionTypeBadges(TestQuestion question) {
+    final theme = Theme.of(context);
+    final badges = <Widget>[];
+    
+    if (question.hasQuestionImage) {
+      badges.add(const SizedBox(width: 8));
+      badges.add(Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          'IMG',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: Colors.blue,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ));
+    }
+    
+    if (question.hasQuestionAudio) {
+      badges.add(const SizedBox(width: 8));
+      badges.add(Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          'AUD',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: Colors.green,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ));
+    }
+    
+    return badges;
   }
 
   Future<void> _pickImage() async {

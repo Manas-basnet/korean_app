@@ -34,7 +34,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final uploadedPaths = <String>[];
 
     try {
-      // Upload cover image first if provided
       if (imageFile != null) {
         final storagePath = 'tests/$testId/cover_image.jpg';
         final fileRef = storage.ref().child(storagePath);
@@ -57,12 +56,10 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         );
       }
       
-      // Upload all question and answer images
       final updatedQuestions = <TestQuestion>[];
       for (final question in finalTest.questions) {
         var updatedQuestion = question;
         
-        // Upload question image if it has a local file path
         if (question.questionImagePath != null && 
             question.questionImagePath!.startsWith('/') && 
             File(question.questionImagePath!).existsSync()) {
@@ -88,8 +85,34 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
             questionImagePath: questionStoragePath,
           );
         }
+
+        if (question.questionAudioPath != null && 
+            question.questionAudioPath!.startsWith('/') && 
+            File(question.questionAudioPath!).existsSync()) {
+          
+          final questionAudioFile = File(question.questionAudioPath!);
+          final extension = _getAudioExtension(question.questionAudioPath!);
+          final questionStoragePath = 'tests/$testId/questions/${question.id}/question_audio$extension';
+          final questionFileRef = storage.ref().child(questionStoragePath);
+          
+          final questionUploadTask = await questionFileRef.putFile(
+            questionAudioFile,
+            SettableMetadata(contentType: _getAudioContentType(extension))
+          );
+          
+          final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
+          
+          if (questionDownloadUrl.isEmpty) {
+            throw Exception('Failed to get download URL for question audio');
+          }
+          
+          uploadedPaths.add(questionStoragePath);
+          updatedQuestion = updatedQuestion.copyWith(
+            questionAudioUrl: questionDownloadUrl,
+            questionAudioPath: questionStoragePath,
+          );
+        }
         
-        // Upload answer images
         final updatedOptions = <AnswerOption>[];
         for (int i = 0; i < question.options.length; i++) {
           final option = question.options[i];
@@ -119,6 +142,32 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
               imageUrl: answerDownloadUrl,
               imagePath: answerStoragePath,
             ));
+          } else if (option.isAudio && 
+              option.audioPath != null && 
+              option.audioPath!.startsWith('/') && 
+              File(option.audioPath!).existsSync()) {
+            
+            final answerAudioFile = File(option.audioPath!);
+            final extension = _getAudioExtension(option.audioPath!);
+            final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i$extension';
+            final answerFileRef = storage.ref().child(answerStoragePath);
+            
+            final answerUploadTask = await answerFileRef.putFile(
+              answerAudioFile,
+              SettableMetadata(contentType: _getAudioContentType(extension))
+            );
+            
+            final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
+            
+            if (answerDownloadUrl.isEmpty) {
+              throw Exception('Failed to get download URL for answer audio');
+            }
+            
+            uploadedPaths.add(answerStoragePath);
+            updatedOptions.add(option.copyWith(
+              audioUrl: answerDownloadUrl,
+              audioPath: answerStoragePath,
+            ));
           } else {
             updatedOptions.add(option);
           }
@@ -130,7 +179,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
       
       finalTest = finalTest.copyWith(questions: updatedQuestions);
       
-      // Use batch operation for Firestore document creation
       final testData = finalTest.toJson();
       testData['titleLowerCase'] = finalTest.title.toLowerCase();
       testData['descriptionLowerCase'] = finalTest.description.toLowerCase();
@@ -146,11 +194,9 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
       );
       
     } on FirebaseException catch (e) {
-      // Clean up uploaded files on failure
       await _cleanupFiles(uploadedPaths);
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
-      // Clean up uploaded files on failure
       await _cleanupFiles(uploadedPaths);
       throw Exception('Failed to upload test: $e');
     }
@@ -161,7 +207,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final batch = firestore.batch();
     final docRef = firestore.collection(testsCollection).doc(testId);
     
-    // Get existing document first
     final docSnapshot = await docRef.get();
     if (!docSnapshot.exists) {
       throw Exception('Test not found');
@@ -175,7 +220,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final pathsToDelete = <String>[];
     
     try {
-      // Handle cover image update
       if (imageFile != null) {
         if (existingTest.imagePath != null && existingTest.imagePath!.isNotEmpty) {
           pathsToDelete.add(existingTest.imagePath!);
@@ -220,10 +264,14 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         var updatedQuestion = question;
         final existingQuestion = existingQuestionsMap[question.id];
         
-        // Check if this is a new local file by comparing with existing storage path
-        bool isNewQuestionImage = _isNewLocalImage(
+        bool isNewQuestionImage = _isNewLocalFile(
           question.questionImagePath, 
           existingQuestion?.questionImagePath
+        );
+        
+        bool isNewQuestionAudio = _isNewLocalFile(
+          question.questionAudioPath, 
+          existingQuestion?.questionAudioPath
         );
         
         if (isNewQuestionImage) {
@@ -258,6 +306,40 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
                   existingQuestion!.questionImagePath!.isNotEmpty) {
           pathsToDelete.add(existingQuestion.questionImagePath!);
         }
+
+        if (isNewQuestionAudio) {
+          if (existingQuestion?.questionAudioPath != null && 
+              existingQuestion!.questionAudioPath!.isNotEmpty) {
+            pathsToDelete.add(existingQuestion.questionAudioPath!);
+          }
+          
+          final questionAudioFile = File(question.questionAudioPath!);
+          final extension = _getAudioExtension(question.questionAudioPath!);
+          final questionStoragePath = 'tests/$testId/questions/${question.id}/question_audio$extension';
+          final questionFileRef = storage.ref().child(questionStoragePath);
+          
+          final questionUploadTask = await questionFileRef.putFile(
+            questionAudioFile,
+            SettableMetadata(contentType: _getAudioContentType(extension))
+          );
+          
+          final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
+          
+          if (questionDownloadUrl.isEmpty) {
+            throw Exception('Failed to get download URL for question audio');
+          }
+          
+          newUploadedPaths.add(questionStoragePath);
+          updatedQuestion = updatedQuestion.copyWith(
+            questionAudioUrl: questionDownloadUrl,
+            questionAudioPath: questionStoragePath,
+          );
+        } else if ((question.questionAudioUrl == null || question.questionAudioUrl!.isEmpty) &&
+                  (question.questionAudioPath == null || question.questionAudioPath!.isEmpty) &&
+                  existingQuestion?.questionAudioPath != null && 
+                  existingQuestion!.questionAudioPath!.isNotEmpty) {
+          pathsToDelete.add(existingQuestion.questionAudioPath!);
+        }
         
         final updatedOptions = <AnswerOption>[];
         for (int i = 0; i < question.options.length; i++) {
@@ -266,10 +348,14 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
               ? existingQuestion.options[i] 
               : null;
           
-          // Check if this is a new local file by comparing with existing storage path
-          bool isNewAnswerImage = _isNewLocalImage(
+          bool isNewAnswerImage = _isNewLocalFile(
             option.imagePath, 
             existingOption?.imagePath
+          );
+
+          bool isNewAnswerAudio = _isNewLocalFile(
+            option.audioPath, 
+            existingOption?.audioPath
           );
           
           if (isNewAnswerImage) {
@@ -297,19 +383,62 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
               imageUrl: answerDownloadUrl,
               imagePath: answerStoragePath,
             ));
-          } else if (!option.isImage && 
+          } else if (isNewAnswerAudio) {
+            if (existingOption?.audioPath != null && existingOption!.audioPath!.isNotEmpty) {
+              pathsToDelete.add(existingOption.audioPath!);
+            }
+            
+            final answerAudioFile = File(option.audioPath!);
+            final extension = _getAudioExtension(option.audioPath!);
+            final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i$extension';
+            final answerFileRef = storage.ref().child(answerStoragePath);
+            
+            final answerUploadTask = await answerFileRef.putFile(
+              answerAudioFile,
+              SettableMetadata(contentType: _getAudioContentType(extension))
+            );
+            
+            final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
+            
+            if (answerDownloadUrl.isEmpty) {
+              throw Exception('Failed to get download URL for answer audio');
+            }
+            
+            newUploadedPaths.add(answerStoragePath);
+            updatedOptions.add(option.copyWith(
+              audioUrl: answerDownloadUrl,
+              audioPath: answerStoragePath,
+            ));
+          } else if (!option.isImage && !option.isAudio && 
                     existingOption?.isImage == true && 
                     existingOption?.imagePath != null && 
                     existingOption!.imagePath!.isNotEmpty) {
             pathsToDelete.add(existingOption.imagePath!);
             updatedOptions.add(option);
-          } else if (option.isImage && 
+          } else if (!option.isImage && !option.isAudio && 
+                    existingOption?.isAudio == true && 
+                    existingOption?.audioPath != null && 
+                    existingOption!.audioPath!.isNotEmpty) {
+            pathsToDelete.add(existingOption.audioPath!);
+            updatedOptions.add(option);
+          } else if ((option.isImage && 
                     (option.imageUrl == null || option.imageUrl!.isEmpty) &&
                     (option.imagePath == null || option.imagePath!.isEmpty) &&
                     existingOption?.isImage == true &&
                     existingOption?.imagePath != null &&
-                    existingOption!.imagePath!.isNotEmpty) {
-            pathsToDelete.add(existingOption.imagePath!);
+                    existingOption!.imagePath!.isNotEmpty) ||
+                   (option.isAudio && 
+                    (option.audioUrl == null || option.audioUrl!.isEmpty) &&
+                    (option.audioPath == null || option.audioPath!.isEmpty) &&
+                    existingOption?.isAudio == true &&
+                    existingOption?.audioPath != null &&
+                    existingOption!.audioPath!.isNotEmpty)) {
+            if (existingOption.imagePath != null && existingOption.imagePath!.isNotEmpty) {
+              pathsToDelete.add(existingOption.imagePath!);
+            }
+            if (existingOption.audioPath != null && existingOption.audioPath!.isNotEmpty) {
+              pathsToDelete.add(existingOption.audioPath!);
+            }
             updatedOptions.add(option);
           } else {
             updatedOptions.add(option);
@@ -324,6 +453,11 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
                 removedOption.imagePath!.isNotEmpty) {
               pathsToDelete.add(removedOption.imagePath!);
             }
+            if (removedOption.isAudio && 
+                removedOption.audioPath != null && 
+                removedOption.audioPath!.isNotEmpty) {
+              pathsToDelete.add(removedOption.audioPath!);
+            }
           }
         }
         
@@ -337,12 +471,21 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
               existingQuestion.questionImagePath!.isNotEmpty) {
             pathsToDelete.add(existingQuestion.questionImagePath!);
           }
+          if (existingQuestion.questionAudioPath != null && 
+              existingQuestion.questionAudioPath!.isNotEmpty) {
+            pathsToDelete.add(existingQuestion.questionAudioPath!);
+          }
           
           for (final option in existingQuestion.options) {
             if (option.isImage && 
                 option.imagePath != null && 
                 option.imagePath!.isNotEmpty) {
               pathsToDelete.add(option.imagePath!);
+            }
+            if (option.isAudio && 
+                option.audioPath != null && 
+                option.audioPath!.isNotEmpty) {
+              pathsToDelete.add(option.audioPath!);
             }
           }
         }
@@ -368,11 +511,9 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
       return finalTest.copyWith(updatedAt: DateTime.now());
       
     } on FirebaseException catch (e) {
-      // Clean up newly uploaded files on failure
       await _cleanupFiles(newUploadedPaths);
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
-      // Clean up newly uploaded files on failure
       await _cleanupFiles(newUploadedPaths);
       throw Exception('Failed to update test: $e');
     }
@@ -383,7 +524,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final batch = firestore.batch();
     final docRef = firestore.collection(testsCollection).doc(testId);
     
-    // Get document first to collect file paths
     final docSnapshot = await docRef.get();
     if (!docSnapshot.exists) {
       throw Exception('Test not found');
@@ -393,29 +533,31 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final pathsToDelete = <String>[];
     
     try {
-      // Collect cover image path
       if (data.containsKey('imagePath') && data['imagePath'] != null) {
         pathsToDelete.add(data['imagePath'] as String);
       }
       
-      // Collect question and answer image paths
       if (data.containsKey('questions') && data['questions'] is List) {
         final questions = data['questions'] as List;
         for (final questionData in questions) {
           if (questionData is Map<String, dynamic>) {
-            // Question image path
             if (questionData.containsKey('questionImagePath') && questionData['questionImagePath'] != null) {
               pathsToDelete.add(questionData['questionImagePath'] as String);
             }
+            if (questionData.containsKey('questionAudioPath') && questionData['questionAudioPath'] != null) {
+              pathsToDelete.add(questionData['questionAudioPath'] as String);
+            }
             
-            // Answer image paths
             if (questionData.containsKey('options') && questionData['options'] is List) {
               final options = questionData['options'] as List;
               for (final option in options) {
-                if (option is Map<String, dynamic> && 
-                    option.containsKey('imagePath') && 
-                    option['imagePath'] != null) {
-                  pathsToDelete.add(option['imagePath'] as String);
+                if (option is Map<String, dynamic>) {
+                  if (option.containsKey('imagePath') && option['imagePath'] != null) {
+                    pathsToDelete.add(option['imagePath'] as String);
+                  }
+                  if (option.containsKey('audioPath') && option['audioPath'] != null) {
+                    pathsToDelete.add(option['audioPath'] as String);
+                  }
                 }
               }
             }
@@ -423,10 +565,8 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         }
       }
       
-      // Delete associated files first
       await _cleanupFiles(pathsToDelete);
       
-      // Fallback: delete by URL for cover image
       if (data.containsKey('imageUrl') && data['imageUrl'] != null) {
         try {
           final imageRef = storage.refFromURL(data['imageUrl'] as String);
@@ -438,7 +578,6 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         }
       }
       
-      // Use batch operation to delete the document
       batch.delete(docRef);
       await batch.commit();
       
@@ -517,6 +656,37 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     }
   }
 
+  String _getAudioExtension(String filePath) {
+    final extension = filePath.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'm4a':
+        return '.m4a';
+      case 'mp3':
+        return '.mp3';
+      case 'wav':
+        return '.wav';
+      case 'aac':
+        return '.aac';
+      default:
+        return '.m4a';
+    }
+  }
+
+  String _getAudioContentType(String extension) {
+    switch (extension) {
+      case '.m4a':
+        return 'audio/mp4';
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.wav':
+        return 'audio/wav';
+      case '.aac':
+        return 'audio/aac';
+      default:
+        return 'audio/mp4';
+    }
+  }
+
   Future<void> _cleanupFiles(List<String> paths) async {
     for (final path in paths) {
       try {
@@ -535,41 +705,36 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     }
   }
 
-  bool _isNewLocalImage(String? currentPath, String? existingStoragePath) {
-    // No current path means no image
+  bool _isNewLocalFile(String? currentPath, String? existingStoragePath) {
     if (currentPath == null || currentPath.isEmpty) {
       return false;
     }
     
-    // Must be a local file that exists
     if (!File(currentPath).existsSync()) {
       return false;
     }
     
-    // If there's no existing storage path, and we have a local file, it's new
     if (existingStoragePath == null || existingStoragePath.isEmpty) {
       return true;
     }
     
-    // If current path equals existing storage path, it's unchanged
     if (currentPath == existingStoragePath) {
       return false;
     }
     
-    // Check if existing path is a Firebase storage path pattern
-    if (existingStoragePath.startsWith('tests/') && existingStoragePath.contains('.jpg')) {
-      // Current path is local, existing is storage - this is a new upload
+    if (existingStoragePath.startsWith('tests/') && 
+        (existingStoragePath.contains('.jpg') || 
+         existingStoragePath.contains('.m4a') ||
+         existingStoragePath.contains('.mp3') ||
+         existingStoragePath.contains('.wav') ||
+         existingStoragePath.contains('.aac'))) {
       return true;
     }
     
-    // If both are local paths, check if they're different files
-    // This handles the case where imagePath was set to cached path
     if (currentPath.startsWith('/') && existingStoragePath.startsWith('/')) {
-      // Both are local paths - if they're different, it's a new image
       return currentPath != existingStoragePath;
     }
     
-    // Default to treating as unchanged to prevent accidental deletions
     return false;
   }
 }

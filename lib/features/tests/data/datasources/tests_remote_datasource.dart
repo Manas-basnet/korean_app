@@ -8,10 +8,4 @@ abstract class TestsRemoteDataSource {
   Future<bool> hasMoreTestsByCategory(TestCategory category, int currentCount);
   Future<List<TestItem>> searchTests(String query);
   Future<TestItem?> getTestById(String testId);
-  
-  Future<List<TestItem>> getUnpublishedTests(String userId, {int page = 0, int pageSize = 5});
-  Future<List<TestItem>> getUnpublishedTestsByCategory(String userId, TestCategory category, {int page = 0, int pageSize = 5});
-  Future<bool> hasMoreUnpublishedTests(String userId, int currentCount);
-  Future<bool> hasMoreUnpublishedTestsByCategory(String userId, TestCategory category, int currentCount);
-  Future<List<TestItem>> searchUnpublishedTests(String userId, String query);
 }

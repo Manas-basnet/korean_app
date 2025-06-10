@@ -11,12 +11,4 @@ abstract class TestsRepository {
   Future<ApiResult<List<TestItem>>> hardRefreshTestsByCategory(TestCategory category, {int pageSize = 5});
   Future<ApiResult<List<TestItem>>> searchTests(String query);
   Future<ApiResult<TestItem?>> getTestById(String testId);
-  
-  Future<ApiResult<List<TestItem>>> getUnpublishedTests({int page = 0, int pageSize = 5});
-  Future<ApiResult<List<TestItem>>> getUnpublishedTestsByCategory(TestCategory category, {int page = 0, int pageSize = 5});
-  Future<ApiResult<bool>> hasMoreUnpublishedTests(int currentCount);
-  Future<ApiResult<bool>> hasMoreUnpublishedTestsByCategory(TestCategory category, int currentCount);
-  Future<ApiResult<List<TestItem>>> hardRefreshUnpublishedTests({int pageSize = 5});
-  Future<ApiResult<List<TestItem>>> hardRefreshUnpublishedTestsByCategory(TestCategory category, {int pageSize = 5});
-  Future<ApiResult<List<TestItem>>> searchUnpublishedTests(String query);
 }
