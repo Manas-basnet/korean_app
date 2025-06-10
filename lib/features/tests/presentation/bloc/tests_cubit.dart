@@ -20,13 +20,16 @@ class TestsCubit extends Cubit<TestsState> {
   final AdminPermissionService adminService;
   
   int _currentPage = 0;
+  int _currentUnpublishedPage = 0;
   static const int _pageSize = 5;
   bool _isConnected = true;
   TestCategory _currentCategory = TestCategory.all;
+  TestCategory _currentUnpublishedCategory = TestCategory.all;
   
   Timer? _searchDebounceTimer;
   static const Duration _searchDebounceDelay = Duration(milliseconds: 500);
   String _lastSearchQuery = '';
+  String _lastUnpublishedSearchQuery = '';
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
@@ -90,10 +93,12 @@ class TestsCubit extends Cubit<TestsState> {
           
           emit(TestsState(
             tests: uniqueTests,
+            unpublishedTests: state.unpublishedTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
+            hasMoreUnpublished: state.hasMoreUnpublished,
             currentOperation: const TestsOperation(
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
@@ -160,10 +165,12 @@ class TestsCubit extends Cubit<TestsState> {
           
           emit(TestsState(
             tests: uniqueTests,
+            unpublishedTests: state.unpublishedTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
+            hasMoreUnpublished: state.hasMoreUnpublished,
             currentOperation: const TestsOperation(
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
@@ -291,6 +298,245 @@ class TestsCubit extends Cubit<TestsState> {
       _handleError('Failed to load more tests: $e', TestsOperationType.loadMoreTests);
     }
   }
+
+  Future<void> loadInitialUnpublishedTests() async {
+    if (state.currentOperation.isInProgress) {
+      dev.log('Load unpublished operation already in progress, skipping...');
+      return;
+    }
+    
+    _currentUnpublishedCategory = TestCategory.all;
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        isLoading: true,
+        error: null,
+        errorType: null,
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.loadUnpublishedTests,
+          status: TestsOperationStatus.inProgress,
+        ),
+      ));
+      
+      final result = await repository.getUnpublishedTests(page: 0, pageSize: _pageSize);
+      
+      await result.fold(
+        onSuccess: (tests) async {
+          final hasMoreResult = await repository.hasMoreUnpublishedTests(tests.length);
+
+          _currentUnpublishedPage = tests.length ~/ _pageSize;
+          final uniqueTests = _removeDuplicates(tests);
+          
+          _operationStopwatch.stop();
+          dev.log('loadInitialUnpublishedTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          
+          emit(state.copyWith(
+            unpublishedTests: uniqueTests,
+            hasMoreUnpublished: hasMoreResult.fold(
+              onSuccess: (hasMore) => hasMore,
+              onFailure: (_, __) => false,
+            ),
+            isLoading: false,
+            currentOperation: const TestsOperation(
+              type: TestsOperationType.loadUnpublishedTests,
+              status: TestsOperationStatus.completed,
+            ),
+          ));
+          
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          dev.log('loadInitialUnpublishedTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          
+          emit(state.copyWithBaseState(
+            error: message,
+            errorType: type,
+            isLoading: false,
+          ).copyWithOperation(const TestsOperation(
+            type: TestsOperationType.loadUnpublishedTests,
+            status: TestsOperationStatus.failed,
+          )));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      dev.log('Error loading initial unpublished tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      _handleError('Failed to load unpublished tests: $e', TestsOperationType.loadUnpublishedTests);
+    }
+  }
+
+  Future<void> loadUnpublishedTestsByCategory(TestCategory category) async {
+    if (state.currentOperation.isInProgress) {
+      dev.log('Load unpublished operation already in progress, skipping...');
+      return;
+    }
+    
+    _currentUnpublishedCategory = category;
+    _currentUnpublishedPage = 0;
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        isLoading: true,
+        error: null,
+        errorType: null,
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.loadUnpublishedTests,
+          status: TestsOperationStatus.inProgress,
+        ),
+      ));
+      
+      final result = await repository.getUnpublishedTestsByCategory(category, page: 0, pageSize: _pageSize);
+      
+      await result.fold(
+        onSuccess: (tests) async {
+          final hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(category, tests.length);
+          final uniqueTests = _removeDuplicates(tests);
+          
+          _currentUnpublishedPage = uniqueTests.length ~/ _pageSize;
+          
+          _operationStopwatch.stop();
+          dev.log('loadUnpublishedTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          
+          emit(state.copyWith(
+            unpublishedTests: uniqueTests,
+            hasMoreUnpublished: hasMoreResult.fold(
+              onSuccess: (hasMore) => hasMore,
+              onFailure: (_, __) => false,
+            ),
+            isLoading: false,
+            currentOperation: const TestsOperation(
+              type: TestsOperationType.loadUnpublishedTests,
+              status: TestsOperationStatus.completed,
+            ),
+          ));
+          
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          dev.log('loadUnpublishedTestsByCategory failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          
+          emit(state.copyWithBaseState(
+            error: message,
+            errorType: type,
+            isLoading: false,
+          ).copyWithOperation(const TestsOperation(
+            type: TestsOperationType.loadUnpublishedTests,
+            status: TestsOperationStatus.failed,
+          )));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      dev.log('Error loading unpublished tests by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      _handleError('Failed to load unpublished tests: $e', TestsOperationType.loadUnpublishedTests);
+    }
+  }
+
+  Future<void> loadMoreUnpublishedTests() async {    
+    if (!state.hasMoreUnpublished || !_isConnected || state.currentOperation.isInProgress) {
+      dev.log('loadMoreUnpublishedTests skipped - hasMore: ${state.hasMoreUnpublished}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.loadMoreUnpublishedTests,
+          status: TestsOperationStatus.inProgress,
+        ),
+      ));
+      
+      ApiResult<List<TestItem>> result;
+      
+      if (_currentUnpublishedCategory == TestCategory.all) {
+        result = await repository.getUnpublishedTests(
+          page: _currentUnpublishedPage + 1,
+          pageSize: _pageSize
+        );
+      } else {
+        result = await repository.getUnpublishedTestsByCategory(
+          _currentUnpublishedCategory,
+          page: _currentUnpublishedPage + 1,
+          pageSize: _pageSize
+        );
+      }
+      
+      await result.fold(
+        onSuccess: (moreTests) async {
+          final existingIds = state.unpublishedTests.map((test) => test.id).toSet();
+          final uniqueNewTests = moreTests.where((test) => !existingIds.contains(test.id)).toList();
+          
+          if (uniqueNewTests.isNotEmpty) {
+            final allTests = [...state.unpublishedTests, ...uniqueNewTests];
+            
+            ApiResult<bool> hasMoreResult;
+            if (_currentUnpublishedCategory == TestCategory.all) {
+              hasMoreResult = await repository.hasMoreUnpublishedTests(allTests.length);
+            } else {
+              hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(_currentUnpublishedCategory, allTests.length);
+            }
+            
+            _currentUnpublishedPage = allTests.length ~/ _pageSize;
+            
+            _operationStopwatch.stop();
+            dev.log('loadMoreUnpublishedTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewTests.length} new tests');
+            
+            emit(state.copyWith(
+              unpublishedTests: allTests,
+              hasMoreUnpublished: hasMoreResult.fold(
+                onSuccess: (hasMore) => hasMore,
+                onFailure: (_, __) => false,
+              ),
+              currentOperation: const TestsOperation(
+                type: TestsOperationType.loadMoreUnpublishedTests,
+                status: TestsOperationStatus.completed,
+              ),
+            ));
+          } else {
+            _operationStopwatch.stop();
+            dev.log('loadMoreUnpublishedTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with no new tests');
+            
+            emit(state.copyWith(
+              hasMoreUnpublished: false,
+              currentOperation: const TestsOperation(
+                type: TestsOperationType.loadMoreUnpublishedTests,
+                status: TestsOperationStatus.completed,
+              ),
+            ));
+          }
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          dev.log('loadMoreUnpublishedTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          
+          emit(state.copyWithBaseState(
+            error: message, 
+            errorType: type
+          ).copyWithOperation(const TestsOperation(
+            type: TestsOperationType.loadMoreUnpublishedTests,
+            status: TestsOperationStatus.failed,
+          )));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      dev.log('Error loading more unpublished tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      _handleError('Failed to load more unpublished tests: $e', TestsOperationType.loadMoreUnpublishedTests);
+    }
+  }
   
   Future<void> hardRefresh() async {
     if (state.currentOperation.isInProgress) {
@@ -339,10 +585,12 @@ class TestsCubit extends Cubit<TestsState> {
           
           emit(TestsState(
             tests: uniqueTests,
+            unpublishedTests: state.unpublishedTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
+            hasMoreUnpublished: state.hasMoreUnpublished,
             currentOperation: const TestsOperation(
               type: TestsOperationType.refreshTests,
               status: TestsOperationStatus.completed,
@@ -372,7 +620,89 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
 
+  Future<void> hardRefreshUnpublishedTests() async {
+    if (state.currentOperation.isInProgress) {
+      dev.log('Refresh unpublished operation already in progress, skipping...');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        isLoading: true,
+        error: null,
+        errorType: null,
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.refreshUnpublishedTests,
+          status: TestsOperationStatus.inProgress,
+        ),
+      ));
+      
+      _currentUnpublishedPage = 0;
+      
+      ApiResult<List<TestItem>> result;
+      if (_currentUnpublishedCategory == TestCategory.all) {
+        result = await repository.hardRefreshUnpublishedTests(pageSize: _pageSize);
+      } else {
+        result = await repository.hardRefreshUnpublishedTestsByCategory(_currentUnpublishedCategory, pageSize: _pageSize);
+      }
+      
+      await result.fold(
+        onSuccess: (tests) async {
+          final uniqueTests = _removeDuplicates(tests);
+          
+          ApiResult<bool> hasMoreResult;
+          if (_currentUnpublishedCategory == TestCategory.all) {
+            hasMoreResult = await repository.hasMoreUnpublishedTests(uniqueTests.length);
+          } else {
+            hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(_currentUnpublishedCategory, uniqueTests.length);
+          }
+          
+          _currentUnpublishedPage = uniqueTests.length ~/ _pageSize;
+          
+          _operationStopwatch.stop();
+          dev.log('hardRefreshUnpublishedTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          
+          emit(state.copyWith(
+            unpublishedTests: uniqueTests,
+            hasMoreUnpublished: hasMoreResult.fold(
+              onSuccess: (hasMore) => hasMore,
+              onFailure: (_, __) => false,
+            ),
+            isLoading: false,
+            currentOperation: const TestsOperation(
+              type: TestsOperationType.refreshUnpublishedTests,
+              status: TestsOperationStatus.completed,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          dev.log('hardRefreshUnpublishedTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          
+          emit(state.copyWithBaseState(
+            error: message,
+            errorType: type,
+            isLoading: false,
+          ).copyWithOperation(const TestsOperation(
+            type: TestsOperationType.refreshUnpublishedTests,
+            status: TestsOperationStatus.failed,
+          )));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      dev.log('Error refreshing unpublished tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      _handleError('Failed to refresh unpublished tests: $e', TestsOperationType.refreshUnpublishedTests);
+    }
+  }
+
   TestCategory get currentCategory => _currentCategory;
+  TestCategory get currentUnpublishedCategory => _currentUnpublishedCategory;
   
   void searchTests(String query) {
     _searchDebounceTimer?.cancel();
@@ -405,6 +735,40 @@ class TestsCubit extends Cubit<TestsState> {
     
     _searchDebounceTimer = Timer(_searchDebounceDelay, () {
       _performSearch(trimmedQuery);
+    });
+  }
+
+  void searchUnpublishedTests(String query) {
+    _searchDebounceTimer?.cancel();
+    
+    final trimmedQuery = query.trim();
+    
+    if (trimmedQuery.length < 2) {
+      dev.log('Unpublished search query too short, clearing search results');
+      _lastUnpublishedSearchQuery = '';
+      
+      emit(state.copyWith(
+        unpublishedTests: [],
+        hasMoreUnpublished: false,
+        isLoading: false,
+        error: null,
+        errorType: null,
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.searchUnpublishedTests,
+          status: TestsOperationStatus.completed,
+        ),
+      ));
+      _clearOperationAfterDelay();
+      return;
+    }
+    
+    if (trimmedQuery == _lastUnpublishedSearchQuery) {
+      dev.log('Duplicate unpublished search query, skipping');
+      return;
+    }
+    
+    _searchDebounceTimer = Timer(_searchDebounceDelay, () {
+      _performUnpublishedSearch(trimmedQuery);
     });
   }
   
@@ -471,6 +835,69 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
 
+  Future<void> _performUnpublishedSearch(String query) async {
+    if (state.currentOperation.isInProgress) {
+      dev.log('Unpublished search operation already in progress, skipping...');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    _lastUnpublishedSearchQuery = query;
+    
+    try {
+      emit(state.copyWith(
+        isLoading: true,
+        currentOperation: const TestsOperation(
+          type: TestsOperationType.searchUnpublishedTests,
+          status: TestsOperationStatus.inProgress,
+        ),
+      ));
+      
+      final result = await repository.searchUnpublishedTests(query);
+      
+      result.fold(
+        onSuccess: (searchResults) {
+          final uniqueSearchResults = _removeDuplicates(searchResults);
+          
+          _operationStopwatch.stop();
+          dev.log('Unpublished search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
+          
+          emit(state.copyWith(
+            unpublishedTests: uniqueSearchResults,
+            hasMoreUnpublished: false,
+            isLoading: false,
+            error: null,
+            errorType: null,
+            currentOperation: const TestsOperation(
+              type: TestsOperationType.searchUnpublishedTests,
+              status: TestsOperationStatus.completed,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          dev.log('Unpublished search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          
+          emit(state.copyWithBaseState(
+            error: message,
+            errorType: type,
+            isLoading: false,
+          ).copyWithOperation(const TestsOperation(
+            type: TestsOperationType.searchUnpublishedTests,
+            status: TestsOperationStatus.failed,
+          )));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      dev.log('Error searching unpublished tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      _handleError('Failed to search unpublished tests: $e', TestsOperationType.searchUnpublishedTests);
+    }
+  }
+
   Future<void> loadTestById(String testId) async {
     if (state.currentOperation.isInProgress) {
       dev.log('Load test operation already in progress, skipping...');
@@ -518,7 +945,6 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
   
-  // Permission checking methods
   Future<bool> canUserEditTest(String testId) async {
     try {
       final UserEntity? user = _getCurrentUser();
@@ -534,10 +960,13 @@ class TestsCubit extends Cubit<TestsState> {
       
       final test = state.tests.firstWhere(
         (t) => t.id == testId,
-        orElse: () => const TestItem(
-          id: '', title: '', description: '', questions: [],
-          level: BookLevel.beginner, category: TestCategory.practice,
-        )
+        orElse: () => state.unpublishedTests.firstWhere(
+          (t) => t.id == testId,
+          orElse: () => const TestItem(
+            id: '', title: '', description: '', questions: [],
+            level: BookLevel.beginner, category: TestCategory.practice,
+          ),
+        ),
       );
       
       final canEdit = test.id.isNotEmpty && test.creatorUid == user.uid;
@@ -554,7 +983,6 @@ class TestsCubit extends Cubit<TestsState> {
     return canUserEditTest(testId);
   }
   
-  // Helper methods
   UserEntity? _getCurrentUser() {
     return authService.getCurrentUser();
   }

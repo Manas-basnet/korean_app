@@ -15,14 +15,14 @@ import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit
 import 'package:korean_language_app/features/tests/presentation/widgets/test_card.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_grid_skeleton.dart';
 
-class TestsPage extends StatefulWidget {
-  const TestsPage({super.key});
+class UnpublishedTestsPage extends StatefulWidget {
+  const UnpublishedTestsPage({super.key});
 
   @override
-  State<TestsPage> createState() => _TestsPageState();
+  State<UnpublishedTestsPage> createState() => _UnpublishedTestsPageState();
 }
 
-class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMixin {
+class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late PageController _pageController;
   final List<ScrollController> _scrollControllers = [];
@@ -52,20 +52,18 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     
     _pageController = PageController();
     
-    // Initialize scroll controllers for each tab
     for (int i = 0; i < _tabCategories.length; i++) {
       _scrollControllers.add(ScrollController());
     }
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _testsCubit.loadInitialTests();
+      _testsCubit.loadInitialUnpublishedTests();
       context.read<ConnectivityCubit>().checkConnectivity();
       setState(() {
         _isInitialized = true;
       });
     });
     
-    // Add scroll listeners to all controllers
     for (int i = 0; i < _scrollControllers.length; i++) {
       _scrollControllers[i].addListener(() => _onScroll(i));
     }
@@ -89,8 +87,8 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     if (_isNearBottom(tabIndex)) {
       final state = _testsCubit.state;
       
-      if (state.hasMore && !state.currentOperation.isInProgress) {
-        _testsCubit.loadMoreTests();
+      if (state.hasMoreUnpublished && !state.currentOperation.isInProgress) {
+        _testsCubit.loadMoreUnpublishedTests();
       }
     }
   }
@@ -118,9 +116,9 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
   void _loadTestsForTab(int index) {
     final category = _getCategoryForIndex(index);
     if (category == TestCategory.all) {
-      _testsCubit.loadInitialTests();
+      _testsCubit.loadInitialUnpublishedTests();
     } else {
-      _testsCubit.loadTestsByCategory(category);
+      _testsCubit.loadUnpublishedTestsByCategory(category);
     }
     _editPermissionCache.clear();
   }
@@ -138,7 +136,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     setState(() => _isRefreshing = true);
     
     try {
-      await _testsCubit.hardRefresh();
+      await _testsCubit.hardRefreshUnpublishedTests();
       _editPermissionCache.clear();
     } finally {
       setState(() => _isRefreshing = false);
@@ -210,12 +208,12 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     );
   }
   
-AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
+  AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     return AppBar(
       title: Text(
         _languageCubit.getLocalizedText(
-          korean: '시험',
-          english: 'Tests',
+          korean: '비공개 시험',
+          english: 'Unpublished Tests',
         ),
         style: theme.textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.bold,
@@ -229,23 +227,13 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
           onPressed: () => _showSearchDelegate(),
         ),
         IconButton(
-          icon: const Icon(Icons.drafts_rounded),
+          icon: const Icon(Icons.public),
           onPressed: () {
-            context.push(Routes.unpublishedTests);
+            context.pop();
           },
           tooltip: _languageCubit.getLocalizedText(
-            korean: '비공개 시험',
-            english: 'Unpublished Tests',
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () {
-            context.push(Routes.testResults);
-          },
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '내 결과',
-            english: 'My Results',
+            korean: '공개 시험',
+            english: 'Published Tests',
           ),
         ),
       ],
@@ -302,17 +290,17 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
               String errorMessage = operation.message ?? 'Operation failed';
               
               switch (operation.type) {
-                case TestsOperationType.loadTests:
-                  errorMessage = 'Failed to load tests';
+                case TestsOperationType.loadUnpublishedTests:
+                  errorMessage = 'Failed to load unpublished tests';
                   break;
-                case TestsOperationType.loadMoreTests:
-                  errorMessage = 'Failed to load more tests';
+                case TestsOperationType.loadMoreUnpublishedTests:
+                  errorMessage = 'Failed to load more unpublished tests';
                   break;
-                case TestsOperationType.searchTests:
-                  errorMessage = 'Failed to search tests';
+                case TestsOperationType.searchUnpublishedTests:
+                  errorMessage = 'Failed to search unpublished tests';
                   break;
-                case TestsOperationType.refreshTests:
-                  errorMessage = 'Failed to refresh tests';
+                case TestsOperationType.refreshUnpublishedTests:
+                  errorMessage = 'Failed to refresh unpublished tests';
                   break;
                 default:
                   break;
@@ -332,7 +320,7 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
             }
           },
           builder: (context, state) {
-            if (isOffline && state.tests.isEmpty && state.isLoading) {
+            if (isOffline && state.unpublishedTests.isEmpty && state.isLoading) {
               return ErrorView(
                 message: '',
                 errorType: FailureType.network,
@@ -345,11 +333,11 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
               );
             }
             
-            if (state.isLoading && state.tests.isEmpty) {
+            if (state.isLoading && state.unpublishedTests.isEmpty) {
               return const TestGridSkeleton();
             }
             
-            if (state.hasError && state.tests.isEmpty) {
+            if (state.hasError && state.unpublishedTests.isEmpty) {
               return ErrorView(
                 message: state.error ?? '',
                 errorType: state.errorType,
@@ -391,11 +379,11 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
   }
   
   Widget _buildTestsList(TestsState state, bool isOffline, int tabIndex) {
-    if (state.tests.isEmpty) {
+    if (state.unpublishedTests.isEmpty) {
       return _buildEmptyTestsView();
     }
     
-    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
+    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreUnpublishedTests && 
                          state.currentOperation.isInProgress;
     
     return RefreshIndicator(
@@ -416,23 +404,23 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
                 GridView.builder(
                   controller: _scrollControllers[tabIndex],
                   padding: const EdgeInsets.all(16),
-                  physics: const AlwaysScrollableScrollPhysics(), // Add this line
+                  physics: const AlwaysScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.8,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
-                  itemCount: state.tests.length,
+                  itemCount: state.unpublishedTests.length,
                   itemBuilder: (context, index) {
-                    final test = state.tests[index];
+                    final test = state.unpublishedTests[index];
                     return FutureBuilder<bool>(
                       future: _checkEditPermission(test.id),
                       builder: (context, snapshot) {
                         final canEdit = snapshot.data ?? false;
                         
                         return TestCard(
-                          key: ValueKey('${test.id}_$tabIndex'),
+                          key: ValueKey('${test.id}_unpublished_$tabIndex'),
                           test: test,
                           canEdit: canEdit,
                           onTap: () => _startTest(test),
@@ -465,7 +453,7 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     return RefreshIndicator(
       onRefresh: _refreshData,
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(), // Add this line
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -479,8 +467,8 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
               const SizedBox(height: 24),
               Text(
                 _languageCubit.getLocalizedText(
-                  korean: '시험이 없습니다',
-                  english: 'No tests available',
+                  korean: '비공개 시험이 없습니다',
+                  english: 'No unpublished tests available',
                 ),
                 style: TextStyle(
                   color: Colors.grey[600],
@@ -570,11 +558,36 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      test.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            test.title,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            _languageCubit.getLocalizedText(
+                              korean: '비공개',
+                              english: 'Draft',
+                            ),
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -626,24 +639,51 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
                       _buildInfoRow('Passing Score', test.formattedPassingScore),
                       _buildInfoRow('Category', test.category.name),
                       _buildInfoRow('Language', test.language),
+                      _buildInfoRow('Status', _languageCubit.getLocalizedText(
+                        korean: '비공개',
+                        english: 'Unpublished',
+                      )),
                       if (test.createdAt != null)
                         _buildInfoRow('Created', _formatDate(test.createdAt!)),
                       
                       const SizedBox(height: 24),
                       
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _startTest(test);
-                          },
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Start Test'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _editTest(test);
+                              },
+                              icon: const Icon(Icons.edit),
+                              label: Text(_languageCubit.getLocalizedText(
+                                korean: '편집',
+                                english: 'Edit',
+                              )),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _startTest(test);
+                              },
+                              icon: const Icon(Icons.play_arrow),
+                              label: Text(_languageCubit.getLocalizedText(
+                                korean: '미리보기',
+                                english: 'Preview',
+                              )),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

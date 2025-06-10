@@ -23,6 +23,7 @@ import 'package:korean_language_app/features/test_results/presentation/pages/tes
 import 'package:korean_language_app/features/tests/presentation/pages/test_taking_page.dart';
 import 'package:korean_language_app/features/test_upload/presentation/pages/test_upload_page.dart';
 import 'package:korean_language_app/features/tests/presentation/pages/tests_page.dart';
+import 'package:korean_language_app/features/tests/presentation/pages/unpublished_tests_page.dart';
 import 'package:korean_language_app/features/user_management/presentation/pages/user_management_page.dart';
 import 'package:korean_language_app/core/presentation/widgets/splash/splash_screen.dart';
 
@@ -46,20 +47,17 @@ class AppRouter {
       final authCubit = context.read<AuthCubit>();
       final authState = authCubit.state;
       
-      // auth initial state
       if (authState is AuthInitial) {
         return Routes.splash;
       }
       
       final isLoggedIn = authState is Authenticated || authState is AuthAnonymousSignIn;
       
-      // auth loading state
       if (authState is AuthLoading) {
         final isGoingToSplash = state.matchedLocation == Routes.splash;
         return isGoingToSplash ? null : Routes.splash;
       }
       
-      // auth error state
       if (authState is AuthError) {
         final isGoingToAuth = [Routes.login, Routes.register, Routes.forgotPassword, Routes.adminSignup]
             .contains(state.matchedLocation);
@@ -163,6 +161,11 @@ class AppRouter {
                   return TestResultPage(result: result);
                 },
               ),
+              GoRoute(
+                path: 'unpublished',
+                name: 'unpublishedTests',
+                builder: (context, state) => const UnpublishedTestsPage(),
+              ),
             ],
           ),
 
@@ -255,6 +258,7 @@ class Routes {
   static const testUpload = '/tests/upload';
   static const testResults = '/tests/results';
   static const testResult = '/tests/result';
+  static const unpublishedTests = '/tests/unpublished';
 
   static const books = '/books';
   static const pdfViewer = '/books/pdf-viewer';
@@ -269,7 +273,6 @@ class Routes {
   static const adminSignup = '$adminManagement/admin-signup';
   static const userManagement = '/profile/user-management';
 
-  // Helper methods for parameterized routes
   static String testTaking(String testId) => '/tests/take/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
 }

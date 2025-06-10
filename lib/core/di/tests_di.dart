@@ -9,20 +9,18 @@ import 'package:korean_language_app/features/tests/presentation/bloc/test_sessio
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
 
 void registerTestsDependencies(GetIt sl) {
-  // Cubits
   sl.registerFactory(() => TestsCubit(repository: sl(), authService: sl(), adminService: sl()));
   sl.registerFactory(() => TestSessionCubit(testResultsRepository: sl(), authService: sl()));
   
-  // Repository
   sl.registerLazySingleton<TestsRepository>(
     () => TestsRepositoryImpl(
       remoteDataSource: sl(),
       networkInfo: sl(),
       localDataSource: sl(),
+      authService: sl(),
     ),
   );
   
-  // Data Sources
   sl.registerLazySingleton<TestsRemoteDataSource>(
     () => FirestoreTestsDataSourceImpl(firestore: sl()),
   );

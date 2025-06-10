@@ -3,9 +3,12 @@ part of 'tests_cubit.dart';
 enum TestsOperationType { 
   loadTests, 
   loadMoreTests, 
-  loadUnpublishedTests, 
+  loadUnpublishedTests,
+  loadMoreUnpublishedTests,
   searchTests, 
+  searchUnpublishedTests,
   refreshTests,
+  refreshUnpublishedTests,
   loadTestById,
   createTest,
   updateTest,
@@ -52,7 +55,9 @@ class TestsOperation {
 
 class TestsState extends BaseState {
   final List<TestItem> tests;
+  final List<TestItem> unpublishedTests;
   final bool hasMore;
+  final bool hasMoreUnpublished;
   final TestsOperation currentOperation;
   final TestItem? selectedTest;
 
@@ -61,7 +66,9 @@ class TestsState extends BaseState {
     super.error,
     super.errorType,
     this.tests = const [],
+    this.unpublishedTests = const [],
     this.hasMore = false,
+    this.hasMoreUnpublished = false,
     required this.currentOperation,
     this.selectedTest,
   });
@@ -77,7 +84,9 @@ class TestsState extends BaseState {
       error: error,
       errorType: errorType,
       tests: tests,
+      unpublishedTests: unpublishedTests,
       hasMore: hasMore,
+      hasMoreUnpublished: hasMoreUnpublished,
       currentOperation: currentOperation,
       selectedTest: selectedTest,
     );
@@ -88,7 +97,9 @@ class TestsState extends BaseState {
     String? error,
     FailureType? errorType,
     List<TestItem>? tests,
+    List<TestItem>? unpublishedTests,
     bool? hasMore,
+    bool? hasMoreUnpublished,
     TestsOperation? currentOperation,
     TestItem? selectedTest,
   }) {
@@ -97,7 +108,9 @@ class TestsState extends BaseState {
       error: error,
       errorType: errorType,
       tests: tests ?? this.tests,
+      unpublishedTests: unpublishedTests ?? this.unpublishedTests,
       hasMore: hasMore ?? this.hasMore,
+      hasMoreUnpublished: hasMoreUnpublished ?? this.hasMoreUnpublished,
       currentOperation: currentOperation ?? this.currentOperation,
       selectedTest: selectedTest ?? this.selectedTest,
     );
@@ -109,7 +122,9 @@ class TestsState extends BaseState {
       error: error,
       errorType: errorType,
       tests: tests,
+      unpublishedTests: unpublishedTests,
       hasMore: hasMore,
+      hasMoreUnpublished: hasMoreUnpublished,
       currentOperation: operation,
       selectedTest: selectedTest,
     );
@@ -119,7 +134,9 @@ class TestsState extends BaseState {
   List<Object?> get props => [
         ...super.props,
         tests,
+        unpublishedTests,
         hasMore,
+        hasMoreUnpublished,
         currentOperation,
         selectedTest,
       ];
