@@ -1,0 +1,9 @@
+[33ma99a315[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mworking_branch[m[33m, [m[1;31morigin/working_branch[m[33m)[m profile, api_result, issues: books feature
+[33m36868e2[m made api_result, implemented api_result in books feature
+[33m060a298[m refresh
+[33mfed38f0[m debugPrint
+[33m2ac7579[m Issues(blue lines shown reduced)
+[33m2ea32e4[m removed test feature, going to implement new, TODO: - save profileimage path to the users collection - properly delete users image from storage too - have the same function to regenrate url if smth goes wrong in profile
+[33m4f97fe4[m books UI changes and code optimization, issues fixes- like not being able to view book right away after uploading
+[33m7a320ef[m some UI changes done
+[33m18435c5[m architecture changes for more easier maintainability
