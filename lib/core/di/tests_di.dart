@@ -7,6 +7,13 @@ import 'package:korean_language_app/features/tests/data/repositories/tests_repos
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
+import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource.dart';
+import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource_impl.dart';
+import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_remote_datasource.dart';
+import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_remote_datasource_impl.dart';
+import 'package:korean_language_app/features/unpublished_tests/data/repositories/unpublished_tests_repository_impl.dart';
+import 'package:korean_language_app/features/unpublished_tests/domain/repositories/unpublished_tests_repository.dart';
+import 'package:korean_language_app/features/unpublished_tests/presentation/bloc/unpublished_tests_cubit.dart';
 
 void registerTestsDependencies(GetIt sl) {
   sl.registerFactory(() => TestsCubit(repository: sl(), authService: sl(), adminService: sl()));
@@ -30,5 +37,33 @@ void registerTestsDependencies(GetIt sl) {
   );
   sl.registerLazySingleton<TestsLocalDataSource>(
     () => sl<TestsLocalDataSourceImpl>(),
+  );
+}
+
+void registerUnpublishedTestsDependencies(GetIt sl) {
+  // Cubits
+  sl.registerFactory(() => UnpublishedTestsCubit(
+    repository: sl(),
+    authService: sl(),
+    adminService: sl(),
+  ));
+  
+  // Repositories
+  sl.registerLazySingleton<UnpublishedTestsRepository>(
+    () => UnpublishedTestsRepositoryImpl(
+      remoteDataSource: sl(),
+      localDataSource: sl(),
+      networkInfo: sl(),
+      authService: sl(),
+    )
+  );
+  
+  // Data sources
+  sl.registerLazySingleton<UnpublishedTestsRemoteDataSource>(
+    () => FirestoreUnpublishedTestsDataSourceImpl(firestore: sl()),
+  );
+  
+  sl.registerLazySingleton<UnpublishedTestsLocalDataSource>(
+    () => UnpublishedTestsLocalDataSourceImpl(storageService: sl())
   );
 }

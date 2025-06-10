@@ -1,4 +1,3 @@
-// lib/features/tests/presentation/bloc/tests_cubit.dart - UPDATED
 import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -11,12 +10,12 @@ import 'package:korean_language_app/core/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
-import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
+import 'package:korean_language_app/features/unpublished_tests/domain/repositories/unpublished_tests_repository.dart';
 
-part 'tests_state.dart';
+part 'unpublished_tests_state.dart';
 
-class TestsCubit extends Cubit<TestsState> {
-  final TestsRepository repository;
+class UnpublishedTestsCubit extends Cubit<UnpublishedTestsState> {
+  final UnpublishedTestsRepository repository;
   final AuthService authService;
   final AdminPermissionService adminService;
   
@@ -32,11 +31,11 @@ class TestsCubit extends Cubit<TestsState> {
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
   
-  TestsCubit({
+  UnpublishedTestsCubit({
     required this.repository,
     required this.authService,
     required this.adminService,
-  }) : super(const TestsInitial()) {
+  }) : super(const UnpublishedTestsInitial()) {
     _initializeConnectivityListener();
   }
 
@@ -46,7 +45,7 @@ class TestsCubit extends Cubit<TestsState> {
       _isConnected = result != ConnectivityResult.none;
       
       if (!wasConnected && _isConnected && (state.tests.isEmpty || state.hasError)) {
-        dev.log('Connection restored, reloading tests...');
+        dev.log('Connection restored, reloading unpublished tests...');
         if (_currentCategory == TestCategory.all) {
           loadInitialTests();
         } else {
@@ -71,17 +70,17 @@ class TestsCubit extends Cubit<TestsState> {
         isLoading: true,
         error: null,
         errorType: null,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.loadTests,
-          status: TestsOperationStatus.inProgress,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.loadTests,
+          status: UnpublishedTestsOperationStatus.inProgress,
         ),
       ));
       
-      final result = await repository.getTests(page: 0, pageSize: _pageSize);
+      final result = await repository.getUnpublishedTests(page: 0, pageSize: _pageSize);
       
       await result.fold(
         onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTests(tests.length);
+          final hasMoreResult = await repository.hasMoreUnpublishedTests(tests.length);
 
           _currentPage = tests.length ~/ _pageSize;
           final uniqueTests = _removeDuplicates(tests);
@@ -89,15 +88,15 @@ class TestsCubit extends Cubit<TestsState> {
           _operationStopwatch.stop();
           dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
           
-          emit(TestsState(
+          emit(UnpublishedTestsState(
             tests: uniqueTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.loadTests,
-              status: TestsOperationStatus.completed,
+            currentOperation: const UnpublishedTestsOperation(
+              type: UnpublishedTestsOperationType.loadTests,
+              status: UnpublishedTestsOperationStatus.completed,
             ),
           ));
           
@@ -111,9 +110,9 @@ class TestsCubit extends Cubit<TestsState> {
             error: message,
             errorType: type,
             isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.loadTests,
-            status: TestsOperationStatus.failed,
+          ).copyWithOperation(const UnpublishedTestsOperation(
+            type: UnpublishedTestsOperationType.loadTests,
+            status: UnpublishedTestsOperationStatus.failed,
           )));
           _clearOperationAfterDelay();
         },
@@ -121,7 +120,7 @@ class TestsCubit extends Cubit<TestsState> {
     } catch (e) {
       _operationStopwatch.stop();
       dev.log('Error loading initial tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to load tests: $e', TestsOperationType.loadTests);
+      _handleError('Failed to load tests: $e', UnpublishedTestsOperationType.loadTests);
     }
   }
 
@@ -141,17 +140,17 @@ class TestsCubit extends Cubit<TestsState> {
         isLoading: true,
         error: null,
         errorType: null,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.loadTests,
-          status: TestsOperationStatus.inProgress,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.loadTests,
+          status: UnpublishedTestsOperationStatus.inProgress,
         ),
       ));
       
-      final result = await repository.getTestsByCategory(category, page: 0, pageSize: _pageSize);
+      final result = await repository.getUnpublishedTestsByCategory(category, page: 0, pageSize: _pageSize);
       
       await result.fold(
         onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTestsByCategory(category, tests.length);
+          final hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(category, tests.length);
           final uniqueTests = _removeDuplicates(tests);
           
           _currentPage = uniqueTests.length ~/ _pageSize;
@@ -159,15 +158,15 @@ class TestsCubit extends Cubit<TestsState> {
           _operationStopwatch.stop();
           dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
           
-          emit(TestsState(
+          emit(UnpublishedTestsState(
             tests: uniqueTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.loadTests,
-              status: TestsOperationStatus.completed,
+            currentOperation: const UnpublishedTestsOperation(
+              type: UnpublishedTestsOperationType.loadTests,
+              status: UnpublishedTestsOperationStatus.completed,
             ),
           ));
           
@@ -181,9 +180,9 @@ class TestsCubit extends Cubit<TestsState> {
             error: message,
             errorType: type,
             isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.loadTests,
-            status: TestsOperationStatus.failed,
+          ).copyWithOperation(const UnpublishedTestsOperation(
+            type: UnpublishedTestsOperationType.loadTests,
+            status: UnpublishedTestsOperationStatus.failed,
           )));
           _clearOperationAfterDelay();
         },
@@ -191,7 +190,7 @@ class TestsCubit extends Cubit<TestsState> {
     } catch (e) {
       _operationStopwatch.stop();
       dev.log('Error loading tests by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to load tests: $e', TestsOperationType.loadTests);
+      _handleError('Failed to load tests: $e', UnpublishedTestsOperationType.loadTests);
     }
   }
   
@@ -206,21 +205,21 @@ class TestsCubit extends Cubit<TestsState> {
     
     try {
       emit(state.copyWith(
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.loadMoreTests,
-          status: TestsOperationStatus.inProgress,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.loadMoreTests,
+          status: UnpublishedTestsOperationStatus.inProgress,
         ),
       ));
       
       ApiResult<List<TestItem>> result;
       
       if (_currentCategory == TestCategory.all) {
-        result = await repository.getTests(
+        result = await repository.getUnpublishedTests(
           page: _currentPage + 1,
           pageSize: _pageSize
         );
       } else {
-        result = await repository.getTestsByCategory(
+        result = await repository.getUnpublishedTestsByCategory(
           _currentCategory,
           page: _currentPage + 1,
           pageSize: _pageSize
@@ -237,9 +236,9 @@ class TestsCubit extends Cubit<TestsState> {
             
             ApiResult<bool> hasMoreResult;
             if (_currentCategory == TestCategory.all) {
-              hasMoreResult = await repository.hasMoreTests(allTests.length);
+              hasMoreResult = await repository.hasMoreUnpublishedTests(allTests.length);
             } else {
-              hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, allTests.length);
+              hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(_currentCategory, allTests.length);
             }
             
             _currentPage = allTests.length ~/ _pageSize;
@@ -253,9 +252,9 @@ class TestsCubit extends Cubit<TestsState> {
                 onSuccess: (hasMore) => hasMore,
                 onFailure: (_, __) => false,
               ),
-              currentOperation: const TestsOperation(
-                type: TestsOperationType.loadMoreTests,
-                status: TestsOperationStatus.completed,
+              currentOperation: const UnpublishedTestsOperation(
+                type: UnpublishedTestsOperationType.loadMoreTests,
+                status: UnpublishedTestsOperationStatus.completed,
               ),
             ));
           } else {
@@ -264,9 +263,9 @@ class TestsCubit extends Cubit<TestsState> {
             
             emit(state.copyWith(
               hasMore: false,
-              currentOperation: const TestsOperation(
-                type: TestsOperationType.loadMoreTests,
-                status: TestsOperationStatus.completed,
+              currentOperation: const UnpublishedTestsOperation(
+                type: UnpublishedTestsOperationType.loadMoreTests,
+                status: UnpublishedTestsOperationStatus.completed,
               ),
             ));
           }
@@ -279,9 +278,9 @@ class TestsCubit extends Cubit<TestsState> {
           emit(state.copyWithBaseState(
             error: message, 
             errorType: type
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.loadMoreTests,
-            status: TestsOperationStatus.failed,
+          ).copyWithOperation(const UnpublishedTestsOperation(
+            type: UnpublishedTestsOperationType.loadMoreTests,
+            status: UnpublishedTestsOperationStatus.failed,
           )));
           _clearOperationAfterDelay();
         },
@@ -289,7 +288,7 @@ class TestsCubit extends Cubit<TestsState> {
     } catch (e) {
       _operationStopwatch.stop();
       dev.log('Error loading more tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to load more tests: $e', TestsOperationType.loadMoreTests);
+      _handleError('Failed to load more tests: $e', UnpublishedTestsOperationType.loadMoreTests);
     }
   }
   
@@ -307,9 +306,9 @@ class TestsCubit extends Cubit<TestsState> {
         isLoading: true,
         error: null,
         errorType: null,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.refreshTests,
-          status: TestsOperationStatus.inProgress,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.refreshTests,
+          status: UnpublishedTestsOperationStatus.inProgress,
         ),
       ));
       
@@ -317,9 +316,9 @@ class TestsCubit extends Cubit<TestsState> {
       
       ApiResult<List<TestItem>> result;
       if (_currentCategory == TestCategory.all) {
-        result = await repository.hardRefreshTests(pageSize: _pageSize);
+        result = await repository.hardRefreshUnpublishedTests(pageSize: _pageSize);
       } else {
-        result = await repository.hardRefreshTestsByCategory(_currentCategory, pageSize: _pageSize);
+        result = await repository.hardRefreshUnpublishedTestsByCategory(_currentCategory, pageSize: _pageSize);
       }
       
       await result.fold(
@@ -328,9 +327,9 @@ class TestsCubit extends Cubit<TestsState> {
           
           ApiResult<bool> hasMoreResult;
           if (_currentCategory == TestCategory.all) {
-            hasMoreResult = await repository.hasMoreTests(uniqueTests.length);
+            hasMoreResult = await repository.hasMoreUnpublishedTests(uniqueTests.length);
           } else {
-            hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, uniqueTests.length);
+            hasMoreResult = await repository.hasMoreUnpublishedTestsByCategory(_currentCategory, uniqueTests.length);
           }
           
           _currentPage = uniqueTests.length ~/ _pageSize;
@@ -338,15 +337,15 @@ class TestsCubit extends Cubit<TestsState> {
           _operationStopwatch.stop();
           dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
           
-          emit(TestsState(
+          emit(UnpublishedTestsState(
             tests: uniqueTests,
             hasMore: hasMoreResult.fold(
               onSuccess: (hasMore) => hasMore,
               onFailure: (_, __) => false,
             ),
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.refreshTests,
-              status: TestsOperationStatus.completed,
+            currentOperation: const UnpublishedTestsOperation(
+              type: UnpublishedTestsOperationType.refreshTests,
+              status: UnpublishedTestsOperationStatus.completed,
             ),
           ));
           _clearOperationAfterDelay();
@@ -359,9 +358,9 @@ class TestsCubit extends Cubit<TestsState> {
             error: message,
             errorType: type,
             isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.refreshTests,
-            status: TestsOperationStatus.failed,
+          ).copyWithOperation(const UnpublishedTestsOperation(
+            type: UnpublishedTestsOperationType.refreshTests,
+            status: UnpublishedTestsOperationStatus.failed,
           )));
           _clearOperationAfterDelay();
         },
@@ -369,7 +368,7 @@ class TestsCubit extends Cubit<TestsState> {
     } catch (e) {
       _operationStopwatch.stop();
       dev.log('Error refreshing tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to refresh tests: $e', TestsOperationType.refreshTests);
+      _handleError('Failed to refresh tests: $e', UnpublishedTestsOperationType.refreshTests);
     }
   }
 
@@ -390,9 +389,9 @@ class TestsCubit extends Cubit<TestsState> {
         isLoading: false,
         error: null,
         errorType: null,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.searchTests,
-          status: TestsOperationStatus.completed,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.searchTests,
+          status: UnpublishedTestsOperationStatus.completed,
         ),
       ));
       _clearOperationAfterDelay();
@@ -422,13 +421,13 @@ class TestsCubit extends Cubit<TestsState> {
     try {
       emit(state.copyWith(
         isLoading: true,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.searchTests,
-          status: TestsOperationStatus.inProgress,
+        currentOperation: const UnpublishedTestsOperation(
+          type: UnpublishedTestsOperationType.searchTests,
+          status: UnpublishedTestsOperationStatus.inProgress,
         ),
       ));
       
-      final result = await repository.searchTests(query);
+      final result = await repository.searchUnpublishedTests(query);
       
       result.fold(
         onSuccess: (searchResults) {
@@ -443,9 +442,9 @@ class TestsCubit extends Cubit<TestsState> {
             isLoading: false,
             error: null,
             errorType: null,
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.searchTests,
-              status: TestsOperationStatus.completed,
+            currentOperation: const UnpublishedTestsOperation(
+              type: UnpublishedTestsOperationType.searchTests,
+              status: UnpublishedTestsOperationStatus.completed,
             ),
           ));
           _clearOperationAfterDelay();
@@ -458,9 +457,9 @@ class TestsCubit extends Cubit<TestsState> {
             error: message,
             errorType: type,
             isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.searchTests,
-            status: TestsOperationStatus.failed,
+          ).copyWithOperation(const UnpublishedTestsOperation(
+            type: UnpublishedTestsOperationType.searchTests,
+            status: UnpublishedTestsOperationStatus.failed,
           )));
           _clearOperationAfterDelay();
         },
@@ -468,54 +467,7 @@ class TestsCubit extends Cubit<TestsState> {
     } catch (e) {
       _operationStopwatch.stop();
       dev.log('Error searching tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to search tests: $e', TestsOperationType.searchTests);
-    }
-  }
-
-  Future<void> loadTestById(String testId) async {
-    if (state.currentOperation.isInProgress) {
-      dev.log('Load test operation already in progress, skipping...');
-      return;
-    }
-
-    try {
-      emit(state.copyWith(
-        currentOperation: TestsOperation(
-          type: TestsOperationType.loadTestById,
-          status: TestsOperationStatus.inProgress,
-          testId: testId,
-        ),
-      ));
-
-      final result = await repository.getTestById(testId);
-
-      result.fold(
-        onSuccess: (test) {
-          emit(state.copyWith(
-            selectedTest: test,
-            currentOperation: TestsOperation(
-              type: TestsOperationType.loadTestById,
-              status: TestsOperationStatus.completed,
-              testId: testId,
-            ),
-          ));
-          _clearOperationAfterDelay();
-        },
-        onFailure: (message, type) {
-          emit(state.copyWithBaseState(
-            error: message,
-            errorType: type,
-          ).copyWithOperation(TestsOperation(
-            type: TestsOperationType.loadTestById,
-            status: TestsOperationStatus.failed,
-            testId: testId,
-            message: message,
-          )));
-          _clearOperationAfterDelay();
-        },
-      );
-    } catch (e) {
-      _handleError('Failed to load test: $e', TestsOperationType.loadTestById, testId);
+      _handleError('Failed to search tests: $e', UnpublishedTestsOperationType.searchTests);
     }
   }
   
@@ -571,13 +523,13 @@ class TestsCubit extends Cubit<TestsState> {
     return uniqueTests;
   }
 
-  void _handleError(String message, TestsOperationType operationType, [String? testId]) {
+  void _handleError(String message, UnpublishedTestsOperationType operationType, [String? testId]) {
     emit(state.copyWithBaseState(
       error: message,
       isLoading: false,
-    ).copyWithOperation(TestsOperation(
+    ).copyWithOperation(UnpublishedTestsOperation(
       type: operationType,
-      status: TestsOperationStatus.failed,
+      status: UnpublishedTestsOperationStatus.failed,
       message: message,
       testId: testId,
     )));
@@ -587,9 +539,9 @@ class TestsCubit extends Cubit<TestsState> {
 
   void _clearOperationAfterDelay() {
     Timer(const Duration(seconds: 3), () {
-      if (state.currentOperation.status != TestsOperationStatus.none) {
+      if (state.currentOperation.status != UnpublishedTestsOperationStatus.none) {
         emit(state.copyWithOperation(
-          const TestsOperation(status: TestsOperationStatus.none)
+          const UnpublishedTestsOperation(status: UnpublishedTestsOperationStatus.none)
         ));
       }
     });
@@ -597,7 +549,7 @@ class TestsCubit extends Cubit<TestsState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing TestsCubit...');
+    dev.log('Closing UnpublishedTestsCubit...');
     _searchDebounceTimer?.cancel();
     _connectivitySubscription?.cancel();
     return super.close();

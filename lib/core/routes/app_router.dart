@@ -23,7 +23,7 @@ import 'package:korean_language_app/features/test_results/presentation/pages/tes
 import 'package:korean_language_app/features/tests/presentation/pages/test_taking_page.dart';
 import 'package:korean_language_app/features/test_upload/presentation/pages/test_upload_page.dart';
 import 'package:korean_language_app/features/tests/presentation/pages/tests_page.dart';
-import 'package:korean_language_app/features/tests/presentation/pages/unpublished_tests_page.dart';
+import 'package:korean_language_app/features/unpublished_tests/presentation/pages/unpublished_tests_page.dart';
 import 'package:korean_language_app/features/user_management/presentation/pages/user_management_page.dart';
 import 'package:korean_language_app/core/presentation/widgets/splash/splash_screen.dart';
 

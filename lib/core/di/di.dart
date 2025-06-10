@@ -30,6 +30,7 @@ Future<void> init() async {
   registerBooksDependencies(sl);
   registerAdminDependencies(sl);
   registerTestsDependencies(sl);
+  registerUnpublishedTestsDependencies(sl);
   registerTestUploadDependencies(sl);
   registerTestResultsDependencies(sl);
 }

@@ -4,12 +4,16 @@ import 'package:korean_language_app/features/test_results/presentation/bloc/test
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
+import 'package:korean_language_app/features/unpublished_tests/presentation/bloc/unpublished_tests_cubit.dart';
 
 class TestsProviders {
   static List<BlocProvider> getProviders() {
     return [
       BlocProvider<TestsCubit>(
         create: (context) => sl<TestsCubit>(),
+      ),
+      BlocProvider<UnpublishedTestsCubit>(
+        create: (context) => sl<UnpublishedTestsCubit>(),
       ),
       BlocProvider<TestSessionCubit>(
         create: (context) => sl<TestSessionCubit>(),
@@ -20,7 +24,7 @@ class TestsProviders {
       BlocProvider<TestResultsCubit>(
         create: (context) => sl<TestResultsCubit>(),
       ),
-      // Add other book category cubits here as needed
+      // Add other test category cubits here as needed
     ];
   }
 }

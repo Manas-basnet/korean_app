@@ -1,6 +1,6 @@
-part of 'tests_cubit.dart';
+part of 'unpublished_tests_cubit.dart';
 
-enum TestsOperationType { 
+enum UnpublishedTestsOperationType { 
   loadTests, 
   loadMoreTests, 
   searchTests, 
@@ -11,34 +11,34 @@ enum TestsOperationType {
   deleteTest
 }
 
-enum TestsOperationStatus { 
-  none, 
+enum UnpublishedTestsOperationStatus { 
+  none,
   inProgress, 
   completed, 
   failed 
 }
 
-class TestsOperation {
-  final TestsOperationType? type;
-  final TestsOperationStatus status;
+class UnpublishedTestsOperation {
+  final UnpublishedTestsOperationType? type;
+  final UnpublishedTestsOperationStatus status;
   final String? message;
   final String? testId;
   
-  const TestsOperation({
+  const UnpublishedTestsOperation({
     this.type,
     required this.status,
     this.message,
     this.testId,
   });
   
-  bool get isInProgress => status == TestsOperationStatus.inProgress;
-  bool get isCompleted => status == TestsOperationStatus.completed;
-  bool get isFailed => status == TestsOperationStatus.failed;
+  bool get isInProgress => status == UnpublishedTestsOperationStatus.inProgress;
+  bool get isCompleted => status == UnpublishedTestsOperationStatus.completed;
+  bool get isFailed => status == UnpublishedTestsOperationStatus.failed;
   
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TestsOperation &&
+      other is UnpublishedTestsOperation &&
           runtimeType == other.runtimeType &&
           type == other.type &&
           status == other.status &&
@@ -49,13 +49,13 @@ class TestsOperation {
   int get hashCode => type.hashCode ^ status.hashCode ^ (message?.hashCode ?? 0) ^ (testId?.hashCode ?? 0);
 }
 
-class TestsState extends BaseState {
+class UnpublishedTestsState extends BaseState {
   final List<TestItem> tests;
   final bool hasMore;
-  final TestsOperation currentOperation;
+  final UnpublishedTestsOperation currentOperation;
   final TestItem? selectedTest;
 
-  const TestsState({
+  const UnpublishedTestsState({
     super.isLoading = false,
     super.error,
     super.errorType,
@@ -66,12 +66,12 @@ class TestsState extends BaseState {
   });
 
   @override
-  TestsState copyWithBaseState({
+  UnpublishedTestsState copyWithBaseState({
     bool? isLoading,
     String? error,
     FailureType? errorType,
   }) {
-    return TestsState(
+    return UnpublishedTestsState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
       errorType: errorType,
@@ -82,16 +82,16 @@ class TestsState extends BaseState {
     );
   }
 
-  TestsState copyWith({
+  UnpublishedTestsState copyWith({
     bool? isLoading,
     String? error,
     FailureType? errorType,
     List<TestItem>? tests,
     bool? hasMore,
-    TestsOperation? currentOperation,
+    UnpublishedTestsOperation? currentOperation,
     TestItem? selectedTest,
   }) {
-    return TestsState(
+    return UnpublishedTestsState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
       errorType: errorType,
@@ -102,8 +102,8 @@ class TestsState extends BaseState {
     );
   }
 
-  TestsState copyWithOperation(TestsOperation operation) {
-    return TestsState(
+  UnpublishedTestsState copyWithOperation(UnpublishedTestsOperation operation) {
+    return UnpublishedTestsState(
       isLoading: isLoading,
       error: error,
       errorType: errorType,
@@ -124,8 +124,8 @@ class TestsState extends BaseState {
       ];
 }
 
-class TestsInitial extends TestsState {
-  const TestsInitial() : super(
-    currentOperation: const TestsOperation(status: TestsOperationStatus.none),
+class UnpublishedTestsInitial extends UnpublishedTestsState {
+  const UnpublishedTestsInitial() : super(
+    currentOperation: const UnpublishedTestsOperation(status: UnpublishedTestsOperationStatus.none),
   );
 }

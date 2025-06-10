@@ -11,7 +11,7 @@ import 'package:korean_language_app/core/presentation/widgets/errors/error_widge
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
-import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
+import 'package:korean_language_app/features/unpublished_tests/presentation/bloc/unpublished_tests_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_card.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_grid_skeleton.dart';
 
@@ -30,7 +30,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
   final Map<String, bool> _editPermissionCache = {};
   bool _isInitialized = false;
   
-  TestsCubit get _testsCubit => context.read<TestsCubit>();
+  UnpublishedTestsCubit get _unpublishedTestsCubit => context.read<UnpublishedTestsCubit>();
   TestUploadCubit get _testUploadCubit => context.read<TestUploadCubit>();
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
@@ -57,7 +57,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
     }
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _testsCubit.loadInitialUnpublishedTests();
+      _unpublishedTestsCubit.loadInitialTests();
       context.read<ConnectivityCubit>().checkConnectivity();
       setState(() {
         _isInitialized = true;
@@ -85,10 +85,10 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
     if (!_scrollControllers[tabIndex].hasClients || _isRefreshing) return;
     
     if (_isNearBottom(tabIndex)) {
-      final state = _testsCubit.state;
+      final state = _unpublishedTestsCubit.state;
       
-      if (state.hasMoreUnpublished && !state.currentOperation.isInProgress) {
-        _testsCubit.loadMoreUnpublishedTests();
+      if (state.hasMore && !state.currentOperation.isInProgress) {
+        _unpublishedTestsCubit.loadMoreTests();
       }
     }
   }
@@ -116,9 +116,9 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
   void _loadTestsForTab(int index) {
     final category = _getCategoryForIndex(index);
     if (category == TestCategory.all) {
-      _testsCubit.loadInitialUnpublishedTests();
+      _unpublishedTestsCubit.loadInitialTests();
     } else {
-      _testsCubit.loadUnpublishedTestsByCategory(category);
+      _unpublishedTestsCubit.loadTestsByCategory(category);
     }
     _editPermissionCache.clear();
   }
@@ -136,7 +136,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
     setState(() => _isRefreshing = true);
     
     try {
-      await _testsCubit.hardRefreshUnpublishedTests();
+      await _unpublishedTestsCubit.hardRefresh();
       _editPermissionCache.clear();
     } finally {
       setState(() => _isRefreshing = false);
@@ -148,7 +148,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
       return _editPermissionCache[testId]!;
     }
     
-    final hasPermission = await _testsCubit.canUserEditTest(testId);
+    final hasPermission = await _unpublishedTestsCubit.canUserEditTest(testId);
     _editPermissionCache[testId] = hasPermission;
     return hasPermission;
   }
@@ -282,24 +282,24 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
       onPageChanged: _onPageChanged,
       itemCount: _tabCategories.length,
       itemBuilder: (context, index) {
-        return BlocConsumer<TestsCubit, TestsState>(
+        return BlocConsumer<UnpublishedTestsCubit, UnpublishedTestsState>(
           listener: (context, state) {
             final operation = state.currentOperation;
             
-            if (operation.status == TestsOperationStatus.failed) {
+            if (operation.status == UnpublishedTestsOperationStatus.failed) {
               String errorMessage = operation.message ?? 'Operation failed';
               
               switch (operation.type) {
-                case TestsOperationType.loadUnpublishedTests:
+                case UnpublishedTestsOperationType.loadTests:
                   errorMessage = 'Failed to load unpublished tests';
                   break;
-                case TestsOperationType.loadMoreUnpublishedTests:
+                case UnpublishedTestsOperationType.loadMoreTests:
                   errorMessage = 'Failed to load more unpublished tests';
                   break;
-                case TestsOperationType.searchUnpublishedTests:
+                case UnpublishedTestsOperationType.searchTests:
                   errorMessage = 'Failed to search unpublished tests';
                   break;
-                case TestsOperationType.refreshUnpublishedTests:
+                case UnpublishedTestsOperationType.refreshTests:
                   errorMessage = 'Failed to refresh unpublished tests';
                   break;
                 default:
@@ -320,7 +320,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
             }
           },
           builder: (context, state) {
-            if (isOffline && state.unpublishedTests.isEmpty && state.isLoading) {
+            if (isOffline && state.tests.isEmpty && state.isLoading) {
               return ErrorView(
                 message: '',
                 errorType: FailureType.network,
@@ -333,11 +333,11 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
               );
             }
             
-            if (state.isLoading && state.unpublishedTests.isEmpty) {
+            if (state.isLoading && state.tests.isEmpty) {
               return const TestGridSkeleton();
             }
             
-            if (state.hasError && state.unpublishedTests.isEmpty) {
+            if (state.hasError && state.tests.isEmpty) {
               return ErrorView(
                 message: state.error ?? '',
                 errorType: state.errorType,
@@ -378,12 +378,12 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
     }
   }
   
-  Widget _buildTestsList(TestsState state, bool isOffline, int tabIndex) {
-    if (state.unpublishedTests.isEmpty) {
+  Widget _buildTestsList(UnpublishedTestsState state, bool isOffline, int tabIndex) {
+    if (state.tests.isEmpty) {
       return _buildEmptyTestsView();
     }
     
-    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreUnpublishedTests && 
+    final isLoadingMore = state.currentOperation.type == UnpublishedTestsOperationType.loadMoreTests && 
                          state.currentOperation.isInProgress;
     
     return RefreshIndicator(
@@ -411,9 +411,9 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
-                  itemCount: state.unpublishedTests.length,
+                  itemCount: state.tests.length,
                   itemBuilder: (context, index) {
-                    final test = state.unpublishedTests[index];
+                    final test = state.tests[index];
                     return FutureBuilder<bool>(
                       future: _checkEditPermission(test.id),
                       builder: (context, snapshot) {
@@ -580,7 +580,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
                               korean: '비공개',
                               english: 'Draft',
                             ),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.orange,
                               fontWeight: FontWeight.w600,
                               fontSize: 10,
@@ -769,7 +769,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
       return;
     }
 
-    final hasPermission = await _testsCubit.canUserEditTest(test.id);
+    final hasPermission = await _unpublishedTestsCubit.canUserEditTest(test.id);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 편집할 권한이 없습니다',
@@ -786,7 +786,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> with Single
   }
 
   void _deleteTest(TestItem test) async {
-    final hasPermission = await _testsCubit.canUserDeleteTest(test.id);
+    final hasPermission = await _unpublishedTestsCubit.canUserDeleteTest(test.id);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 삭제할 권한이 없습니다',
