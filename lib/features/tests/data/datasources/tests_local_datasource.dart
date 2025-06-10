@@ -22,6 +22,10 @@ abstract class TestsLocalDataSource {
   Future<int?> getTotalTestsCount();
   Future<void> setCategoryTestsCount(String category, int count);
   Future<int?> getCategoryTestsCount(String category);
+
+  Future<void> cacheImage(String imageUrl, String testId, String imageType);
+  Future<void> cacheAudio(String audioUrl, String testId, String audioType);
   
   Future<String?> getCachedImagePath(String imageUrl, String testId, String imageType);
+  Future<String?> getCachedAudioPath(String audioUrl, String testId, String audioType);
 }

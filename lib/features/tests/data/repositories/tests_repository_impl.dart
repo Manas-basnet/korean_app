@@ -5,7 +5,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/core/services/auth_service.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
-import 'package:korean_language_app/features/tests/data/datasources/tests_local_datasource_impl.dart';
+import 'package:korean_language_app/features/tests/data/datasources/tests_local_datasource.dart';
 import 'package:korean_language_app/features/tests/data/datasources/tests_remote_datasource.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
@@ -14,7 +14,7 @@ import 'package:korean_language_app/features/tests/domain/repositories/tests_rep
 
 class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   final TestsRemoteDataSource remoteDataSource;
-  final TestsLocalDataSourceImpl localDataSource;
+  final TestsLocalDataSource localDataSource;
   final AuthService authService;
   
   static const Duration cacheValidityDuration = Duration(hours: 1, minutes: 30);
@@ -37,7 +37,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final cachedTests = await localDataSource.getTestsPage(page, pageSize);
         if (cachedTests.isNotEmpty) {
           dev.log('Returning ${cachedTests.length} tests from cache (page $page)');
-          final processedTests = await _processTestsWithImages(cachedTests);
+          final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -69,7 +69,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     if (result.isSuccess && result.data != null) {
       final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
       if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithImages(result.data!);
+        final processedTests = await _processTestsWithMedia(result.data!);
         return ApiResult.success(processedTests);
       }
     }
@@ -89,7 +89,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, page, pageSize);
         if (cachedTests.isNotEmpty) {
           dev.log('Returning ${cachedTests.length} category tests from cache (page $page)');
-          final processedTests = await _processTestsWithImages(cachedTests);
+          final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -118,7 +118,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     if (result.isSuccess && result.data != null) {
       final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
       if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithImages(result.data!);
+        final processedTests = await _processTestsWithMedia(result.data!);
         return ApiResult.success(processedTests);
       }
     }
@@ -189,7 +189,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       cacheCall: () async {
         dev.log('Hard refresh requested but offline - returning cached data');
         final cachedTests = await localDataSource.getTestsPage(0, pageSize);
-        final processedTests = await _processTestsWithImages(cachedTests);
+        final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
@@ -198,7 +198,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithImages(result.data!);
+      final processedTests = await _processTestsWithMedia(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -220,7 +220,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         dev.log('Hard refresh category requested but offline - returning cached data');
         final categoryString = category.toString().split('.').last;
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, 0, pageSize);
-        final processedTests = await _processTestsWithImages(cachedTests);
+        final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
@@ -229,7 +229,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithImages(result.data!);
+      final processedTests = await _processTestsWithMedia(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -257,20 +257,20 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
           dev.log('Search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
           
-          final processedResults = await _processTestsWithImages(combinedResults);
+          final processedResults = await _processTestsWithMedia(combinedResults);
           return ApiResult.success(processedResults);
           
         } catch (e) {
           dev.log('Remote search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
-            final processedResults = await _processTestsWithImages(cachedResults);
+            final processedResults = await _processTestsWithMedia(cachedResults);
             return ApiResult.success(processedResults);
           }
           rethrow;
         }
       } else {
         dev.log('Offline search returned ${cachedResults.length} cached results');
-        final processedResults = await _processTestsWithImages(cachedResults);
+        final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       }
       
@@ -278,7 +278,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       try {
         final cachedTests = await localDataSource.getAllTests();
         final cachedResults = _searchInTests(cachedTests, query);
-        final processedResults = await _processTestsWithImages(cachedResults);
+        final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       } catch (cacheError) {
         return ExceptionMapper.mapExceptionToApiResult(e as Exception);
@@ -295,12 +295,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final cachedTest = cachedTests.where((t) => t.id == testId).firstOrNull;
           
           if (cachedTest != null && await _isCacheValid()) {
-            final processedTests = await _processTestsWithImages([cachedTest]);
+            final processedTests = await _processTestsWithMedia([cachedTest]);
             return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
           }
           
           if (cachedTest != null) {
-            final processedTests = await _processTestsWithImages([cachedTest]);
+            final processedTests = await _processTestsWithMedia([cachedTest]);
             dev.log('Returning expired cached test, will refresh from remote');
             return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
           }
@@ -321,7 +321,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       
       if (result.isSuccess && result.data != null) {
         if (result.data!.imagePath == null || result.data!.imagePath!.isEmpty) {
-          final processedTests = await _processTestsWithImages([result.data!]);
+          final processedTests = await _processTestsWithMedia([result.data!]);
           return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
         }
       }
@@ -367,19 +367,19 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     }
   }
 
-
   Future<void> _cacheTestsCompletely(List<TestItem> tests) async {
     try {
       await localDataSource.saveTests(tests);
-      await _cacheTestImages(tests);
+      await _cacheTestMedia(tests);
       await localDataSource.setLastSyncTime(DateTime.now());
       await _updateTestsHashes(tests);
       
-      dev.log('Completely cached ${tests.length} tests with images');
+      dev.log('Completely cached ${tests.length} tests with media');
     } catch (e) {
       dev.log('Failed to cache tests completely: $e');
     }
   }
+
   Future<void> _updateCacheWithNewTests(List<TestItem> newTests) async {
     try {
       for (final test in newTests) {
@@ -387,7 +387,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         await _updateTestHash(test);
       }
 
-      await _cacheTestImages(newTests);
+      await _cacheTestMedia(newTests);
       
       dev.log('Added ${newTests.length} new tests to cache');
     } catch (e) {
@@ -395,7 +395,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     }
   }
 
-  Future<void> _cacheTestImages(List<TestItem> tests) async {
+  Future<void> _cacheTestMedia(List<TestItem> tests) async {
     try {
       for (final test in tests) {
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
@@ -409,16 +409,25 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
             await localDataSource.cacheImage(question.questionImageUrl!, test.id, 'question_$i');
           }
 
+          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+            await localDataSource.cacheAudio(question.questionAudioUrl!, test.id, 'question_audio_$i');
+          }
+
           for (int j = 0; j < question.options.length; j++) {
             final option = question.options[j];
+            
             if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
               await localDataSource.cacheImage(option.imageUrl!, test.id, 'answer_${i}_$j');
+            }
+            
+            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+              await localDataSource.cacheAudio(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
             }
           }
         }
       }
     } catch (e) {
-      dev.log('Error caching test images: $e');
+      dev.log('Error caching test media: $e');
     }
   }
 
@@ -441,7 +450,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     return content.hashCode.toString();
   }
 
-  Future<List<TestItem>> _processTestsWithImages(List<TestItem> tests) async {
+  Future<List<TestItem>> _processTestsWithMedia(List<TestItem> tests) async {
     try {
       final processedTests = <TestItem>[];
       
@@ -468,6 +477,15 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
               updatedQuestion = updatedQuestion.copyWith(questionImagePath: cachedPath);
             }
           }
+
+          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedAudioPath(
+              question.questionAudioUrl!, test.id, 'question_audio_$i'
+            );
+            if (cachedPath != null && (question.questionAudioPath == null || question.questionAudioPath!.isEmpty)) {
+              updatedQuestion = updatedQuestion.copyWith(questionAudioPath: cachedPath);
+            }
+          }
           
           final updatedOptions = <AnswerOption>[];
           for (int j = 0; j < question.options.length; j++) {
@@ -480,6 +498,15 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
               );
               if (cachedPath != null && (option.imagePath == null || option.imagePath!.isEmpty)) {
                 updatedOption = updatedOption.copyWith(imagePath: cachedPath);
+              }
+            }
+            
+            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+              final cachedPath = await localDataSource.getCachedAudioPath(
+                option.audioUrl!, test.id, 'answer_audio_${i}_$j'
+              );
+              if (cachedPath != null && (option.audioPath == null || option.audioPath!.isEmpty)) {
+                updatedOption = updatedOption.copyWith(audioPath: cachedPath);
               }
             }
             
@@ -496,7 +523,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       
       return processedTests;
     } catch (e) {
-      dev.log('Error processing tests with images: $e');
+      dev.log('Error processing tests with media: $e');
       return tests;
     }
   }
