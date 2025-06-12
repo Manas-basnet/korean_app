@@ -352,7 +352,11 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        return file.path;
+        final absolutePath = file.absolute.path;
+        dev.log('Found cached image: $absolutePath');
+        return absolutePath;
+      } else {
+        dev.log('Cached image not found: ${file.path}');
       }
     } catch (e) {
       dev.log('Error getting cached image path: $e');
@@ -368,7 +372,11 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        return file.path;
+        final absolutePath = file.absolute.path;
+        dev.log('Found cached audio: $absolutePath');
+        return absolutePath;
+      } else {
+        dev.log('Cached audio not found: ${file.path}');
       }
     } catch (e) {
       dev.log('Error getting cached audio path: $e');

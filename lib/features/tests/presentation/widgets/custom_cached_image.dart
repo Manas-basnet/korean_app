@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/core/enums/image_display_type.dart';
 import 'package:korean_language_app/core/shared/models/image_display_source.dart';
 
-class CustomCachedImage extends StatelessWidget {
+class CustomCachedImage extends StatefulWidget {
   final String? imageUrl;
   final String? imagePath;
   final BoxFit fit;
@@ -27,18 +28,104 @@ class CustomCachedImage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    Widget imageWidget;
+  State<CustomCachedImage> createState() => _CustomCachedImageState();
+}
 
-    // Determine the best image source to use
-    final imageSource = _determineImageSource();
+class _CustomCachedImageState extends State<CustomCachedImage> {
+  ImageDisplaySource? _cachedImageSource;
+  bool _isResolving = false;
+  String? _lastImagePath;
+  String? _lastImageUrl;
+  
+  late String? imageUrl;
+  late String? imagePath;
+  late BoxFit fit;
+  late double? width;
+  late double? height;
+  late Widget Function(BuildContext, String)? placeholder;
+  late Widget Function(BuildContext, String, dynamic)? errorWidget;
+  late BorderRadius? borderRadius;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeStateVariables();
+    _resolveImageSource();
+  }
+
+  @override
+  void didUpdateWidget(CustomCachedImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
     
-    switch (imageSource.type) {
+    final oldImagePath = imagePath;
+    final oldImageUrl = imageUrl;
+    
+    _initializeStateVariables();
+    
+    if (oldImagePath != imagePath || oldImageUrl != imageUrl) {
+      _resolveImageSource();
+    }
+  }
+  
+  void _initializeStateVariables() {
+    imageUrl = widget.imageUrl;
+    imagePath = widget.imagePath;
+    fit = widget.fit;
+    width = widget.width;
+    height = widget.height;
+    placeholder = widget.placeholder;
+    errorWidget = widget.errorWidget;
+    borderRadius = widget.borderRadius;
+  }
+
+  Future<void> _resolveImageSource() async {
+    if (_isResolving) return;
+    
+    if (imagePath == _lastImagePath && imageUrl == _lastImageUrl && _cachedImageSource != null) {
+      return;
+    }
+    
+    setState(() {
+      _isResolving = true;
+    });
+    
+    try {
+      final imageSource = await _determineImageSource();
+      
+      if (mounted) {
+        setState(() {
+          _cachedImageSource = imageSource;
+          _lastImagePath = imagePath;
+          _lastImageUrl = imageUrl;
+          _isResolving = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cachedImageSource = ImageDisplaySource(type: ImageDisplayType.none);
+          _lastImagePath = imagePath;
+          _lastImageUrl = imageUrl;
+          _isResolving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isResolving || _cachedImageSource == null) {
+      return _buildDefaultPlaceholder(context, 'Loading...');
+    }
+    
+    Widget imageWidget;
+    
+    switch (_cachedImageSource!.type) {
       case ImageDisplayType.localFile:
-        imageWidget = _buildLocalImage(context, imageSource.path!);
+        imageWidget = _buildLocalImage(context, _cachedImageSource!.path!);
         break;
       case ImageDisplayType.networkUrl:
-        imageWidget = _buildNetworkImage(context, imageSource.url!);
+        imageWidget = _buildNetworkImage(context, _cachedImageSource!.url!);
         break;
       case ImageDisplayType.none:
         imageWidget = _buildErrorWidget(context, 'No image available');
@@ -55,22 +142,59 @@ class CustomCachedImage extends StatelessWidget {
     return imageWidget;
   }
 
-  ImageDisplaySource _determineImageSource() {
-    // Priority 1: Local file (for new uploads or cached files)
+  Future<ImageDisplaySource> _determineImageSource() async {
     if (imagePath != null && imagePath!.isNotEmpty) {
-      final file = File(imagePath!);
-      if (file.existsSync()) {
-        return ImageDisplaySource(type: ImageDisplayType.localFile, path: imagePath);
+      final resolvedPath = await _resolveImagePath(imagePath!);
+      if (resolvedPath != null) {
+        final file = File(resolvedPath);
+        if (await file.exists()) {
+          return ImageDisplaySource(type: ImageDisplayType.localFile, path: resolvedPath);
+        }
       }
     }
     
-    // Priority 2: Network URL (for existing remote images)
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return ImageDisplaySource(type: ImageDisplayType.networkUrl, url: imageUrl);
     }
     
-    // No valid image source
     return ImageDisplaySource(type: ImageDisplayType.none);
+  }
+
+  Future<String?> _resolveImagePath(String path) async {
+    try {
+      if (path.startsWith('/')) {
+        return path;
+      }
+      
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final fullPath = '${documentsDir.path}/$path';
+      
+      if (await File(fullPath).exists()) {
+        return fullPath;
+      }
+      
+      final cacheDir = Directory('${documentsDir.path}/tests_images_cache');
+      final cachePath = '${cacheDir.path}/$path';
+      
+      if (await File(cachePath).exists()) {
+        return cachePath;
+      }
+      
+      if (path.contains('/')) {
+        final fileName = path.split('/').last;
+        final files = await cacheDir.list().toList();
+        
+        for (final fileEntity in files) {
+          if (fileEntity is File && fileEntity.path.endsWith(fileName)) {
+            return fileEntity.path;
+          }
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Widget _buildLocalImage(BuildContext context, String path) {
@@ -80,7 +204,6 @@ class CustomCachedImage extends StatelessWidget {
       width: width,
       height: height,
       errorBuilder: (context, error, stackTrace) {
-        // If local image fails and we have a URL fallback, try network
         if (imageUrl != null && imageUrl!.isNotEmpty) {
           return _buildNetworkImage(context, imageUrl!);
         }

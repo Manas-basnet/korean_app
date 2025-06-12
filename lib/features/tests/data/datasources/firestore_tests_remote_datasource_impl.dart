@@ -103,7 +103,7 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
     try {
       if (_totalTestsCount != null && 
           _lastCountFetch != null &&
-          DateTime.now().difference(_lastCountFetch!).inMinutes < 5) {
+          DateTime.now().difference(_lastCountFetch!).inSeconds < 15) {
         return currentCount < _totalTestsCount!;
       }
       

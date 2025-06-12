@@ -4,11 +4,7 @@ enum UnpublishedTestsOperationType {
   loadTests, 
   loadMoreTests, 
   searchTests, 
-  refreshTests,
-  loadTestById,
-  createTest,
-  updateTest,
-  deleteTest
+  refreshTests
 }
 
 enum UnpublishedTestsOperationStatus { 

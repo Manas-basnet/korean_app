@@ -3,7 +3,6 @@ part of 'tests_cubit.dart';
 enum TestsOperationType { 
   loadTests, 
   loadMoreTests, 
-  searchTests, 
   refreshTests,
   loadTestById,
   createTest,

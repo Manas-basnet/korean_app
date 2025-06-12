@@ -19,8 +19,10 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
   static const String unpublishedTotalCountPrefix = 'UNPUBLISHED_COUNT_';
   static const String unpublishedCategoryCountPrefix = 'UNPUBLISHED_CATEGORY_COUNT_';
   static const String imageMetadataKey = 'UNPUBLISHED_IMAGE_METADATA';
+  static const String audioMetadataKey = 'UNPUBLISHED_AUDIO_METADATA';
   
   Directory? _imagesCacheDir;
+  Directory? _audioCacheDir;
 
   UnpublishedTestsLocalDataSourceImpl({required StorageService storageService})
       : _storageService = storageService;
@@ -36,6 +38,19 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     }
     
     return _imagesCacheDir!;
+  }
+
+  Future<Directory> get _audioCacheDirectory async {
+    if (_audioCacheDir != null) return _audioCacheDir!;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    _audioCacheDir = Directory('${appDir.path}/unpublished_tests_audio_cache');
+    
+    if (!await _audioCacheDir!.exists()) {
+      await _audioCacheDir!.create(recursive: true);
+    }
+    
+    return _audioCacheDir!;
   }
 
   @override
@@ -116,6 +131,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       if (testToRemove.id.isNotEmpty) {
         await _removeTestImages(testToRemove);
+        await _removeTestAudio(testToRemove);
       }
       
       final updatedTests = tests.where((test) => test.id != testId).toList();
@@ -133,6 +149,8 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       await _storageService.remove('$unpublishedLastSyncPrefix$userId');
       await _storageService.remove('$unpublishedHashesPrefix$userId');
       await _storageService.remove('$unpublishedTotalCountPrefix$userId');
+      await _storageService.remove(imageMetadataKey);
+      await _storageService.remove(audioMetadataKey);
       
       final allKeys = _storageService.getAllKeys();
       for (final key in allKeys) {
@@ -141,7 +159,10 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         }
       }
       
-      dev.log('Cleared all unpublished tests cache for user: $userId');
+      await _clearAllImages();
+      await _clearAllAudio();
+      
+      dev.log('Cleared all unpublished tests cache, images, and audio for user: $userId');
     } catch (e) {
       dev.log('Error clearing unpublished tests from storage: $e');
     }
@@ -288,6 +309,40 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     }
   }
 
+  Future<void> cacheAudio(String audioUrl, String testId, String audioType) async {
+    try {
+      final fileName = _generateAudioFileName(audioUrl, testId, audioType);
+      final cacheDir = await _audioCacheDirectory;
+      final file = File('${cacheDir.path}/$fileName');
+      
+      if (await file.exists()) {
+        dev.log('Audio already cached: $fileName');
+        return;
+      }
+      
+      final dio = Dio();
+      final response = await dio.get(
+        audioUrl,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(seconds: 60),
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+      
+      if (response.statusCode == 200 && response.data != null) {
+        await file.writeAsBytes(response.data);
+        dev.log('Cached audio: $fileName (${response.data.length} bytes)');
+        
+        await _updateAudioMetadata(testId, audioType, audioUrl);
+      } else {
+        dev.log('Failed to download audio: $audioUrl (${response.statusCode})');
+      }
+    } catch (e) {
+      dev.log('Error caching audio $audioUrl: $e');
+    }
+  }
+
   @override
   Future<String?> getCachedImagePath(String imageUrl, String testId, String imageType) async {
     try {
@@ -304,9 +359,42 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     return null;
   }
 
+  Future<String?> getCachedAudioPath(String audioUrl, String testId, String audioType) async {
+    try {
+      final fileName = _generateAudioFileName(audioUrl, testId, audioType);
+      final cacheDir = await _audioCacheDirectory;
+      final file = File('${cacheDir.path}/$fileName');
+      
+      if (await file.exists()) {
+        return file.path;
+      }
+    } catch (e) {
+      dev.log('Error getting cached audio path: $e');
+    }
+    return null;
+  }
+
   String _generateImageFileName(String imageUrl, String testId, String imageType) {
     final urlHash = md5.convert(utf8.encode(imageUrl)).toString().substring(0, 8);
     return '${testId}_${imageType}_$urlHash.jpg';
+  }
+
+  String _generateAudioFileName(String audioUrl, String testId, String audioType) {
+    final urlHash = md5.convert(utf8.encode(audioUrl)).toString().substring(0, 8);
+    final extension = _getAudioExtensionFromUrl(audioUrl);
+    return '${testId}_${audioType}_$urlHash$extension';
+  }
+
+  String _getAudioExtensionFromUrl(String audioUrl) {
+    final uri = Uri.parse(audioUrl);
+    final path = uri.path.toLowerCase();
+    
+    if (path.endsWith('.mp3')) return '.mp3';
+    if (path.endsWith('.m4a')) return '.m4a';
+    if (path.endsWith('.wav')) return '.wav';
+    if (path.endsWith('.aac')) return '.aac';
+    
+    return '.m4a';
   }
 
   Future<void> _updateImageMetadata(String testId, String imageType, String imageUrl) async {
@@ -319,6 +407,19 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
       dev.log('Error updating image metadata: $e');
+    }
+  }
+
+  Future<void> _updateAudioMetadata(String testId, String audioType, String audioUrl) async {
+    try {
+      final audioMetadata = await _getAudioMetadata();
+      audioMetadata['${testId}_$audioType'] = {
+        'url': audioUrl,
+        'cachedAt': DateTime.now().millisecondsSinceEpoch,
+      };
+      await _saveAudioMetadata(audioMetadata);
+    } catch (e) {
+      dev.log('Error updating audio metadata: $e');
     }
   }
 
@@ -345,6 +446,55 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     }
   }
 
+  Future<void> _removeTestAudio(TestItem test) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final audioMetadata = await _getAudioMetadata();
+      
+      final files = await cacheDir.list().toList();
+      for (final fileEntity in files) {
+        if (fileEntity is File && fileEntity.path.contains(test.id)) {
+          await fileEntity.delete();
+        }
+      }
+      
+      final keysToRemove = audioMetadata.keys.where((key) => key.startsWith(test.id)).toList();
+      for (final key in keysToRemove) {
+        audioMetadata.remove(key);
+      }
+      
+      await _saveAudioMetadata(audioMetadata);
+    } catch (e) {
+      dev.log('Error removing test audio: $e');
+    }
+  }
+
+  Future<void> _clearAllImages() async {
+    try {
+      final cacheDir = await _imagesCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      dev.log('Cleared all cached images');
+    } catch (e) {
+      dev.log('Error clearing all images: $e');
+    }
+  }
+
+  Future<void> _clearAllAudio() async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      dev.log('Cleared all cached audio');
+    } catch (e) {
+      dev.log('Error clearing all audio: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> _getImageMetadata() async {
     try {
       final metadataJson = _storageService.getString(imageMetadataKey);
@@ -362,6 +512,26 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       await _storageService.setString(imageMetadataKey, json.encode(metadata));
     } catch (e) {
       dev.log('Error saving image metadata: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> _getAudioMetadata() async {
+    try {
+      final metadataJson = _storageService.getString(audioMetadataKey);
+      if (metadataJson == null) return {};
+      
+      return json.decode(metadataJson);
+    } catch (e) {
+      dev.log('Error reading audio metadata: $e');
+      return {};
+    }
+  }
+
+  Future<void> _saveAudioMetadata(Map<String, dynamic> metadata) async {
+    try {
+      await _storageService.setString(audioMetadataKey, json.encode(metadata));
+    } catch (e) {
+      dev.log('Error saving audio metadata: $e');
     }
   }
 }

@@ -15,7 +15,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
   final KoreanBooksRemoteDataSource remoteDataSource;
   final KoreanBooksLocalDataSource localDataSource;
   
-  static const Duration cacheValidityDuration = Duration(hours: 1);
+  static const Duration cacheValidityDuration = Duration(hours: 1, minutes: 30);
 
   KoreanBookRepositoryImpl({
     required this.remoteDataSource,
@@ -33,44 +33,52 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       return ApiResult.success([]);
     }
 
-    if (page > 0) {
-      return handleRepositoryCall<List<BookItem>>(
-        () async {
-          final remoteBooks = await remoteDataSource.getKoreanBooks(page: page, pageSize: pageSize);
-          return ApiResult.success(remoteBooks);
-        },
-        cacheCall: () async {
-          return ApiResult.failure('No internet connection for pagination', FailureType.network);
-        },
-      );
-    }
+    dev.log('Getting books - page: $page, pageSize: $pageSize');
+    
+    await _manageCacheValidity();
 
     final result = await handleCacheFirstCall<List<BookItem>>(
       () async {
-        if (await _isCacheValid()) {
-          final cachedBooks = await localDataSource.getAllBooks();
-          if (cachedBooks.isNotEmpty && _areValidBooks(cachedBooks)) {
-            dev.log('Returning ${cachedBooks.length} books from valid cache');
-            return ApiResult.success(cachedBooks);
+        final cachedBooks = await localDataSource.getBooksPage(page, pageSize);
+        if (cachedBooks.isNotEmpty) {
+          dev.log('Returning ${cachedBooks.length} books from cache (page $page)');
+          final processedBooks = await _processBooksWithMedia(cachedBooks);
+          return ApiResult.success(processedBooks);
+        }
+        
+        if (page > 0) {
+          final totalCached = await localDataSource.getBooksCount();
+          final currentCount = page * pageSize;
+
+          if (totalCached > currentCount) {
+            dev.log('Requested page $page is within cached range but no data found');
+            return ApiResult.success(<BookItem>[]);
           }
         }
-        return ApiResult.failure('Cache invalid or empty', FailureType.cache);
+        
+        return ApiResult.failure('No cached data available', FailureType.cache);
       },
       () async {
-        final remoteBooks = await remoteDataSource.getKoreanBooks(page: 0, pageSize: pageSize);
+        final remoteBooks = await remoteDataSource.getKoreanBooks(page: page, pageSize: pageSize);
         return ApiResult.success(remoteBooks);
       },
       cacheData: (remoteBooks) async {
-        final deletedIds = await _getDeletedBookIds(remoteBooks);
-        for (final deletedId in deletedIds) {
-          await localDataSource.removeBook(deletedId);
+        if (page == 0) {
+          await _cacheBooksDataOnly(remoteBooks);
+          _cacheBookImagesInBackground(remoteBooks);
+        } else {
+          await _updateCacheWithNewBooksDataOnly(remoteBooks);
+          _cacheBookImagesInBackground(remoteBooks);
         }
-        await _cacheBooks(remoteBooks);
       },
     );
 
     if (result.isSuccess && result.data != null) {
-      return ApiResult.success(_filterValidBooks(result.data!));
+      final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
+      if (firstItem != null && (firstItem.bookImagePath == null || firstItem.bookImagePath!.isEmpty)) {
+        final processedBooks = await _processBooksWithMedia(result.data!);
+        return ApiResult.success(processedBooks);
+      }
     }
     
     return result;
@@ -82,18 +90,14 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       return ApiResult.success(false);
     }
     
-    return handleCacheFirstCall<bool>(
-      () async {
-        try {
-          final totalCached = await localDataSource.getBooksCount();
-          return ApiResult.success(currentCount < totalCached);
-        } catch (e) {
-          return ApiResult.failure('Cache check failed', FailureType.cache);
-        }
-      },
+    return handleRepositoryCall(
       () async {
         final hasMore = await remoteDataSource.hasMoreBooks(currentCount);
         return ApiResult.success(hasMore);
+      },
+      cacheCall: () async {
+        final totalCached = await localDataSource.getBooksCount();
+        return ApiResult.success(currentCount < totalCached);
       },
     );
   }
@@ -107,30 +111,30 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       return ApiResult.success([]);
     }
 
+    dev.log('Hard refresh books requested');
+
     final result = await handleRepositoryCall<List<BookItem>>(
       () async {
-        await _invalidateCache();
+        await localDataSource.clearAllBooks();
+        
         final remoteBooks = await remoteDataSource.getKoreanBooks(page: 0, pageSize: pageSize);
         return ApiResult.success(remoteBooks);
       },
       cacheCall: () async {
-        final cachedBooks = await localDataSource.getAllBooks();
-        if (cachedBooks.isNotEmpty) {
-          return ApiResult.success(_filterValidBooks(cachedBooks));
-        }
-        return ApiResult.failure('No cached data for offline refresh', FailureType.cache);
+        dev.log('Hard refresh requested but offline - returning cached data');
+        final cachedBooks = await localDataSource.getBooksPage(0, pageSize);
+        final processedBooks = await _processBooksWithMedia(cachedBooks);
+        return ApiResult.success(processedBooks);
       },
       cacheData: (remoteBooks) async {
-        final deletedIds = await _getDeletedBookIds(remoteBooks);
-        for (final deletedId in deletedIds) {
-          await localDataSource.removeBook(deletedId);
-        }
-        await _cacheBooks(remoteBooks);
+        await _cacheBooksDataOnly(remoteBooks);
+        _cacheBookImagesInBackground(remoteBooks);
       },
     );
-
+    
     if (result.isSuccess && result.data != null) {
-      return ApiResult.success(_filterValidBooks(result.data!));
+      final processedBooks = await _processBooksWithMedia(result.data!);
+      return ApiResult.success(processedBooks);
     }
     
     return result;
@@ -151,30 +155,36 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
           final remoteResults = await remoteDataSource.searchKoreanBooks(query);
           
           if (remoteResults.isNotEmpty) {
-            await _updateCacheWithNewBooks(remoteResults);
+            await _updateCacheWithNewBooksDataOnly(remoteResults);
+            _cacheBookImagesInBackground(remoteResults);
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
           dev.log('Search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
-          return ApiResult.success(combinedResults);
+          
+          final processedResults = await _processBooksWithMedia(combinedResults);
+          return ApiResult.success(processedResults);
           
         } catch (e) {
           dev.log('Remote search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
-            return ApiResult.success(cachedResults);
+            final processedResults = await _processBooksWithMedia(cachedResults);
+            return ApiResult.success(processedResults);
           }
-          throw e;
+          rethrow;
         }
       } else {
         dev.log('Offline search returned ${cachedResults.length} cached results');
-        return ApiResult.success(cachedResults);
+        final processedResults = await _processBooksWithMedia(cachedResults);
+        return ApiResult.success(processedResults);
       }
       
     } catch (e) {
       try {
         final cachedBooks = await localDataSource.getAllBooks();
         final cachedResults = _searchInBooks(cachedBooks, query);
-        return ApiResult.success(cachedResults);
+        final processedResults = await _processBooksWithMedia(cachedResults);
+        return ApiResult.success(processedResults);
       } catch (cacheError) {
         return ExceptionMapper.mapExceptionToApiResult(e as Exception);
       }
@@ -187,11 +197,13 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       () async {
         final cachedPdf = await localDataSource.getPdfFile(bookId);
         if (cachedPdf != null) {
+          dev.log('Returning cached PDF for book: $bookId');
           return ApiResult.success(cachedPdf);
         }
         return ApiResult.failure('No cached PDF', FailureType.cache);
       },
       () async {
+        dev.log('Downloading PDF for book: $bookId');
         final downloadedPdf = await _downloadAndCachePdf(bookId);
         return ApiResult.success(downloadedPdf);
       },
@@ -222,6 +234,10 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
             await localDataSource.updateBook(updatedBook);
             await remoteDataSource.updateBook(book.id, updatedBook);
             await _updateBookHash(updatedBook);
+            
+            if (newUrl.isNotEmpty) {
+              _cacheBookImagesInBackground([updatedBook]);
+            }
           } catch (e) {
             dev.log('Failed to update book with new image URL: $e');
           }
@@ -230,48 +246,113 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
     );
   }
 
+  // New methods following tests pattern
   Future<bool> _isCacheValid() async {
     try {
       final lastSyncTime = await localDataSource.getLastSyncTime();
       if (lastSyncTime == null) return false;
       
       final cacheAge = DateTime.now().difference(lastSyncTime);
-      return cacheAge < cacheValidityDuration;
+      final isValid = cacheAge < cacheValidityDuration;
+      
+      if (!isValid) {
+        dev.log('Cache expired: age=${cacheAge.inMinutes}min, limit=${cacheValidityDuration.inMinutes}min');
+      }
+      
+      return isValid;
     } catch (e) {
+      dev.log('Error checking cache validity: $e');
       return false;
     }
   }
 
-  Future<void> _invalidateCache() async {
-    await localDataSource.clearAllBooks();
-  }
-
-  Future<void> _cacheBooks(List<BookItem> books) async {
+  Future<void> _manageCacheValidity() async {
     try {
-      final existingBooks = await localDataSource.getAllBooks();
-      final mergedBooks = _mergeBooks(existingBooks, books);
-      
-      await localDataSource.saveBooks(mergedBooks);
-      await _updateLastSyncTime();
-      await _updateBooksHashes(mergedBooks);
+      final isValid = await _isCacheValid();
+      if (!isValid) {
+        if (await networkInfo.isConnected) {
+          dev.log('Cache expired and online, clearing cache');
+          await localDataSource.clearAllBooks();
+        } else {
+          dev.log('Cache expired but offline, keeping expired cache for offline access');
+        }
+      }
     } catch (e) {
-      dev.log('Failed to cache books: $e');
+      dev.log('Error managing cache validity: $e');
     }
   }
 
-  Future<void> _updateCacheWithNewBooks(List<BookItem> newBooks) async {
+  Future<void> _cacheBooksDataOnly(List<BookItem> books) async {
+    try {
+      await localDataSource.saveBooks(books);
+      await localDataSource.setLastSyncTime(DateTime.now());
+      await _updateBooksHashes(books);
+      
+      dev.log('Cached ${books.length} books data only (images will be cached in background)');
+    } catch (e) {
+      dev.log('Failed to cache books data: $e');
+    }
+  }
+
+  Future<void> _updateCacheWithNewBooksDataOnly(List<BookItem> newBooks) async {
     try {
       for (final book in newBooks) {
         await localDataSource.addBook(book);
         await _updateBookHash(book);
       }
+      
+      dev.log('Added ${newBooks.length} new books data to cache (images will be cached in background)');
     } catch (e) {
-      dev.log('Failed to update cache with new books: $e');
+      dev.log('Failed to update cache with new books data: $e');
     }
   }
 
-  Future<void> _updateLastSyncTime() async {
-    await localDataSource.setLastSyncTime(DateTime.now());
+  void _cacheBookImagesInBackground(List<BookItem> books) {
+    Future.microtask(() async {
+      try {
+        dev.log('Starting background image caching for ${books.length} books...');
+        await _cacheBookImages(books);
+        dev.log('Completed background image caching for ${books.length} books');
+      } catch (e) {
+        dev.log('Background image caching failed: $e');
+      }
+    });
+  }
+
+  Future<void> _cacheBookImages(List<BookItem> books) async {
+    try {
+      for (final book in books) {
+        if (book.bookImage != null && book.bookImage!.isNotEmpty) {
+          await localDataSource.cacheImage(book.bookImage!, book.id);
+        }
+      }
+    } catch (e) {
+      dev.log('Error caching book images: $e');
+    }
+  }
+
+  Future<List<BookItem>> _processBooksWithMedia(List<BookItem> books) async {
+    try {
+      final processedBooks = <BookItem>[];
+      
+      for (final book in books) {
+        BookItem updatedBook = book;
+        
+        if (book.bookImage != null && book.bookImage!.isNotEmpty) {
+          final cachedPath = await localDataSource.getCachedImagePath(book.bookImage!, book.id);
+          if (cachedPath != null && (book.bookImagePath == null || book.bookImagePath!.isEmpty)) {
+            updatedBook = updatedBook.copyWith(bookImagePath: cachedPath);
+          }
+        }
+        
+        processedBooks.add(updatedBook);
+      }
+      
+      return processedBooks;
+    } catch (e) {
+      dev.log('Error processing books with media: $e');
+      return books;
+    }
   }
 
   Future<void> _updateBooksHashes(List<BookItem> books) async {
@@ -288,38 +369,9 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
     await localDataSource.setBookHashes(currentHashes);
   }
 
-  Future<List<String>> _getDeletedBookIds(List<BookItem> remoteBooks) async {
-    try {
-      final cachedBooks = await localDataSource.getAllBooks();
-      final remoteBookIds = remoteBooks.map((book) => book.id).toSet();
-      
-      final deletedIds = cachedBooks
-          .where((book) => !remoteBookIds.contains(book.id))
-          .map((book) => book.id)
-          .toList();
-      
-      return deletedIds;
-    } catch (e) {
-      dev.log('Error detecting deleted books: $e');
-      return [];
-    }
-  }
-
-  List<BookItem> _mergeBooks(List<BookItem> existing, List<BookItem> newBooks) {
-    final Map<String, BookItem> bookMap = {};
-    
-    for (final book in existing) {
-      bookMap[book.id] = book;
-    }
-    
-    for (final book in newBooks) {
-      bookMap[book.id] = book;
-    }
-    
-    final mergedBooks = bookMap.values.toList();
-    mergedBooks.sort((a, b) => a.title.compareTo(b.title));
-    
-    return mergedBooks;
+  String _generateBookHash(BookItem book) {
+    final content = '${book.title}_${book.description}_${book.updatedAt?.millisecondsSinceEpoch ?? 0}';
+    return content.hashCode.toString();
   }
 
   List<BookItem> _searchInBooks(List<BookItem> books, String query) {
@@ -347,27 +399,6 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
     }
     
     return uniqueBooks.values.toList();
-  }
-
-  List<BookItem> _filterValidBooks(List<BookItem> books) {
-    return books.where((book) => 
-      book.id.isNotEmpty && 
-      book.title.isNotEmpty && 
-      book.description.isNotEmpty
-    ).toList();
-  }
-
-  bool _areValidBooks(List<BookItem> books) {
-    return books.every((book) => 
-      book.id.isNotEmpty && 
-      book.title.isNotEmpty && 
-      book.description.isNotEmpty
-    );
-  }
-
-  String _generateBookHash(BookItem book) {
-    final content = '${book.title}_${book.description}_${book.updatedAt?.millisecondsSinceEpoch ?? 0}';
-    return content.hashCode.toString();
   }
 
   Future<File?> _downloadAndCachePdf(String bookId) async {

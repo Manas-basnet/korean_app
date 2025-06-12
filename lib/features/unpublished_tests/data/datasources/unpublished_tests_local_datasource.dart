@@ -25,4 +25,7 @@ abstract class UnpublishedTestsLocalDataSource {
   
   Future<String?> getCachedImagePath(String imageUrl, String testId, String imageType);
   Future<void> cacheImage(String imageUrl, String testId, String imageType);
+  
+  Future<String?> getCachedAudioPath(String audioUrl, String testId, String audioType);
+  Future<void> cacheAudio(String audioUrl, String testId, String audioType);
 }

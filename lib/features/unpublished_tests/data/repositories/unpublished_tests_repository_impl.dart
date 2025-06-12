@@ -42,7 +42,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         final cachedTests = await localDataSource.getUnpublishedTestsPage(userId, page, pageSize);
         if (cachedTests.isNotEmpty) {
           dev.log('Returning ${cachedTests.length} unpublished tests from cache (page $page)');
-          final processedTests = await _processTestsWithImages(cachedTests);
+          final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -64,9 +64,11 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       },
       cacheData: (remoteTests) async {
         if (page == 0) {
-          await _cacheUnpublishedTestsCompletely(userId, remoteTests);
+          await _cacheUnpublishedTestsDataOnly(userId, remoteTests);
+          _cacheTestMediaInBackground(remoteTests);
         } else {
-          await _updateUnpublishedCacheWithNewTests(userId, remoteTests);
+          await _updateUnpublishedCacheWithNewTestsDataOnly(userId, remoteTests);
+          _cacheTestMediaInBackground(remoteTests);
         }
       },
     );
@@ -74,7 +76,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
     if (result.isSuccess && result.data != null) {
       final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
       if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithImages(result.data!);
+        final processedTests = await _processTestsWithMedia(result.data!);
         return ApiResult.success(processedTests);
       }
     }
@@ -99,7 +101,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         final cachedTests = await localDataSource.getUnpublishedTestsByCategoryPage(userId, categoryString, page, pageSize);
         if (cachedTests.isNotEmpty) {
           dev.log('Returning ${cachedTests.length} unpublished category tests from cache (page $page)');
-          final processedTests = await _processTestsWithImages(cachedTests);
+          final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -121,14 +123,15 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         return ApiResult.success(remoteTests);
       },
       cacheData: (remoteTests) async {
-        await _updateUnpublishedCacheWithNewTests(userId, remoteTests);
+        await _updateUnpublishedCacheWithNewTestsDataOnly(userId, remoteTests);
+        _cacheTestMediaInBackground(remoteTests);
       },
     );
     
     if (result.isSuccess && result.data != null) {
       final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
       if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithImages(result.data!);
+        final processedTests = await _processTestsWithMedia(result.data!);
         return ApiResult.success(processedTests);
       }
     }
@@ -214,16 +217,17 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       cacheCall: () async {
         dev.log('Hard refresh unpublished tests requested but offline - returning cached data');
         final cachedTests = await localDataSource.getUnpublishedTestsPage(userId, 0, pageSize);
-        final processedTests = await _processTestsWithImages(cachedTests);
+        final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
-        await _cacheUnpublishedTestsCompletely(userId, remoteTests);
+        await _cacheUnpublishedTestsDataOnly(userId, remoteTests);
+        _cacheTestMediaInBackground(remoteTests);
       },
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithImages(result.data!);
+      final processedTests = await _processTestsWithMedia(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -250,16 +254,17 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         dev.log('Hard refresh unpublished category requested but offline - returning cached data');
         final categoryString = category.toString().split('.').last;
         final cachedTests = await localDataSource.getUnpublishedTestsByCategoryPage(userId, categoryString, 0, pageSize);
-        final processedTests = await _processTestsWithImages(cachedTests);
+        final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
-        await _updateUnpublishedCacheWithNewTests(userId, remoteTests);
+        await _updateUnpublishedCacheWithNewTestsDataOnly(userId, remoteTests);
+        _cacheTestMediaInBackground(remoteTests);
       },
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithImages(result.data!);
+      final processedTests = await _processTestsWithMedia(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -286,26 +291,27 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
           final remoteResults = await remoteDataSource.searchUnpublishedTests(userId, query);
           
           if (remoteResults.isNotEmpty) {
-            await _updateUnpublishedCacheWithNewTests(userId, remoteResults);
+            await _updateUnpublishedCacheWithNewTestsDataOnly(userId, remoteResults);
+            _cacheTestMediaInBackground(remoteResults);
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
           dev.log('Unpublished search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
           
-          final processedResults = await _processTestsWithImages(combinedResults);
+          final processedResults = await _processTestsWithMedia(combinedResults);
           return ApiResult.success(processedResults);
           
         } catch (e) {
           dev.log('Remote unpublished search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
-            final processedResults = await _processTestsWithImages(cachedResults);
+            final processedResults = await _processTestsWithMedia(cachedResults);
             return ApiResult.success(processedResults);
           }
           rethrow;
         }
       } else {
         dev.log('Offline unpublished search returned ${cachedResults.length} cached results');
-        final processedResults = await _processTestsWithImages(cachedResults);
+        final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       }
       
@@ -313,7 +319,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       try {
         final cachedTests = await localDataSource.getAllUnpublishedTests(userId);
         final cachedResults = _searchInTests(cachedTests, query);
-        final processedResults = await _processTestsWithImages(cachedResults);
+        final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       } catch (cacheError) {
         return ExceptionMapper.mapExceptionToApiResult(e as Exception);
@@ -360,35 +366,44 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
     }
   }
 
-  Future<void> _cacheUnpublishedTestsCompletely(String userId, List<TestItem> tests) async {
+  Future<void> _cacheUnpublishedTestsDataOnly(String userId, List<TestItem> tests) async {
     try {
       await localDataSource.saveUnpublishedTests(userId, tests);
-      await _cacheTestImages(tests);
       await localDataSource.setLastUnpublishedSyncTime(userId, DateTime.now());
       await _updateUnpublishedTestsHashes(userId, tests);
       
-      dev.log('Completely cached ${tests.length} unpublished tests with images for user: $userId');
+      dev.log('Cached ${tests.length} unpublished tests data only for user: $userId (media will be cached in background)');
     } catch (e) {
-      dev.log('Failed to cache unpublished tests completely: $e');
+      dev.log('Failed to cache unpublished tests data: $e');
     }
   }
 
-  Future<void> _updateUnpublishedCacheWithNewTests(String userId, List<TestItem> newTests) async {
+  Future<void> _updateUnpublishedCacheWithNewTestsDataOnly(String userId, List<TestItem> newTests) async {
     try {
       for (final test in newTests) {
         await localDataSource.addUnpublishedTest(userId, test);
         await _updateUnpublishedTestHash(userId, test);
       }
-
-      await _cacheTestImages(newTests);
       
-      dev.log('Added ${newTests.length} new unpublished tests to cache for user: $userId');
+      dev.log('Added ${newTests.length} new unpublished tests data to cache for user: $userId (media will be cached in background)');
     } catch (e) {
-      dev.log('Failed to update unpublished cache with new tests: $e');
+      dev.log('Failed to update unpublished cache with new tests data: $e');
     }
   }
 
-  Future<void> _cacheTestImages(List<TestItem> tests) async {
+  void _cacheTestMediaInBackground(List<TestItem> tests) {
+    Future.microtask(() async {
+      try {
+        dev.log('Starting background media caching for ${tests.length} unpublished tests...');
+        await _cacheTestMedia(tests);
+        dev.log('Completed background media caching for ${tests.length} unpublished tests');
+      } catch (e) {
+        dev.log('Background media caching failed: $e');
+      }
+    });
+  }
+
+  Future<void> _cacheTestMedia(List<TestItem> tests) async {
     try {
       for (final test in tests) {
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
@@ -402,16 +417,25 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
             await localDataSource.cacheImage(question.questionImageUrl!, test.id, 'question_$i');
           }
 
+          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+            await localDataSource.cacheAudio(question.questionAudioUrl!, test.id, 'question_audio_$i');
+          }
+
           for (int j = 0; j < question.options.length; j++) {
             final option = question.options[j];
+            
             if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
               await localDataSource.cacheImage(option.imageUrl!, test.id, 'answer_${i}_$j');
+            }
+            
+            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+              await localDataSource.cacheAudio(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
             }
           }
         }
       }
     } catch (e) {
-      dev.log('Error caching test images: $e');
+      dev.log('Error caching test media: $e');
     }
   }
 
@@ -434,7 +458,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
     return content.hashCode.toString();
   }
 
-  Future<List<TestItem>> _processTestsWithImages(List<TestItem> tests) async {
+  Future<List<TestItem>> _processTestsWithMedia(List<TestItem> tests) async {
     try {
       final processedTests = <TestItem>[];
       
@@ -461,6 +485,15 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
               updatedQuestion = updatedQuestion.copyWith(questionImagePath: cachedPath);
             }
           }
+
+          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedAudioPath(
+              question.questionAudioUrl!, test.id, 'question_audio_$i'
+            );
+            if (cachedPath != null && (question.questionAudioPath == null || question.questionAudioPath!.isEmpty)) {
+              updatedQuestion = updatedQuestion.copyWith(questionAudioPath: cachedPath);
+            }
+          }
           
           final updatedOptions = <AnswerOption>[];
           for (int j = 0; j < question.options.length; j++) {
@@ -473,6 +506,15 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
               );
               if (cachedPath != null && (option.imagePath == null || option.imagePath!.isEmpty)) {
                 updatedOption = updatedOption.copyWith(imagePath: cachedPath);
+              }
+            }
+            
+            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+              final cachedPath = await localDataSource.getCachedAudioPath(
+                option.audioUrl!, test.id, 'answer_audio_${i}_$j'
+              );
+              if (cachedPath != null && (option.audioPath == null || option.audioPath!.isEmpty)) {
+                updatedOption = updatedOption.copyWith(audioPath: cachedPath);
               }
             }
             
@@ -489,7 +531,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       
       return processedTests;
     } catch (e) {
-      dev.log('Error processing tests with images: $e');
+      dev.log('Error processing tests with media: $e');
       return tests;
     }
   }

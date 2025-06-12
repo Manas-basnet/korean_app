@@ -11,7 +11,9 @@ import 'package:korean_language_app/core/presentation/widgets/errors/error_widge
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
+import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/test_search_delegate.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_card.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_grid_skeleton.dart';
 
@@ -22,20 +24,22 @@ class TestsPage extends StatefulWidget {
   State<TestsPage> createState() => _TestsPageState();
 }
 
-class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  late PageController _pageController;
-  final List<ScrollController> _scrollControllers = [];
+class _TestsPageState extends State<TestsPage> {
+  late ScrollController _scrollController;
   bool _isRefreshing = false;
   final Map<String, bool> _editPermissionCache = {};
   bool _isInitialized = false;
+  TestCategory _selectedCategory = TestCategory.all;
+  String _searchQuery = '';
+  bool _isSearching = false;
   
   TestsCubit get _testsCubit => context.read<TestsCubit>();
+  TestSearchCubit get _testSearchCubit => context.read<TestSearchCubit>();
   TestUploadCubit get _testUploadCubit => context.read<TestUploadCubit>();
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
   
-  List<TestCategory> get _tabCategories => [
+  List<TestCategory> get _categories => [
     TestCategory.all,
     TestCategory.practice,
     TestCategory.topikI,
@@ -45,17 +49,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: _tabCategories.length,
-      vsync: this,
-    );
-    
-    _pageController = PageController();
-    
-    // Initialize scroll controllers for each tab
-    for (int i = 0; i < _tabCategories.length; i++) {
-      _scrollControllers.add(ScrollController());
-    }
+    _scrollController = ScrollController();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _testsCubit.loadInitialTests();
@@ -65,28 +59,19 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
       });
     });
     
-    // Add scroll listeners to all controllers
-    for (int i = 0; i < _scrollControllers.length; i++) {
-      _scrollControllers[i].addListener(() => _onScroll(i));
-    }
-    
-    _tabController.addListener(_onTabChanged);
+    _scrollController.addListener(_onScroll);
   }
   
   @override
   void dispose() {
-    _tabController.dispose();
-    _pageController.dispose();
-    for (final controller in _scrollControllers) {
-      controller.dispose();
-    }
+    _scrollController.dispose();
     super.dispose();
   }
   
-  void _onScroll(int tabIndex) {
-    if (!_scrollControllers[tabIndex].hasClients || _isRefreshing) return;
+  void _onScroll() {
+    if (!_scrollController.hasClients || _isRefreshing || _isSearching) return;
     
-    if (_isNearBottom(tabIndex)) {
+    if (_isNearBottom()) {
       final state = _testsCubit.state;
       
       if (state.hasMore && !state.currentOperation.isInProgress) {
@@ -94,51 +79,24 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
       }
     }
   }
-
-  void _onTabChanged() {
-    if (!_tabController.indexIsChanging) return;
-    
-    final newIndex = _tabController.index;
-    _pageController.animateToPage(
-      newIndex,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-    
-    _loadTestsForTab(newIndex);
-  }
-
-  void _onPageChanged(int index) {
-    if (_tabController.index != index) {
-      _tabController.animateTo(index);
-    }
-    _loadTestsForTab(index);
-  }
-
-  void _loadTestsForTab(int index) {
-    final category = _getCategoryForIndex(index);
-    if (category == TestCategory.all) {
-      _testsCubit.loadInitialTests();
-    } else {
-      _testsCubit.loadTestsByCategory(category);
-    }
-    _editPermissionCache.clear();
-  }
   
-  bool _isNearBottom(int tabIndex) {
-    if (!_scrollControllers[tabIndex].hasClients) return false;
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return false;
     
-    final maxScroll = _scrollControllers[tabIndex].position.maxScrollExtent;
-    final currentScroll = _scrollControllers[tabIndex].offset;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
     return currentScroll >= (maxScroll * 0.9);
   }
-  
 
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
     
     try {
-      await _testsCubit.hardRefresh();
+      if (_isSearching) {
+        _testSearchCubit.searchTests(_searchQuery);
+      } else {
+        await _testsCubit.hardRefresh();
+      }
       _editPermissionCache.clear();
     } finally {
       setState(() => _isRefreshing = false);
@@ -155,11 +113,37 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     return hasPermission;
   }
 
-  TestCategory _getCategoryForIndex(int index) {
-    if (index >= 0 && index < _tabCategories.length) {
-      return _tabCategories[index];
+  void _onCategoryChanged(TestCategory category) {
+    if (_selectedCategory == category) return;
+    
+    setState(() {
+      _selectedCategory = category;
+      _isSearching = false;
+      _searchQuery = '';
+    });
+    
+    _editPermissionCache.clear();
+    
+    if (category == TestCategory.all) {
+      _testsCubit.loadInitialTests();
+    } else {
+      _testsCubit.loadTestsByCategory(category);
     }
-    return TestCategory.all;
+  }
+
+  void _onSearchPressed() {
+    showSearch(
+      context: context,
+      delegate: TestSearchDelegate(
+        testSearchCubit: _testSearchCubit,
+        languageCubit: _languageCubit,
+        onTestSelected: _startTest,
+        checkEditPermission: _checkEditPermission,
+        onEditTest: _editTest,
+        onDeleteTest: _deleteTest,
+        onViewDetails: _viewTestDetails,
+      ),
+    );
   }
 
   @override
@@ -168,37 +152,14 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     final colorScheme = theme.colorScheme;
     
     if (!_isInitialized) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     
     return Scaffold(
-      appBar: _buildAppBar(theme, colorScheme),
-      body: BlocBuilder<ConnectivityCubit, ConnectivityState>(
-        builder: (context, connectivityState) {
-          final bool isOffline = connectivityState is ConnectivityDisconnected;
-          
-          return Column(
-            children: [
-              if (isOffline)
-                ErrorView(
-                  message: '',
-                  errorType: FailureType.network,
-                  onRetry: () {
-                    context.read<ConnectivityCubit>().checkConnectivity();
-                  },
-                  isCompact: true,
-                ),
-              
-              _buildCategoryTabs(theme),
-              Expanded(
-                child: _buildTabContent(isOffline),
-              ),
-            ],
-          );
-        },
-      ),
+      backgroundColor: colorScheme.surface,
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push(Routes.testUpload),
         tooltip: _languageCubit.getLocalizedText(
@@ -206,43 +167,207 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
           english: 'Create Test',
         ),
         child: const Icon(Icons.add),
-      )
+      ),
+      body: BlocBuilder<ConnectivityCubit, ConnectivityState>(
+        builder: (context, connectivityState) {
+          final bool isOffline = connectivityState is ConnectivityDisconnected;
+          
+          return RefreshIndicator(
+            onRefresh: _refreshData,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (isOffline)
+                  SliverToBoxAdapter(
+                    child: ErrorView(
+                      message: '',
+                      errorType: FailureType.network,
+                      onRetry: () {
+                        context.read<ConnectivityCubit>().checkConnectivity();
+                      },
+                      isCompact: true,
+                    ),
+                  ),
+                
+                _buildSliverAppBar(theme, colorScheme),
+                _buildSliverContent(isOffline),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
   
-AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
-    return AppBar(
-      title: Text(
-        _languageCubit.getLocalizedText(
-          korean: '시험',
-          english: 'Tests',
-        ),
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      elevation: 0,
+  Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
+    return SliverAppBar(
+      expandedHeight: 150,
+      pinned: false,
+      floating: true,
+      snap: true,
       backgroundColor: colorScheme.surface,
-      actions: [
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      automaticallyImplyLeading: false,
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          final expandRatio = (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
+          final isExpanded = expandRatio > 0.1;
+          
+          return FlexibleSpaceBar(
+            background: Container(
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withOpacity(0.3),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: AnimatedOpacity(
+                    opacity: isExpanded ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _languageCubit.getLocalizedText(
+                                      korean: '시험',
+                                      english: 'Tests',
+                                    ),
+                                    style: theme.textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _languageCubit.getLocalizedText(
+                                      korean: '다양한 한국어 시험을 풀어보세요',
+                                      english: 'Practice Korean language tests',
+                                    ),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            _buildHeaderActions(colorScheme),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 40,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.zero,
+                            itemCount: _categories.length,
+                            separatorBuilder: (context, index) => const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final category = _categories[index];
+                              final isSelected = _selectedCategory == category;
+                              
+                              return FilterChip(
+                                selected: isSelected,
+                                onSelected: (_) => _onCategoryChanged(category),
+                                label: Text(
+                                  _languageCubit.getLocalizedText(
+                                    korean: _getCategoryNameKorean(category),
+                                    english: _getCategoryNameEnglish(category),
+                                  ),
+                                ),
+                                labelStyle: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+                                ),
+                                backgroundColor: colorScheme.surfaceContainerHighest,
+                                selectedColor: colorScheme.primary,
+                                side: BorderSide(
+                                  color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeaderActions(ColorScheme colorScheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: () => _showSearchDelegate(),
+          onPressed: _onSearchPressed,
+          icon: const Icon(Icons.search_rounded),
+          style: IconButton.styleFrom(
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            foregroundColor: colorScheme.onSurfaceVariant,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          tooltip: _languageCubit.getLocalizedText(
+            korean: '검색',
+            english: 'Search',
+          ),
         ),
+        const SizedBox(width: 8),
         IconButton(
+          onPressed: () => context.push(Routes.unpublishedTests),
           icon: const Icon(Icons.drafts_rounded),
-          onPressed: () {
-            context.push(Routes.unpublishedTests);
-          },
+          style: IconButton.styleFrom(
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            foregroundColor: colorScheme.onSurfaceVariant,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           tooltip: _languageCubit.getLocalizedText(
             korean: '비공개 시험',
             english: 'Unpublished Tests',
           ),
         ),
+        const SizedBox(width: 8),
         IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () {
-            context.push(Routes.testResults);
-          },
+          onPressed: () => context.push(Routes.testResults),
+          icon: const Icon(Icons.history_rounded),
+          style: IconButton.styleFrom(
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            foregroundColor: colorScheme.onSurfaceVariant,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           tooltip: _languageCubit.getLocalizedText(
             korean: '내 결과',
             english: 'My Results',
@@ -252,115 +377,228 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     );
   }
 
-  Widget _buildCategoryTabs(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 2),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        labelColor: theme.colorScheme.primary,
-        unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-        labelStyle: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
-        unselectedLabelStyle: theme.textTheme.titleSmall,
-        indicatorColor: theme.colorScheme.primary,
-        tabs: _tabCategories
-            .map((category) => Tab(
-                  child: Text(
-                    _languageCubit.getLocalizedText(
-                      korean: _getCategoryNameKorean(category),
-                      english: _getCategoryNameEnglish(category),
-                    ),
-                  ),
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildTabContent(bool isOffline) {
-    return PageView.builder(
-      controller: _pageController,
-      onPageChanged: _onPageChanged,
-      itemCount: _tabCategories.length,
-      itemBuilder: (context, index) {
-        return BlocConsumer<TestsCubit, TestsState>(
-          listener: (context, state) {
-            final operation = state.currentOperation;
-            
-            if (operation.status == TestsOperationStatus.failed) {
-              String errorMessage = operation.message ?? 'Operation failed';
-              
-              switch (operation.type) {
-                case TestsOperationType.loadTests:
-                  errorMessage = 'Failed to load tests';
-                  break;
-                case TestsOperationType.loadMoreTests:
-                  errorMessage = 'Failed to load more tests';
-                  break;
-                case TestsOperationType.searchTests:
-                  errorMessage = 'Failed to search tests';
-                  break;
-                case TestsOperationType.refreshTests:
-                  errorMessage = 'Failed to refresh tests';
-                  break;
-                default:
-                  break;
-              }
-              
-              _snackBarCubit.showErrorLocalized(
-                korean: errorMessage,
-                english: errorMessage,
-              );
-            }
-            
-            if (state.hasError) {
-              _snackBarCubit.showErrorLocalized(
-                korean: state.error ?? '오류가 발생했습니다.',
-                english: state.error ?? 'An error occurred.',
-              );
-            }
-          },
-          builder: (context, state) {
-            if (isOffline && state.tests.isEmpty && state.isLoading) {
-              return ErrorView(
+  Widget _buildSliverContent(bool isOffline) {
+    return BlocConsumer<TestsCubit, TestsState>(
+      listener: (context, state) {
+        final operation = state.currentOperation;
+        
+        if (operation.status == TestsOperationStatus.failed) {
+          String errorMessage = operation.message ?? 'Operation failed';
+          
+          switch (operation.type) {
+            case TestsOperationType.loadTests:
+              errorMessage = 'Failed to load tests';
+              break;
+            case TestsOperationType.loadMoreTests:
+              errorMessage = 'Failed to load more tests';
+              break;
+            case TestsOperationType.refreshTests:
+              errorMessage = 'Failed to refresh tests';
+              break;
+            default:
+              break;
+          }
+          
+          _snackBarCubit.showErrorLocalized(
+            korean: errorMessage,
+            english: errorMessage,
+          );
+        }
+        
+        if (state.hasError) {
+          _snackBarCubit.showErrorLocalized(
+            korean: state.error ?? '오류가 발생했습니다.',
+            english: state.error ?? 'An error occurred.',
+          );
+        }
+      },
+      builder: (context, state) {
+        if (isOffline && state.tests.isEmpty && state.isLoading) {
+          return SliverToBoxAdapter(
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: ErrorView(
                 message: '',
                 errorType: FailureType.network,
                 onRetry: () {
                   context.read<ConnectivityCubit>().checkConnectivity();
                   if (context.read<ConnectivityCubit>().state is ConnectivityConnected) {
-                    _loadTestsForTab(_tabController.index);
+                    if (_selectedCategory == TestCategory.all) {
+                      _testsCubit.loadInitialTests();
+                    } else {
+                      _testsCubit.loadTestsByCategory(_selectedCategory);
+                    }
                   }
                 },
-              );
-            }
-            
-            if (state.isLoading && state.tests.isEmpty) {
-              return const TestGridSkeleton();
-            }
-            
-            if (state.hasError && state.tests.isEmpty) {
-              return ErrorView(
+              ),
+            ),
+          );
+        }
+        
+        if (state.isLoading && state.tests.isEmpty) {
+          return SliverToBoxAdapter(
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: const TestGridSkeleton(),
+            ),
+          );
+        }
+        
+        if (state.hasError && state.tests.isEmpty) {
+          return SliverToBoxAdapter(
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: ErrorView(
                 message: state.error ?? '',
                 errorType: state.errorType,
-                onRetry: () => _loadTestsForTab(_tabController.index),
+                onRetry: () {
+                  if (_selectedCategory == TestCategory.all) {
+                    _testsCubit.loadInitialTests();
+                  } else {
+                    _testsCubit.loadTestsByCategory(_selectedCategory);
+                  }
+                },
+              ),
+            ),
+          );
+        }
+        
+        return _buildSliverTestsList(state);
+      },
+    );
+  }
+  
+  Widget _buildSliverTestsList(TestsState state) {
+    if (state.tests.isEmpty) {
+      return SliverToBoxAdapter(
+        child: _buildEmptyTestsView(),
+      );
+    }
+    
+    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
+                         state.currentOperation.isInProgress;
+    
+    return SliverPadding(
+      padding: const EdgeInsets.all(20),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index < state.tests.length) {
+              final test = state.tests[index];
+              return FutureBuilder<bool>(
+                future: _checkEditPermission(test.id),
+                builder: (context, snapshot) {
+                  final canEdit = snapshot.data ?? false;
+                  
+                  return TestCard(
+                    key: ValueKey(test.id),
+                    test: test,
+                    canEdit: canEdit,
+                    onTap: () => _startTest(test),
+                    onEdit: canEdit ? () => _editTest(test) : null,
+                    onDelete: canEdit ? () => _deleteTest(test) : null,
+                    onViewDetails: () => _viewTestDetails(test),
+                  );
+                },
+              );
+            } else if (isLoadingMore) {
+              return Center(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const CircularProgressIndicator(),
+                ),
               );
             }
-            
-            return _buildTestsList(state, isOffline, index);
+            return null;
           },
-        );
-      },
+          childCount: state.tests.length + (isLoadingMore ? 1 : 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyTestsView() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      width: double.infinity,
+      height: MediaQuery.of(context).size.height * 0.6,
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.quiz_outlined,
+              size: 40,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _languageCubit.getLocalizedText(
+              korean: '시험이 없습니다',
+              english: 'No tests available',
+            ),
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _languageCubit.getLocalizedText(
+              korean: '새 시험을 만들려면 + 버튼을 누르세요',
+              english: 'Tap the + button to create a new test',
+            ),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => context.push(Routes.testUpload),
+            icon: const Icon(Icons.add),
+            label: Text(
+              _languageCubit.getLocalizedText(
+                korean: '시험 만들기',
+                english: 'Create Test',
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -390,133 +628,6 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     }
   }
   
-  Widget _buildTestsList(TestsState state, bool isOffline, int tabIndex) {
-    if (state.tests.isEmpty) {
-      return _buildEmptyTestsView();
-    }
-    
-    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
-                         state.currentOperation.isInProgress;
-    
-    return RefreshIndicator(
-      onRefresh: _refreshData,
-      child: Column(
-        children: [
-          if (state.hasError)
-            ErrorView(
-              message: state.error ?? '',
-              errorType: state.errorType,
-              onRetry: () => _loadTestsForTab(_tabController.index),
-              isCompact: true,
-            ),
-          
-          Expanded(
-            child: Stack(
-              children: [
-                GridView.builder(
-                  controller: _scrollControllers[tabIndex],
-                  padding: const EdgeInsets.all(16),
-                  physics: const AlwaysScrollableScrollPhysics(), // Add this line
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.8,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: state.tests.length,
-                  itemBuilder: (context, index) {
-                    final test = state.tests[index];
-                    return FutureBuilder<bool>(
-                      future: _checkEditPermission(test.id),
-                      builder: (context, snapshot) {
-                        final canEdit = snapshot.data ?? false;
-                        
-                        return TestCard(
-                          key: ValueKey('${test.id}_$tabIndex'),
-                          test: test,
-                          canEdit: canEdit,
-                          onTap: () => _startTest(test),
-                          onEdit: canEdit ? () => _editTest(test) : null,
-                          onDelete: canEdit ? () => _deleteTest(test) : null,
-                          onViewDetails: () => _viewTestDetails(test),
-                        );
-                      },
-                    );
-                  },
-                ),
-                if (isLoadingMore)
-                  const Positioned(
-                    bottom: 16,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyTestsView() {
-    return RefreshIndicator(
-      onRefresh: _refreshData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(), // Add this line
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 100),
-              Icon(
-                Icons.quiz_outlined,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                _languageCubit.getLocalizedText(
-                  korean: '시험이 없습니다',
-                  english: 'No tests available',
-                ),
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  _languageCubit.getLocalizedText(
-                    korean: '새 시험을 만들려면 + 버튼을 누르세요',
-                    english: 'Tap the + button to create a new test',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  void _showSearchDelegate() {
-    _snackBarCubit.showInfoLocalized(
-      korean: '검색 기능이 곧 제공될 예정입니다',
-      english: 'Search functionality coming soon',
-    );
-  }
-  
   void _startTest(TestItem test) {
     if (test.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
@@ -532,127 +643,122 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => _buildTestDetailsBottomSheet(test),
     );
   }
 
   Widget _buildTestDetailsBottomSheet(TestItem test) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 16),
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      test.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      test.description,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    Row(
+                
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDetailChip(
-                          icon: Icons.quiz,
-                          label: '${test.questionCount} Questions',
-                          color: theme.colorScheme.primary,
+                        Text(
+                          test.title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        _buildDetailChip(
-                          icon: Icons.timer,
-                          label: test.formattedTimeLimit,
-                          color: Colors.orange,
+                        const SizedBox(height: 12),
+                        Text(
+                          test.description,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.5,
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        _buildDetailChip(
-                          icon: Icons.school,
-                          label: test.level.toString().split('.').last,
-                          color: Colors.green,
+                        const SizedBox(height: 24),
+                        
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            _buildDetailChip(
+                              icon: Icons.quiz_rounded,
+                              label: '${test.questionCount} Questions',
+                              color: colorScheme.primary,
+                              theme: theme,
+                            ),
+                            _buildDetailChip(
+                              icon: Icons.timer_rounded,
+                              label: test.formattedTimeLimit,
+                              color: colorScheme.tertiary,
+                              theme: theme,
+                            ),
+                            _buildDetailChip(
+                              icon: Icons.school_rounded,
+                              label: '${test.formattedPassingScore} to pass',
+                              color: colorScheme.secondary,
+                              theme: theme,
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 32),
+                        
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _startTest(test);
+                            },
+                            icon: const Icon(Icons.play_arrow_rounded),
+                            label: Text(
+                              _languageCubit.getLocalizedText(
+                                korean: '시험 시작',
+                                english: 'Start Test',
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Test Information',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      _buildInfoRow('Passing Score', test.formattedPassingScore),
-                      _buildInfoRow('Category', test.category.name),
-                      _buildInfoRow('Language', test.language),
-                      if (test.createdAt != null)
-                        _buildInfoRow('Created', _formatDate(test.createdAt!)),
-                      
-                      const SizedBox(height: 24),
-                      
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _startTest(test);
-                          },
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Start Test'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -660,64 +766,30 @@ AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     required IconData icon,
     required String label,
     required Color color,
+    required ThemeData theme,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(
+            style: theme.textTheme.labelMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
   
   void _editTest(TestItem test) async {

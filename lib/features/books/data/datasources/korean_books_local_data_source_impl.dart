@@ -1,19 +1,52 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
 import 'package:korean_language_app/core/services/storage_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/korean_books_local_datasource.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
-import 'package:path_provider/path_provider.dart';
 
 class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   final StorageService _storageService;
   static const String booksKey = 'CACHED_KOREAN_BOOKS';
   static const String lastSyncKey = 'LAST_BOOKS_SYNC_TIME';
   static const String bookHashesKey = 'BOOK_HASHES';
+  static const String totalCountKey = 'TOTAL_BOOKS_COUNT';
+  static const String imageMetadataKey = 'BOOK_IMAGE_METADATA';
+
+  Directory? _imagesCacheDir;
+  Directory? _pdfCacheDir;
 
   KoreanBooksLocalDataSourceImpl({required StorageService storageService})
       : _storageService = storageService;
+
+  Future<Directory> get _imagesCacheDirectory async {
+    if (_imagesCacheDir != null) return _imagesCacheDir!;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    _imagesCacheDir = Directory('${appDir.path}/books_images_cache');
+    
+    if (!await _imagesCacheDir!.exists()) {
+      await _imagesCacheDir!.create(recursive: true);
+    }
+    
+    return _imagesCacheDir!;
+  }
+
+  Future<Directory> get _pdfCacheDirectory async {
+    if (_pdfCacheDir != null) return _pdfCacheDir!;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    _pdfCacheDir = Directory('${appDir.path}/pdf_cache');
+    
+    if (!await _pdfCacheDir!.exists()) {
+      await _pdfCacheDir!.create(recursive: true);
+    }
+    
+    return _pdfCacheDir!;
+  }
 
   @override
   Future<List<BookItem>> getAllBooks() async {
@@ -35,6 +68,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final jsonList = books.map((book) => book.toJson()).toList();
       final jsonString = json.encode(jsonList);
       await _storageService.setString(booksKey, jsonString);
+      dev.log('Saved ${books.length} books to cache');
     } catch (e) {
       dev.log('Error saving books to storage: $e');
       throw Exception('Failed to save books: $e');
@@ -82,6 +116,10 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   Future<void> removeBook(String bookId) async {
     try {
       final books = await getAllBooks();
+      final bookToRemove = books.firstWhere((book) => book.id == bookId, orElse: () => throw Exception('Book not found'));
+      
+      await _removeBookImages(bookToRemove);
+      
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
     } catch (e) {
@@ -96,6 +134,13 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       await _storageService.remove(booksKey);
       await _storageService.remove(lastSyncKey);
       await _storageService.remove(bookHashesKey);
+      await _storageService.remove(totalCountKey);
+      await _storageService.remove(imageMetadataKey);
+      
+      await _clearAllImages();
+      await _clearAllPdfs();
+      
+      dev.log('Cleared all books cache, images, and PDFs');
     } catch (e) {
       dev.log('Error clearing all books from storage: $e');
     }
@@ -118,6 +163,22 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       return books.length;
     } catch (e) {
       return 0;
+    }
+  }
+
+  @override
+  Future<List<BookItem>> getBooksPage(int page, int pageSize) async {
+    try {
+      final allBooks = await getAllBooks();
+      final startIndex = page * pageSize;
+      final endIndex = (startIndex + pageSize).clamp(0, allBooks.length);
+      
+      if (startIndex >= allBooks.length) return [];
+      
+      return allBooks.sublist(startIndex, endIndex);
+    } catch (e) {
+      dev.log('Error getting books page: $e');
+      return [];
     }
   }
 
@@ -152,10 +213,71 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   }
 
   @override
+  Future<void> setTotalBooksCount(int count) async {
+    await _storageService.setInt(totalCountKey, count);
+  }
+
+  @override
+  Future<int?> getTotalBooksCount() async {
+    return _storageService.getInt(totalCountKey);
+  }
+
+  @override
+  Future<void> cacheImage(String imageUrl, String bookId) async {
+    try {
+      final fileName = _generateImageFileName(imageUrl, bookId);
+      final cacheDir = await _imagesCacheDirectory;
+      final file = File('${cacheDir.path}/$fileName');
+      
+      if (await file.exists()) {
+        dev.log('Image already cached: $fileName');
+        return;
+      }
+      
+      final dio = Dio();
+      final response = await dio.get(
+        imageUrl,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(seconds: 30),
+          sendTimeout: const Duration(seconds: 30),
+        ),
+      );
+      
+      if (response.statusCode == 200 && response.data != null) {
+        await file.writeAsBytes(response.data);
+        dev.log('Cached book image: $fileName (${response.data.length} bytes)');
+        
+        await _updateImageMetadata(bookId, imageUrl);
+      } else {
+        dev.log('Failed to download book image: $imageUrl (${response.statusCode})');
+      }
+    } catch (e) {
+      dev.log('Error caching book image $imageUrl: $e');
+    }
+  }
+
+  @override
+  Future<String?> getCachedImagePath(String imageUrl, String bookId) async {
+    try {
+      final fileName = _generateImageFileName(imageUrl, bookId);
+      final cacheDir = await _imagesCacheDirectory;
+      final file = File('${cacheDir.path}/$fileName');
+      
+      if (await file.exists()) {
+        return file.path;
+      }
+    } catch (e) {
+      dev.log('Error getting cached image path: $e');
+    }
+    return null;
+  }
+
+  @override
   Future<File?> getPdfFile(String bookId) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/pdf_cache/$bookId.pdf');
+      final cacheDir = await _pdfCacheDirectory;
+      final file = File('${cacheDir.path}/$bookId.pdf');
       
       if (await file.exists() && await _isValidPDF(file)) {
         return file;
@@ -170,19 +292,15 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   @override
   Future<void> savePdfFile(String bookId, File pdfFile) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final cacheDir = Directory('${directory.path}/pdf_cache');
-      
-      if (!await cacheDir.exists()) {
-        await cacheDir.create(recursive: true);
-      }
-      
+      final cacheDir = await _pdfCacheDirectory;
       final cacheFile = File('${cacheDir.path}/$bookId.pdf');
       await pdfFile.copy(cacheFile.path);
       
       if (!await cacheFile.exists() || await cacheFile.length() == 0) {
         throw Exception('Failed to save PDF file properly');
       }
+      
+      dev.log('Cached PDF: ${cacheFile.path}');
     } catch (e) {
       dev.log('Error saving PDF file: $e');
       throw Exception('Failed to save PDF file: $e');
@@ -202,14 +320,100 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   @override
   Future<void> deletePdfFile(String bookId) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/pdf_cache/$bookId.pdf');
+      final cacheDir = await _pdfCacheDirectory;
+      final file = File('${cacheDir.path}/$bookId.pdf');
       
       if (await file.exists()) {
         await file.delete();
+        dev.log('Deleted PDF cache: ${file.path}');
       }
     } catch (e) {
       dev.log('Error deleting PDF file: $e');
+    }
+  }
+
+  //helper methods
+  String _generateImageFileName(String imageUrl, String bookId) {
+    final urlHash = md5.convert(utf8.encode(imageUrl)).toString().substring(0, 8);
+    return '${bookId}_main_$urlHash.jpg';
+  }
+
+  Future<void> _updateImageMetadata(String bookId, String imageUrl) async {
+    try {
+      final imageMetadata = await _getImageMetadata();
+      imageMetadata[bookId] = {
+        'url': imageUrl,
+        'cachedAt': DateTime.now().millisecondsSinceEpoch,
+      };
+      await _saveImageMetadata(imageMetadata);
+    } catch (e) {
+      dev.log('Error updating image metadata: $e');
+    }
+  }
+
+  Future<void> _removeBookImages(BookItem book) async {
+    try {
+      final cacheDir = await _imagesCacheDirectory;
+      final imageMetadata = await _getImageMetadata();
+      
+      final files = await cacheDir.list().toList();
+      for (final fileEntity in files) {
+        if (fileEntity is File && fileEntity.path.contains(book.id)) {
+          await fileEntity.delete();
+          dev.log('Deleted cached image: ${fileEntity.path}');
+        }
+      }
+      
+      imageMetadata.remove(book.id);
+      await _saveImageMetadata(imageMetadata);
+    } catch (e) {
+      dev.log('Error removing book images: $e');
+    }
+  }
+
+  Future<void> _clearAllImages() async {
+    try {
+      final cacheDir = await _imagesCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      dev.log('Cleared all cached book images');
+    } catch (e) {
+      dev.log('Error clearing all images: $e');
+    }
+  }
+
+  Future<void> _clearAllPdfs() async {
+    try {
+      final cacheDir = await _pdfCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      dev.log('Cleared all cached PDFs');
+    } catch (e) {
+      dev.log('Error clearing all PDFs: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> _getImageMetadata() async {
+    try {
+      final metadataJson = _storageService.getString(imageMetadataKey);
+      if (metadataJson == null) return {};
+      
+      return json.decode(metadataJson);
+    } catch (e) {
+      dev.log('Error reading image metadata: $e');
+      return {};
+    }
+  }
+
+  Future<void> _saveImageMetadata(Map<String, dynamic> metadata) async {
+    try {
+      await _storageService.setString(imageMetadataKey, json.encode(metadata));
+    } catch (e) {
+      dev.log('Error saving image metadata: $e');
     }
   }
 

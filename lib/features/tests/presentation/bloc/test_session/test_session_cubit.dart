@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -354,8 +355,11 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
   @override
   Future<void> close() {
+    if (kDebugMode) {
+      print('Closing TestSessionCubit...');
+    }
     _testTimer?.cancel();
     _questionTimer?.cancel();
     return super.close();
   }
-}
+}  

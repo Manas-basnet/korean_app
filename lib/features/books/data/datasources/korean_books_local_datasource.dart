@@ -11,13 +11,19 @@ abstract class KoreanBooksLocalDataSource {
   Future<bool> hasAnyBooks();
   Future<int> getBooksCount();
   
-  // metadata operations
+  Future<List<BookItem>> getBooksPage(int page, int pageSize);
+  
   Future<void> setLastSyncTime(DateTime dateTime);
   Future<DateTime?> getLastSyncTime();
   Future<void> setBookHashes(Map<String, String> hashes);
   Future<Map<String, String>> getBookHashes();
   
-  // PDF file operations
+  Future<void> setTotalBooksCount(int count);
+  Future<int?> getTotalBooksCount();
+  
+  Future<void> cacheImage(String imageUrl, String bookId);
+  Future<String?> getCachedImagePath(String imageUrl, String bookId);
+  
   Future<File?> getPdfFile(String bookId);
   Future<void> savePdfFile(String bookId, File pdfFile);
   Future<bool> hasPdfFile(String bookId);

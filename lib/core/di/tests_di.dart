@@ -6,6 +6,7 @@ import 'package:korean_language_app/features/tests/data/datasources/tests_remote
 import 'package:korean_language_app/features/tests/data/repositories/tests_repository_impl.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
+import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource_impl.dart';
@@ -17,6 +18,7 @@ import 'package:korean_language_app/features/unpublished_tests/presentation/bloc
 
 void registerTestsDependencies(GetIt sl) {
   sl.registerFactory(() => TestsCubit(repository: sl(), authService: sl(), adminService: sl()));
+  sl.registerFactory(() => TestSearchCubit(repository: sl(), authService: sl(), adminService: sl()));
   sl.registerFactory(() => TestSessionCubit(testResultsRepository: sl(), authService: sl()));
   
   sl.registerLazySingleton<TestsRepository>(
@@ -41,14 +43,12 @@ void registerTestsDependencies(GetIt sl) {
 }
 
 void registerUnpublishedTestsDependencies(GetIt sl) {
-  // Cubits
   sl.registerFactory(() => UnpublishedTestsCubit(
     repository: sl(),
     authService: sl(),
     adminService: sl(),
   ));
   
-  // Repositories
   sl.registerLazySingleton<UnpublishedTestsRepository>(
     () => UnpublishedTestsRepositoryImpl(
       remoteDataSource: sl(),
@@ -58,7 +58,6 @@ void registerUnpublishedTestsDependencies(GetIt sl) {
     )
   );
   
-  // Data sources
   sl.registerLazySingleton<UnpublishedTestsRemoteDataSource>(
     () => FirestoreUnpublishedTestsDataSourceImpl(firestore: sl()),
   );

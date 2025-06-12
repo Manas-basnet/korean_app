@@ -10,6 +10,7 @@ import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
 class TestTakingPage extends StatefulWidget {
@@ -525,6 +526,8 @@ class _TestTakingPageState extends State<TestTakingPage>
     final colorScheme = theme.colorScheme;
     final hasImage = (question.questionImageUrl?.isNotEmpty == true) || 
                      (question.questionImagePath?.isNotEmpty == true);
+    final hasAudio = (question.questionAudioUrl?.isNotEmpty == true) || 
+                     (question.questionAudioPath?.isNotEmpty == true);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,6 +542,19 @@ class _TestTakingPageState extends State<TestTakingPage>
               isFixed: true,
             ),
           ),
+        
+        if (hasAudio) ...[
+          const SizedBox(height: 12),
+          CustomCachedAudio(
+            audioUrl: question.questionAudioUrl,
+            audioPath: question.questionAudioPath,
+            label: _languageCubit.getLocalizedText(
+              korean: '문제 듣기',
+              english: 'Listen to Question',
+            ),
+            height: 50,
+          ),
+        ],
         
         if (question.question.isNotEmpty)
           Padding(
@@ -568,7 +584,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                     fontWeight: FontWeight.w600,
                     height: 1.3,
                   ),
-                  maxLines: hasImage ? 3 : 6,
+                  maxLines: hasImage || hasAudio ? 3 : 6,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -908,6 +924,10 @@ class _TestTakingPageState extends State<TestTakingPage>
   Widget _buildQuestionCard(TestQuestion question, {bool isLandscape = false}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final hasImage = (question.questionImageUrl?.isNotEmpty == true) || 
+                     (question.questionImagePath?.isNotEmpty == true);
+    final hasAudio = (question.questionAudioUrl?.isNotEmpty == true) || 
+                     (question.questionAudioPath?.isNotEmpty == true);
     
     return Container(
       width: double.infinity,
@@ -919,7 +939,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if ((question.questionImageUrl?.isNotEmpty == true) || (question.questionImagePath?.isNotEmpty == true))
+          if (hasImage)
             _buildQuestionImage(question.questionImageUrl, question.questionImagePath, isLandscape: isLandscape),
           
           Padding(
@@ -941,6 +961,17 @@ class _TestTakingPageState extends State<TestTakingPage>
                     ),
                   ),
                 ),
+                if (hasAudio) ...[
+                  const SizedBox(height: 16),
+                  CustomCachedAudio(
+                    audioUrl: question.questionAudioUrl,
+                    audioPath: question.questionAudioPath,
+                    label: _languageCubit.getLocalizedText(
+                      korean: '문제 듣기',
+                      english: 'Listen to Question',
+                    ),
+                  ),
+                ],
                 if (question.question.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -1045,11 +1076,11 @@ class _TestTakingPageState extends State<TestTakingPage>
       if (isCorrectAnswer) {
         borderColor = Colors.green;
         backgroundColor = Colors.green.withOpacity(0.1);
-        statusIcon = Icon(Icons.check_circle_rounded, color: Colors.green, size: 20);
+        statusIcon = const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20);
       } else if (wasSelectedAnswer) {
         borderColor = Colors.red;
         backgroundColor = Colors.red.withOpacity(0.1);
-        statusIcon = Icon(Icons.cancel_rounded, color: Colors.red, size: 20);
+        statusIcon = const Icon(Icons.cancel_rounded, color: Colors.red, size: 20);
       }
     } else if (isSelected || wasSelectedAnswer) {
       borderColor = colorScheme.primary;
@@ -1117,6 +1148,33 @@ class _TestTakingPageState extends State<TestTakingPage>
 
   Widget _buildOptionContent(int index, AnswerOption option, {bool isCompact = false}) {
     final theme = Theme.of(context);
+    
+    if (option.isAudio) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CustomCachedAudio(
+            audioUrl: option.audioUrl,
+            audioPath: option.audioPath,
+            label: _languageCubit.getLocalizedText(
+              korean: '선택지 ${String.fromCharCode(65 + index)} 듣기',
+              english: 'Listen to Option ${String.fromCharCode(65 + index)}',
+            ),
+            height: isCompact ? 40 : 50,
+          ),
+          if (option.text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              option.text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                height: 1.3,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
     
     if (option.isImage && (option.imageUrl?.isNotEmpty == true || option.imagePath?.isNotEmpty == true)) {
       return Column(

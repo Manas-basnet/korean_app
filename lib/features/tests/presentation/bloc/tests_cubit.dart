@@ -1,4 +1,3 @@
-// lib/features/tests/presentation/bloc/tests_cubit.dart - UPDATED
 import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -24,10 +23,6 @@ class TestsCubit extends Cubit<TestsState> {
   static const int _pageSize = 5;
   bool _isConnected = true;
   TestCategory _currentCategory = TestCategory.all;
-  
-  Timer? _searchDebounceTimer;
-  static const Duration _searchDebounceDelay = Duration(milliseconds: 500);
-  String _lastSearchQuery = '';
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
@@ -216,13 +211,13 @@ class TestsCubit extends Cubit<TestsState> {
       
       if (_currentCategory == TestCategory.all) {
         result = await repository.getTests(
-          page: _currentPage + 1,
+          page: _currentPage,
           pageSize: _pageSize
         );
       } else {
         result = await repository.getTestsByCategory(
           _currentCategory,
-          page: _currentPage + 1,
+          page: _currentPage,
           pageSize: _pageSize
         );
       }
@@ -374,103 +369,6 @@ class TestsCubit extends Cubit<TestsState> {
   }
 
   TestCategory get currentCategory => _currentCategory;
-  
-  void searchTests(String query) {
-    _searchDebounceTimer?.cancel();
-    
-    final trimmedQuery = query.trim();
-    
-    if (trimmedQuery.length < 2) {
-      dev.log('Search query too short, clearing search results');
-      _lastSearchQuery = '';
-      
-      emit(state.copyWith(
-        tests: [],
-        hasMore: false,
-        isLoading: false,
-        error: null,
-        errorType: null,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.searchTests,
-          status: TestsOperationStatus.completed,
-        ),
-      ));
-      _clearOperationAfterDelay();
-      return;
-    }
-    
-    if (trimmedQuery == _lastSearchQuery) {
-      dev.log('Duplicate search query, skipping');
-      return;
-    }
-    
-    _searchDebounceTimer = Timer(_searchDebounceDelay, () {
-      _performSearch(trimmedQuery);
-    });
-  }
-  
-  Future<void> _performSearch(String query) async {
-    if (state.currentOperation.isInProgress) {
-      dev.log('Search operation already in progress, skipping...');
-      return;
-    }
-    
-    _operationStopwatch.reset();
-    _operationStopwatch.start();
-    _lastSearchQuery = query;
-    
-    try {
-      emit(state.copyWith(
-        isLoading: true,
-        currentOperation: const TestsOperation(
-          type: TestsOperationType.searchTests,
-          status: TestsOperationStatus.inProgress,
-        ),
-      ));
-      
-      final result = await repository.searchTests(query);
-      
-      result.fold(
-        onSuccess: (searchResults) {
-          final uniqueSearchResults = _removeDuplicates(searchResults);
-          
-          _operationStopwatch.stop();
-          dev.log('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
-          
-          emit(state.copyWith(
-            tests: uniqueSearchResults,
-            hasMore: false,
-            isLoading: false,
-            error: null,
-            errorType: null,
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.searchTests,
-              status: TestsOperationStatus.completed,
-            ),
-          ));
-          _clearOperationAfterDelay();
-        },
-        onFailure: (message, type) {
-          _operationStopwatch.stop();
-          dev.log('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
-          
-          emit(state.copyWithBaseState(
-            error: message,
-            errorType: type,
-            isLoading: false,
-          ).copyWithOperation(const TestsOperation(
-            type: TestsOperationType.searchTests,
-            status: TestsOperationStatus.failed,
-          )));
-          _clearOperationAfterDelay();
-        },
-      );
-    } catch (e) {
-      _operationStopwatch.stop();
-      dev.log('Error searching tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to search tests: $e', TestsOperationType.searchTests);
-    }
-  }
 
   Future<void> loadTestById(String testId) async {
     if (state.currentOperation.isInProgress) {
@@ -598,7 +496,6 @@ class TestsCubit extends Cubit<TestsState> {
   @override
   Future<void> close() {
     dev.log('Closing TestsCubit...');
-    _searchDebounceTimer?.cancel();
     _connectivitySubscription?.cancel();
     return super.close();
   }

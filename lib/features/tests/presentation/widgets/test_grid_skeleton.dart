@@ -6,10 +6,10 @@ class TestGridSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.8,
+        childAspectRatio: 0.75,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -58,10 +58,14 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     final colorScheme = theme.colorScheme;
     
     return Card(
-      elevation: 3,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.3),
+      elevation: 2,
+      shadowColor: colorScheme.shadow.withOpacity(0.2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withOpacity(0.3),
+          width: 0.5,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: AnimatedBuilder(
@@ -70,16 +74,15 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header skeleton
               Expanded(
                 flex: 3,
                 child: Container(
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     color: _getSkeletonColor(context, _animation.value),
                   ),
                   child: Stack(
                     children: [
-                      // Top badges skeleton
                       Positioned(
                         top: 8,
                         right: 8,
@@ -89,15 +92,15 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                           children: [
                             Container(
                               height: 20,
-                              width: 60,
+                              width: 50,
                               decoration: BoxDecoration(
                                 color: _getSkeletonColor(context, _animation.value, isOverlay: true),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                             Container(
-                              height: 28,
-                              width: 28,
+                              height: 24,
+                              width: 24,
                               decoration: BoxDecoration(
                                 color: _getSkeletonColor(context, _animation.value, isOverlay: true),
                                 shape: BoxShape.circle,
@@ -106,12 +109,10 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                           ],
                         ),
                       ),
-                      
-                      // Center icon placeholder
                       Center(
                         child: Container(
-                          height: 48,
-                          width: 48,
+                          height: 40,
+                          width: 40,
                           decoration: BoxDecoration(
                             color: _getSkeletonColor(context, _animation.value, isOverlay: true),
                             shape: BoxShape.circle,
@@ -123,30 +124,30 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                 ),
               ),
               
-              // Content skeleton
               Expanded(
                 flex: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Title skeleton
                       Container(
-                        height: 16,
+                        height: 12,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: _getSkeletonColor(context, _animation.value),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Container(
-                        height: 16,
-                        width: 120,
+                        height: 12,
+                        width: double.infinity * 0.7,
                         decoration: BoxDecoration(
                           color: _getSkeletonColor(context, _animation.value),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
                       
@@ -156,17 +157,17 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                       Row(
                         children: [
                           Container(
-                            height: 12,
-                            width: 40,
+                            height: 8,
+                            width: 25,
                             decoration: BoxDecoration(
                               color: _getSkeletonColor(context, _animation.value),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 10),
                           Container(
-                            height: 12,
-                            width: 50,
+                            height: 8,
+                            width: 30,
                             decoration: BoxDecoration(
                               color: _getSkeletonColor(context, _animation.value),
                               borderRadius: BorderRadius.circular(4),
@@ -175,34 +176,35 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                         ],
                       ),
                       
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 6),
                       
                       // Description skeleton
-                      Expanded(
+                      Flexible(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              height: 12,
+                              height: 8,
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 color: _getSkeletonColor(context, _animation.value),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Container(
-                              height: 12,
-                              width: double.infinity,
+                              height: 8,
+                              width: double.infinity * 0.8,
                               decoration: BoxDecoration(
                                 color: _getSkeletonColor(context, _animation.value),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Container(
-                              height: 12,
-                              width: 80,
+                              height: 8,
+                              width: double.infinity * 0.6,
                               decoration: BoxDecoration(
                                 color: _getSkeletonColor(context, _animation.value),
                                 borderRadius: BorderRadius.circular(4),
@@ -212,23 +214,23 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
                         ),
                       ),
                       
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       
                       // Bottom info skeleton
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            height: 20,
-                            width: 60,
+                            height: 14,
+                            width: 40,
                             decoration: BoxDecoration(
                               color: _getSkeletonColor(context, _animation.value),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                           ),
                           Container(
-                            height: 12,
-                            width: 40,
+                            height: 8,
+                            width: 25,
                             decoration: BoxDecoration(
                               color: _getSkeletonColor(context, _animation.value),
                               borderRadius: BorderRadius.circular(4),
@@ -253,14 +255,14 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     if (isOverlay) {
       if (isDark) {
         return Color.lerp(
-          Colors.white.withValues(alpha: 0.1),
-          Colors.white.withValues(alpha: 0.2),
+          Colors.white.withOpacity(0.08),
+          Colors.white.withOpacity(0.15),
           animationValue,
         )!;
       } else {
         return Color.lerp(
-          Colors.black.withValues(alpha: 0.1),
-          Colors.black.withValues(alpha: 0.2),
+          Colors.black.withOpacity(0.06),
+          Colors.black.withOpacity(0.12),
           animationValue,
         )!;
       }
@@ -268,14 +270,14 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     
     if (isDark) {
       return Color.lerp(
-        Colors.grey[800]!,
-        Colors.grey[700]!,
+        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
         animationValue,
       )!;
     } else {
       return Color.lerp(
-        Colors.grey[300]!,
-        Colors.grey[200]!,
+        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.7),
         animationValue,
       )!;
     }
