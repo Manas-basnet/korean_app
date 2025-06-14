@@ -39,13 +39,6 @@ class _TestsPageState extends State<TestsPage> {
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
   
-  List<TestCategory> get _categories => [
-    TestCategory.all,
-    TestCategory.practice,
-    TestCategory.topikI,
-    TestCategory.topikII,
-  ];
-  
   @override
   void initState() {
     super.initState();
@@ -113,6 +106,7 @@ class _TestsPageState extends State<TestsPage> {
     return hasPermission;
   }
 
+
   void _onCategoryChanged(TestCategory category) {
     if (_selectedCategory == category) return;
     
@@ -131,7 +125,7 @@ class _TestsPageState extends State<TestsPage> {
     }
   }
 
-  void _onSearchPressed() {
+  void _showSearchDelegate() {
     showSearch(
       context: context,
       delegate: TestSearchDelegate(
@@ -199,7 +193,7 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
-  
+
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverAppBar(
       expandedHeight: 150,
@@ -213,9 +207,10 @@ class _TestsPageState extends State<TestsPage> {
       automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          final expandRatio = (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
+          final expandRatio =
+              (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
           final isExpanded = expandRatio > 0.1;
-          
+
           return FlexibleSpaceBar(
             background: Container(
               decoration: BoxDecoration(
@@ -232,84 +227,28 @@ class _TestsPageState extends State<TestsPage> {
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: AnimatedOpacity(
                     opacity: isExpanded ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 150),
+                    duration: const Duration(milliseconds: 200),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _languageCubit.getLocalizedText(
-                                      korean: '시험',
-                                      english: 'Tests',
-                                    ),
-                                    style: theme.textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _languageCubit.getLocalizedText(
-                                      korean: '다양한 한국어 시험을 풀어보세요',
-                                      english: 'Practice Korean language tests',
-                                    ),
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              _languageCubit.getLocalizedText(
+                                korean: '시험',
+                                english: 'Tests',
+                              ),
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            _buildHeaderActions(colorScheme),
+                            _buildHeaderActions(colorScheme)
                           ],
                         ),
                         const SizedBox(height: 16),
-                        SizedBox(
-                          height: 40,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            padding: EdgeInsets.zero,
-                            itemCount: _categories.length,
-                            separatorBuilder: (context, index) => const SizedBox(width: 12),
-                            itemBuilder: (context, index) {
-                              final category = _categories[index];
-                              final isSelected = _selectedCategory == category;
-                              
-                              return FilterChip(
-                                selected: isSelected,
-                                onSelected: (_) => _onCategoryChanged(category),
-                                label: Text(
-                                  _languageCubit.getLocalizedText(
-                                    korean: _getCategoryNameKorean(category),
-                                    english: _getCategoryNameEnglish(category),
-                                  ),
-                                ),
-                                labelStyle: theme.textTheme.labelLarge?.copyWith(
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                  color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-                                ),
-                                backgroundColor: colorScheme.surfaceContainerHighest,
-                                selectedColor: colorScheme.primary,
-                                side: BorderSide(
-                                  color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                visualDensity: VisualDensity.compact,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        _buildCategoryTabsSliver(theme),
                       ],
                     ),
                   ),
@@ -322,19 +261,85 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
+  Widget _buildCategoryTabsSliver(ThemeData theme) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemCount: TestCategory.values.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = TestCategory.values[index];
+          final isSelected = _selectedCategory == category;
+
+          return GestureDetector(
+            onTap: () => _onCategoryChanged(category),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                _getCategoryDisplayName(category),
+                style: TextStyle(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withOpacity(0.6),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _getCategoryDisplayName(TestCategory category) {
+    switch (category) {
+      case TestCategory.all:
+        return _languageCubit.getLocalizedText(
+          korean: '전체',
+          english: 'All',
+        );
+      case TestCategory.practice:
+        return _languageCubit.getLocalizedText(
+          korean: '연습',  
+          english: 'Practice',
+        );
+      case TestCategory.topikI:
+        return _languageCubit.getLocalizedText(
+          korean: 'TOPIK I',
+          english: 'TOPIK I',
+        );
+      case TestCategory.topikII:
+        return _languageCubit.getLocalizedText(
+          korean: 'TOPIK II',
+          english: 'TOPIK II',
+        );
+    }
+  }
+
   Widget _buildHeaderActions(ColorScheme colorScheme) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: _onSearchPressed,
+          onPressed: _showSearchDelegate,
           icon: const Icon(Icons.search_rounded),
           style: IconButton.styleFrom(
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            foregroundColor: colorScheme.onSurfaceVariant,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            foregroundColor: colorScheme.onSurface,
           ),
           tooltip: _languageCubit.getLocalizedText(
             korean: '검색',
@@ -346,11 +351,7 @@ class _TestsPageState extends State<TestsPage> {
           onPressed: () => context.push(Routes.unpublishedTests),
           icon: const Icon(Icons.drafts_rounded),
           style: IconButton.styleFrom(
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            foregroundColor: colorScheme.onSurfaceVariant,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            foregroundColor: colorScheme.onSurface,
           ),
           tooltip: _languageCubit.getLocalizedText(
             korean: '비공개 시험',
@@ -362,11 +363,7 @@ class _TestsPageState extends State<TestsPage> {
           onPressed: () => context.push(Routes.testResults),
           icon: const Icon(Icons.history_rounded),
           style: IconButton.styleFrom(
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            foregroundColor: colorScheme.onSurfaceVariant,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            foregroundColor: colorScheme.onSurface,
           ),
           tooltip: _languageCubit.getLocalizedText(
             korean: '내 결과',
@@ -601,33 +598,6 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
-
-  String _getCategoryNameKorean(TestCategory category) {
-    switch (category) {
-      case TestCategory.all:
-        return '전체';
-      case TestCategory.practice:
-        return '연습';
-      case TestCategory.topikI:
-        return 'TOPIK I';
-      case TestCategory.topikII:
-        return 'TOPIK II';
-    }
-  }
-
-  String _getCategoryNameEnglish(TestCategory category) {
-    switch (category) {
-      case TestCategory.all:
-        return 'All';
-      case TestCategory.practice:
-        return 'Practice';
-      case TestCategory.topikI:
-        return 'TOPIK I';
-      case TestCategory.topikII:
-        return 'TOPIK II';
-    }
-  }
-  
   void _startTest(TestItem test) {
     if (test.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(

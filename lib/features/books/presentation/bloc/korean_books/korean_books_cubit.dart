@@ -26,11 +26,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   bool _isConnected = true;
   final Set<String> _downloadsInProgress = {};
   
-  // Search debouncing
-  Timer? _searchDebounceTimer;
-  static const Duration _searchDebounceDelay = Duration(milliseconds: 500);
-  String _lastSearchQuery = '';
-  
   // Connection monitoring
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   
@@ -288,95 +283,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     }
   }
   
-  void searchBooks(String query) {
-    // Cancel previous search timer
-    _searchDebounceTimer?.cancel();
-    
-    final trimmedQuery = query.trim();
-    
-    if (trimmedQuery.length < 2) {
-      // If query too short, restore original books
-      dev.log('Search query too short, restoring initial books');
-      _lastSearchQuery = '';
-      loadInitialBooks();
-      return;
-    }
-    
-    // Avoid duplicate searches
-    if (trimmedQuery == _lastSearchQuery) {
-      dev.log('Duplicate search query, skipping');
-      return;
-    }
-    
-    // Debounce search to avoid excessive API calls
-    _searchDebounceTimer = Timer(_searchDebounceDelay, () {
-      _performSearch(trimmedQuery);
-    });
-  }
-  
-  Future<void> _performSearch(String query) async {
-    if (state.currentOperation.isInProgress) {
-      dev.log('Search operation already in progress, skipping...');
-      return;
-    }
-    
-    _operationStopwatch.reset();
-    _operationStopwatch.start();
-    _lastSearchQuery = query;
-    
-    try {
-      emit(state.copyWith(
-        isLoading: true,
-        currentOperation: const KoreanBooksOperation(
-          type: KoreanBooksOperationType.searchBooks,
-          status: KoreanBooksOperationStatus.inProgress,
-        ),
-      ));
-      
-      final result = await repository.searchBooks(CourseCategory.korean, query);
-      
-      result.fold(
-        onSuccess: (searchResults) {
-          final uniqueSearchResults = _removeDuplicates(searchResults);
-          
-          _operationStopwatch.stop();
-          dev.log('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
-          
-          emit(state.copyWith(
-            books: uniqueSearchResults,
-            hasMore: false, // Search results don't support pagination
-            isLoading: false,
-            error: null,
-            errorType: null,
-            currentOperation: const KoreanBooksOperation(
-              type: KoreanBooksOperationType.searchBooks,
-              status: KoreanBooksOperationStatus.completed,
-            ),
-          ));
-          _clearOperationAfterDelay();
-        },
-        onFailure: (message, type) {
-          _operationStopwatch.stop();
-          dev.log('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
-          
-          emit(state.copyWithBaseState(
-            error: message,
-            errorType: type,
-            isLoading: false,
-          ).copyWithOperation(const KoreanBooksOperation(
-            type: KoreanBooksOperationType.searchBooks,
-            status: KoreanBooksOperationStatus.failed,
-          )));
-          _clearOperationAfterDelay();
-        },
-      );
-    } catch (e) {
-      _operationStopwatch.stop();
-      dev.log('Error searching books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to search books: $e', KoreanBooksOperationType.searchBooks);
-    }
-  }
-  
   Future<void> loadBookPdf(String bookId) async {
     if (_downloadsInProgress.contains(bookId)) {
       dev.log('PDF download already in progress for book: $bookId');
@@ -605,7 +511,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   @override
   Future<void> close() {
     dev.log('Closing KoreanBooksCubit...');
-    _searchDebounceTimer?.cancel();
     _connectivitySubscription?.cancel();
     return super.close();
   }

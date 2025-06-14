@@ -13,6 +13,7 @@ import 'package:korean_language_app/features/auth/presentation/pages/forgot_pass
 import 'package:korean_language_app/features/auth/presentation/pages/login_page.dart';
 import 'package:korean_language_app/features/auth/presentation/pages/register_page.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/books_page.dart';
@@ -261,7 +262,10 @@ class AppRouter {
               GoRoute(
                 path: '/books',
                 name: 'books',
-                builder: (context, state) => const BooksPage(),
+                builder: (context, state) => BlocProvider<BookSearchCubit>(
+                  create: (context) => sl<BookSearchCubit>(),
+                  child: const BooksPage(),
+                ),
               ),
               GoRoute(
                 path: '/books/upload-books',

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/presentation/widgets/errors/error_widget.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_list_card.dart';
 
 class BookSearchDelegate extends SearchDelegate<BookItem?> {
-  final KoreanBooksCubit koreanBooksCubit;
+  final BookSearchCubit bookSearchCubit;
   final FavoriteBooksCubit favoriteBooksCubit;
   final LanguagePreferenceCubit languageCubit;
   final Function(BookItem) onToggleFavorite;
@@ -21,7 +21,7 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
   final Function(BookItem)? onDownloadClicked;
   
   BookSearchDelegate({
-    required this.koreanBooksCubit,
+    required this.bookSearchCubit,
     required this.favoriteBooksCubit,
     required this.languageCubit,
     required this.onToggleFavorite,
@@ -57,7 +57,7 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
     return IconButton(
       icon: const Icon(Icons.arrow_back),
       onPressed: () {
-        koreanBooksCubit.loadInitialBooks();
+        bookSearchCubit.clearSearch();
         close(context, null);
       },
     );
@@ -69,32 +69,28 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
       return _buildMinQueryLengthMessage(context);
     }
     
-    koreanBooksCubit.searchBooks(query);
+    bookSearchCubit.searchBooks(query);
     
-    return BlocBuilder<KoreanBooksCubit, KoreanBooksState>(
+    return BlocBuilder<BookSearchCubit, BookSearchState>(
+      bloc: bookSearchCubit,
       builder: (context, state) {
-        // Handle loading state
-        if (state.isLoading || 
-            (state.currentOperation.type == KoreanBooksOperationType.searchBooks && 
-             state.currentOperation.isInProgress)) {
+        if (state.isLoading && state.searchResults.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
         
-        // Handle error state
-        if (state.hasError) {
+        if (state.hasError && state.searchResults.isEmpty) {
           return ErrorView(
             message: state.error ?? '',
             errorType: state.errorType,
             onRetry: () {
-              koreanBooksCubit.searchBooks(query);
+              bookSearchCubit.searchBooks(query);
             },
           );
         }
         
-        // Handle search results
-        final books = state.books;
+        final books = state.searchResults;
         
-        if (books.isEmpty) {
+        if (books.isEmpty && state.isSearching) {
           return _buildNoResultsMessage(context);
         }
         
@@ -109,7 +105,7 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
       return _buildSearchPrompt(context);
     }
     
-    koreanBooksCubit.searchBooks(query);
+    bookSearchCubit.searchBooks(query);
     
     return buildResults(context);
   }
@@ -153,23 +149,12 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
           const SizedBox(height: 16),
           Text(
             languageCubit.getLocalizedText(
-              korean: '검색어를 입력하세요',
-              english: 'Enter search terms',
+              korean: '책 제목이나 내용으로 검색하세요',
+              english: 'Search by book title or content',
             ),
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            languageCubit.getLocalizedText(
-              korean: '책 제목이나 설명으로 검색할 수 있습니다',
-              english: 'You can search by book title or description',
-            ),
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
             ),
           ),
         ],
@@ -190,7 +175,7 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
           const SizedBox(height: 16),
           Text(
             languageCubit.getLocalizedText(
-              korean: '검색 결과가 없습니다',
+              korean: '검색 결과 없음',
               english: 'No results found',
             ),
             style: const TextStyle(
@@ -237,7 +222,6 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
           builder: (context, favoritesState) {
             bool isFavorite = false;
             
-            // Check if book is in favorites
             isFavorite = favoritesState.books.any((favBook) => favBook.id == book.id);
             
             return FutureBuilder<bool>(

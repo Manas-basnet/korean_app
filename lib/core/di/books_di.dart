@@ -15,12 +15,19 @@ import 'package:korean_language_app/features/books/data/repositories/favorite_bo
 import 'package:korean_language_app/features/books/data/repositories/korean_book_repository_impl.dart';
 import 'package:korean_language_app/features/books/domain/repositories/favorite_book_repository.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 
 void registerBooksDependencies(GetIt sl) {
   // Cubits
   sl.registerFactory(() => KoreanBooksCubit(
+    repository: sl(),
+    authService: sl(),
+    adminService: sl(),
+  ));
+
+  sl.registerFactory(() => BookSearchCubit(
     repository: sl(),
     authService: sl(),
     adminService: sl(),
