@@ -220,37 +220,104 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     final pathsToDelete = <String>[];
     
     try {
+      // ========== COVER IMAGE HANDLING ==========
       if (imageFile != null) {
-        if (existingTest.imagePath != null && existingTest.imagePath!.isNotEmpty) {
-          pathsToDelete.add(existingTest.imagePath!);
+        // Validate that the file exists before attempting upload
+        if (await imageFile.exists()) {
+          try {
+            if (kDebugMode) {
+              print('Uploading cover image: ${imageFile.path}');
+            }
+            
+            final storagePath = 'tests/$testId/cover_image.jpg';
+            final fileRef = storage.ref().child(storagePath);
+            
+            final uploadTask = await fileRef.putFile(
+              imageFile,
+              SettableMetadata(contentType: 'image/jpeg')
+            );
+            
+            final downloadUrl = await uploadTask.ref.getDownloadURL();
+            
+            if (downloadUrl.isEmpty) {
+              throw Exception('Failed to get download URL for uploaded cover image');
+            }
+            
+            if (kDebugMode) {
+              print('Successfully uploaded cover image. URL: $downloadUrl');
+            }
+            
+            // Only mark old image for deletion after successful upload IF it's a different path
+            if (existingTest.imagePath != null && 
+                existingTest.imagePath!.isNotEmpty &&
+                existingTest.imagePath != storagePath) {
+              pathsToDelete.add(existingTest.imagePath!);
+              if (kDebugMode) {
+                print('Marking old cover image for deletion: ${existingTest.imagePath}');
+              }
+            } else if (existingTest.imagePath == storagePath) {
+              if (kDebugMode) {
+                print('New cover image overwrote existing image at same path: $storagePath');
+              }
+            }
+            
+            newUploadedPaths.add(storagePath);
+            finalTest = finalTest.copyWith(
+              imageUrl: downloadUrl,
+              imagePath: storagePath,
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              print('Failed to upload cover image: $e');
+            }
+            // If upload fails, preserve existing image
+            if (existingTest.imageUrl != null && existingTest.imageUrl!.isNotEmpty) {
+              if (kDebugMode) {
+                print('Preserving existing cover image: ${existingTest.imageUrl}');
+              }
+              finalTest = finalTest.copyWith(
+                imageUrl: existingTest.imageUrl,
+                imagePath: existingTest.imagePath,
+              );
+            } else {
+              if (kDebugMode) {
+                print('No existing cover image to preserve, clearing image fields');
+              }
+              finalTest = finalTest.copyWith(
+                imageUrl: null,
+                imagePath: null,
+              );
+            }
+          }
+        } else {
+          if (kDebugMode) {
+            print('Cover image file does not exist: ${imageFile.path}');
+          }
+          // File doesn't exist, preserve existing image or clear
+          if (existingTest.imageUrl != null && existingTest.imageUrl!.isNotEmpty) {
+            finalTest = finalTest.copyWith(
+              imageUrl: existingTest.imageUrl,
+              imagePath: existingTest.imagePath,
+            );
+          } else {
+            finalTest = finalTest.copyWith(
+              imageUrl: null,
+              imagePath: null,
+            );
+          }
         }
-        
-        final storagePath = 'tests/$testId/cover_image.jpg';
-        final fileRef = storage.ref().child(storagePath);
-        
-        final uploadTask = await fileRef.putFile(
-          imageFile,
-          SettableMetadata(contentType: 'image/jpeg')
-        );
-        
-        final downloadUrl = await uploadTask.ref.getDownloadURL();
-        
-        if (downloadUrl.isEmpty) {
-          throw Exception('Failed to get download URL for uploaded cover image');
-        }
-        
-        newUploadedPaths.add(storagePath);
-        finalTest = finalTest.copyWith(
-          imageUrl: downloadUrl,
-          imagePath: storagePath,
-        );
       } else if ((finalTest.imageUrl == null || finalTest.imageUrl!.isEmpty) &&
                 (finalTest.imagePath == null || finalTest.imagePath!.isEmpty)) {
+        // User removed the cover image
         if (existingTest.imagePath != null && existingTest.imagePath!.isNotEmpty) {
           pathsToDelete.add(existingTest.imagePath!);
+          if (kDebugMode) {
+            print('User removed cover image, marking for deletion: ${existingTest.imagePath}');
+          }
         }
       }
       
+      // ========== QUESTIONS HANDLING ==========
       final existingQuestionsMap = <String, TestQuestion>{};
       for (final q in existingTest.questions) {
         existingQuestionsMap[q.id] = q;
@@ -264,83 +331,226 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         var updatedQuestion = question;
         final existingQuestion = existingQuestionsMap[question.id];
         
-        bool isNewQuestionImage = _isNewLocalFile(
-          question.questionImagePath, 
-          existingQuestion?.questionImagePath
+        // Check if question image is new
+        bool isNewQuestionImage = _isNewMedia(
+          currentImagePath: question.questionImagePath,
+          currentImageUrl: question.questionImageUrl,
+          existingImagePath: existingQuestion?.questionImagePath,
+          existingImageUrl: existingQuestion?.questionImageUrl,
         );
         
-        bool isNewQuestionAudio = _isNewLocalFile(
-          question.questionAudioPath, 
-          existingQuestion?.questionAudioPath
+        // Check if question audio is new
+        bool isNewQuestionAudio = _isNewMedia(
+          currentImagePath: question.questionAudioPath,
+          currentImageUrl: question.questionAudioUrl,
+          existingImagePath: existingQuestion?.questionAudioPath,
+          existingImageUrl: existingQuestion?.questionAudioUrl,
         );
         
+        // ========== QUESTION IMAGE HANDLING ==========
         if (isNewQuestionImage) {
-          if (existingQuestion?.questionImagePath != null && 
-              existingQuestion!.questionImagePath!.isNotEmpty) {
-            pathsToDelete.add(existingQuestion.questionImagePath!);
+          if (question.questionImagePath != null && question.questionImagePath!.startsWith('/')) {
+            // First validate that the file exists
+            final questionImageFile = File(question.questionImagePath!);
+            if (await questionImageFile.exists()) {
+              try {
+                if (kDebugMode) {
+                  print('Uploading question image for question ${question.id}: ${question.questionImagePath}');
+                }
+                
+                final questionStoragePath = 'tests/$testId/questions/${question.id}/question_image.jpg';
+                final questionFileRef = storage.ref().child(questionStoragePath);
+                
+                final questionUploadTask = await questionFileRef.putFile(
+                  questionImageFile,
+                  SettableMetadata(contentType: 'image/jpeg')
+                );
+                
+                final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
+                
+                if (questionDownloadUrl.isEmpty) {
+                  throw Exception('Failed to get download URL for question image');
+                }
+                
+                if (kDebugMode) {
+                  print('Successfully uploaded question image. URL: $questionDownloadUrl');
+                }
+                
+                // Only mark old image for deletion after successful upload IF it's a different path
+                if (existingQuestion?.questionImagePath != null && 
+                    existingQuestion!.questionImagePath!.isNotEmpty &&
+                    existingQuestion.questionImagePath != questionStoragePath) {
+                  pathsToDelete.add(existingQuestion.questionImagePath!);
+                  if (kDebugMode) {
+                    print('Marking old question image for deletion: ${existingQuestion.questionImagePath}');
+                  }
+                } else if (existingQuestion?.questionImagePath == questionStoragePath) {
+                  if (kDebugMode) {
+                    print('New question image overwrote existing image at same path: $questionStoragePath');
+                  }
+                }
+                
+                newUploadedPaths.add(questionStoragePath);
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionImageUrl: questionDownloadUrl,
+                  questionImagePath: questionStoragePath,
+                );
+              } catch (e) {
+                if (kDebugMode) {
+                  print('Failed to upload question image: $e');
+                }
+                // If upload fails, preserve existing media or clear invalid media
+                if (existingQuestion?.questionImageUrl != null && existingQuestion!.questionImageUrl!.isNotEmpty) {
+                  if (kDebugMode) {
+                    print('Preserving existing question image: ${existingQuestion.questionImageUrl}');
+                  }
+                  updatedQuestion = updatedQuestion.copyWith(
+                    questionImageUrl: existingQuestion.questionImageUrl,
+                    questionImagePath: existingQuestion.questionImagePath,
+                  );
+                } else {
+                  if (kDebugMode) {
+                    print('No existing question image to preserve, clearing media fields');
+                  }
+                  // Clear the media fields since upload failed and no existing media
+                  updatedQuestion = updatedQuestion.copyWith(
+                    questionImageUrl: null,
+                    questionImagePath: null,
+                  );
+                }
+              }
+            } else {
+              if (kDebugMode) {
+                print('Question image file does not exist: ${question.questionImagePath}');
+              }
+              // File doesn't exist, preserve existing media or clear
+              if (existingQuestion?.questionImageUrl != null && existingQuestion!.questionImageUrl!.isNotEmpty) {
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionImageUrl: existingQuestion.questionImageUrl,
+                  questionImagePath: existingQuestion.questionImagePath,
+                );
+              } else {
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionImageUrl: null,
+                  questionImagePath: null,
+                );
+              }
+            }
           }
-          
-          final questionImageFile = File(question.questionImagePath!);
-          final questionStoragePath = 'tests/$testId/questions/${question.id}/question_image.jpg';
-          final questionFileRef = storage.ref().child(questionStoragePath);
-          
-          final questionUploadTask = await questionFileRef.putFile(
-            questionImageFile,
-            SettableMetadata(contentType: 'image/jpeg')
-          );
-          
-          final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
-          
-          if (questionDownloadUrl.isEmpty) {
-            throw Exception('Failed to get download URL for question image');
-          }
-          
-          newUploadedPaths.add(questionStoragePath);
-          updatedQuestion = updatedQuestion.copyWith(
-            questionImageUrl: questionDownloadUrl,
-            questionImagePath: questionStoragePath,
-          );
         } else if ((question.questionImageUrl == null || question.questionImageUrl!.isEmpty) &&
                   (question.questionImagePath == null || question.questionImagePath!.isEmpty) &&
                   existingQuestion?.questionImagePath != null && 
                   existingQuestion!.questionImagePath!.isNotEmpty) {
+          // User removed question image
           pathsToDelete.add(existingQuestion.questionImagePath!);
+          if (kDebugMode) {
+            print('User removed question image, marking for deletion: ${existingQuestion.questionImagePath}');
+          }
         }
 
+        // ========== QUESTION AUDIO HANDLING ==========
         if (isNewQuestionAudio) {
-          if (existingQuestion?.questionAudioPath != null && 
-              existingQuestion!.questionAudioPath!.isNotEmpty) {
-            pathsToDelete.add(existingQuestion.questionAudioPath!);
+          if (question.questionAudioPath != null && question.questionAudioPath!.startsWith('/')) {
+            // First validate that the file exists
+            final questionAudioFile = File(question.questionAudioPath!);
+            if (await questionAudioFile.exists()) {
+              try {
+                if (kDebugMode) {
+                  print('Uploading question audio for question ${question.id}: ${question.questionAudioPath}');
+                }
+                
+                final extension = _getAudioExtension(question.questionAudioPath!);
+                final questionStoragePath = 'tests/$testId/questions/${question.id}/question_audio$extension';
+                final questionFileRef = storage.ref().child(questionStoragePath);
+                
+                final questionUploadTask = await questionFileRef.putFile(
+                  questionAudioFile,
+                  SettableMetadata(contentType: _getAudioContentType(extension))
+                );
+                
+                final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
+                
+                if (questionDownloadUrl.isEmpty) {
+                  throw Exception('Failed to get download URL for question audio');
+                }
+                
+                if (kDebugMode) {
+                  print('Successfully uploaded question audio. URL: $questionDownloadUrl');
+                }
+                
+                // Only mark old audio for deletion after successful upload IF it's a different path
+                if (existingQuestion?.questionAudioPath != null && 
+                    existingQuestion!.questionAudioPath!.isNotEmpty &&
+                    existingQuestion.questionAudioPath != questionStoragePath) {
+                  pathsToDelete.add(existingQuestion.questionAudioPath!);
+                  if (kDebugMode) {
+                    print('Marking old question audio for deletion: ${existingQuestion.questionAudioPath}');
+                  }
+                } else if (existingQuestion?.questionAudioPath == questionStoragePath) {
+                  if (kDebugMode) {
+                    print('New question audio overwrote existing audio at same path: $questionStoragePath');
+                  }
+                }
+                
+                newUploadedPaths.add(questionStoragePath);
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionAudioUrl: questionDownloadUrl,
+                  questionAudioPath: questionStoragePath,
+                );
+              } catch (e) {
+                if (kDebugMode) {
+                  print('Failed to upload question audio: $e');
+                }
+                // If upload fails, preserve existing media or clear invalid media
+                if (existingQuestion?.questionAudioUrl != null && existingQuestion!.questionAudioUrl!.isNotEmpty) {
+                  if (kDebugMode) {
+                    print('Preserving existing question audio: ${existingQuestion.questionAudioUrl}');
+                  }
+                  updatedQuestion = updatedQuestion.copyWith(
+                    questionAudioUrl: existingQuestion.questionAudioUrl,
+                    questionAudioPath: existingQuestion.questionAudioPath,
+                  );
+                } else {
+                  if (kDebugMode) {
+                    print('No existing question audio to preserve, clearing media fields');
+                  }
+                  // Clear the media fields since upload failed and no existing media
+                  updatedQuestion = updatedQuestion.copyWith(
+                    questionAudioUrl: null,
+                    questionAudioPath: null,
+                  );
+                }
+              }
+            } else {
+              if (kDebugMode) {
+                print('Question audio file does not exist: ${question.questionAudioPath}');
+              }
+              // File doesn't exist, preserve existing media or clear
+              if (existingQuestion?.questionAudioUrl != null && existingQuestion!.questionAudioUrl!.isNotEmpty) {
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionAudioUrl: existingQuestion.questionAudioUrl,
+                  questionAudioPath: existingQuestion.questionAudioPath,
+                );
+              } else {
+                updatedQuestion = updatedQuestion.copyWith(
+                  questionAudioUrl: null,
+                  questionAudioPath: null,
+                );
+              }
+            }
           }
-          
-          final questionAudioFile = File(question.questionAudioPath!);
-          final extension = _getAudioExtension(question.questionAudioPath!);
-          final questionStoragePath = 'tests/$testId/questions/${question.id}/question_audio$extension';
-          final questionFileRef = storage.ref().child(questionStoragePath);
-          
-          final questionUploadTask = await questionFileRef.putFile(
-            questionAudioFile,
-            SettableMetadata(contentType: _getAudioContentType(extension))
-          );
-          
-          final questionDownloadUrl = await questionUploadTask.ref.getDownloadURL();
-          
-          if (questionDownloadUrl.isEmpty) {
-            throw Exception('Failed to get download URL for question audio');
-          }
-          
-          newUploadedPaths.add(questionStoragePath);
-          updatedQuestion = updatedQuestion.copyWith(
-            questionAudioUrl: questionDownloadUrl,
-            questionAudioPath: questionStoragePath,
-          );
         } else if ((question.questionAudioUrl == null || question.questionAudioUrl!.isEmpty) &&
                   (question.questionAudioPath == null || question.questionAudioPath!.isEmpty) &&
                   existingQuestion?.questionAudioPath != null && 
                   existingQuestion!.questionAudioPath!.isNotEmpty) {
+          // User removed question audio
           pathsToDelete.add(existingQuestion.questionAudioPath!);
+          if (kDebugMode) {
+            print('User removed question audio, marking for deletion: ${existingQuestion.questionAudioPath}');
+          }
         }
         
+        // ========== ANSWER OPTIONS HANDLING ==========
         final updatedOptions = <AnswerOption>[];
         for (int i = 0; i < question.options.length; i++) {
           final option = question.options[i];
@@ -348,80 +558,233 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
               ? existingQuestion.options[i] 
               : null;
           
-          bool isNewAnswerImage = _isNewLocalFile(
-            option.imagePath, 
-            existingOption?.imagePath
+          // Check if answer image is new
+          bool isNewAnswerImage = _isNewMedia(
+            currentImagePath: option.imagePath,
+            currentImageUrl: option.imageUrl,
+            existingImagePath: existingOption?.imagePath,
+            existingImageUrl: existingOption?.imageUrl,
           );
 
-          bool isNewAnswerAudio = _isNewLocalFile(
-            option.audioPath, 
-            existingOption?.audioPath
+          // Check if answer audio is new
+          bool isNewAnswerAudio = _isNewMedia(
+            currentImagePath: option.audioPath,
+            currentImageUrl: option.audioUrl,
+            existingImagePath: existingOption?.audioPath,
+            existingImageUrl: existingOption?.audioUrl,
           );
           
+          // ========== ANSWER IMAGE HANDLING ==========
           if (isNewAnswerImage) {
-            if (existingOption?.imagePath != null && existingOption!.imagePath!.isNotEmpty) {
-              pathsToDelete.add(existingOption.imagePath!);
+            if (option.imagePath != null && option.imagePath!.startsWith('/')) {
+              // First validate that the file exists
+              final answerImageFile = File(option.imagePath!);
+              if (await answerImageFile.exists()) {
+                try {
+                  if (kDebugMode) {
+                    print('Uploading answer image for question ${question.id}, option $i: ${option.imagePath}');
+                  }
+                  
+                  final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i.jpg';
+                  final answerFileRef = storage.ref().child(answerStoragePath);
+                  
+                  final answerUploadTask = await answerFileRef.putFile(
+                    answerImageFile,
+                    SettableMetadata(contentType: 'image/jpeg')
+                  );
+                  
+                  final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
+                  
+                  if (answerDownloadUrl.isEmpty) {
+                    throw Exception('Failed to get download URL for answer image');
+                  }
+                  
+                  if (kDebugMode) {
+                    print('Successfully uploaded answer image. URL: $answerDownloadUrl');
+                  }
+                  
+                  // Only mark old image for deletion after successful upload IF it's a different path
+                  if (existingOption?.imagePath != null && 
+                      existingOption!.imagePath!.isNotEmpty &&
+                      existingOption.imagePath != answerStoragePath) {
+                    pathsToDelete.add(existingOption.imagePath!);
+                    if (kDebugMode) {
+                      print('Marking old answer image for deletion: ${existingOption.imagePath}');
+                    }
+                  } else if (existingOption?.imagePath == answerStoragePath) {
+                    if (kDebugMode) {
+                      print('New answer image overwrote existing image at same path: $answerStoragePath');
+                    }
+                  }
+                  
+                  newUploadedPaths.add(answerStoragePath);
+                  updatedOptions.add(option.copyWith(
+                    imageUrl: answerDownloadUrl,
+                    imagePath: answerStoragePath,
+                  ));
+                } catch (e) {
+                  if (kDebugMode) {
+                    print('Failed to upload answer image: $e');
+                  }
+                  // If upload fails, preserve existing media or clear invalid media
+                  if (existingOption?.imageUrl != null && existingOption!.imageUrl!.isNotEmpty) {
+                    if (kDebugMode) {
+                      print('Preserving existing answer image: ${existingOption.imageUrl}');
+                    }
+                    updatedOptions.add(option.copyWith(
+                      imageUrl: existingOption.imageUrl,
+                      imagePath: existingOption.imagePath,
+                    ));
+                  } else {
+                    if (kDebugMode) {
+                      print('No existing answer image to preserve, clearing media fields');
+                    }
+                    // Clear the media fields since upload failed and no existing media
+                    updatedOptions.add(option.copyWith(
+                      imageUrl: null,
+                      imagePath: null,
+                    ));
+                  }
+                }
+              } else {
+                if (kDebugMode) {
+                  print('Answer image file does not exist: ${option.imagePath}');
+                }
+                // File doesn't exist, preserve existing media or clear
+                if (existingOption?.imageUrl != null && existingOption!.imageUrl!.isNotEmpty) {
+                  updatedOptions.add(option.copyWith(
+                    imageUrl: existingOption.imageUrl,
+                    imagePath: existingOption.imagePath,
+                  ));
+                } else {
+                  updatedOptions.add(option.copyWith(
+                    imageUrl: null,
+                    imagePath: null,
+                  ));
+                }
+              }
+            } else {
+              updatedOptions.add(option);
             }
-            
-            final answerImageFile = File(option.imagePath!);
-            final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i.jpg';
-            final answerFileRef = storage.ref().child(answerStoragePath);
-            
-            final answerUploadTask = await answerFileRef.putFile(
-              answerImageFile,
-              SettableMetadata(contentType: 'image/jpeg')
-            );
-            
-            final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
-            
-            if (answerDownloadUrl.isEmpty) {
-              throw Exception('Failed to get download URL for answer image');
+          } 
+          // ========== ANSWER AUDIO HANDLING ==========
+          else if (isNewAnswerAudio) {
+            if (option.audioPath != null && option.audioPath!.startsWith('/')) {
+              // First validate that the file exists
+              final answerAudioFile = File(option.audioPath!);
+              if (await answerAudioFile.exists()) {
+                try {
+                  if (kDebugMode) {
+                    print('Uploading answer audio for question ${question.id}, option $i: ${option.audioPath}');
+                  }
+                  
+                  final extension = _getAudioExtension(option.audioPath!);
+                  final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i$extension';
+                  final answerFileRef = storage.ref().child(answerStoragePath);
+                  
+                  final answerUploadTask = await answerFileRef.putFile(
+                    answerAudioFile,
+                    SettableMetadata(contentType: _getAudioContentType(extension))
+                  );
+                  
+                  final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
+                  
+                  if (answerDownloadUrl.isEmpty) {
+                    throw Exception('Failed to get download URL for answer audio');
+                  }
+                  
+                  if (kDebugMode) {
+                    print('Successfully uploaded answer audio. URL: $answerDownloadUrl');
+                  }
+                  
+                  // Only mark old audio for deletion after successful upload IF it's a different path
+                  if (existingOption?.audioPath != null && 
+                      existingOption!.audioPath!.isNotEmpty &&
+                      existingOption.audioPath != answerStoragePath) {
+                    pathsToDelete.add(existingOption.audioPath!);
+                    if (kDebugMode) {
+                      print('Marking old answer audio for deletion: ${existingOption.audioPath}');
+                    }
+                  } else if (existingOption?.audioPath == answerStoragePath) {
+                    if (kDebugMode) {
+                      print('New answer audio overwrote existing audio at same path: $answerStoragePath');
+                    }
+                  }
+                  
+                  newUploadedPaths.add(answerStoragePath);
+                  updatedOptions.add(option.copyWith(
+                    audioUrl: answerDownloadUrl,
+                    audioPath: answerStoragePath,
+                  ));
+                } catch (e) {
+                  if (kDebugMode) {
+                    print('Failed to upload answer audio: $e');
+                  }
+                  // If upload fails, preserve existing media or clear invalid media
+                  if (existingOption?.audioUrl != null && existingOption!.audioUrl!.isNotEmpty) {
+                    if (kDebugMode) {
+                      print('Preserving existing answer audio: ${existingOption.audioUrl}');
+                    }
+                    updatedOptions.add(option.copyWith(
+                      audioUrl: existingOption.audioUrl,
+                      audioPath: existingOption.audioPath,
+                    ));
+                  } else {
+                    if (kDebugMode) {
+                      print('No existing answer audio to preserve, clearing media fields');
+                    }
+                    // Clear the media fields since upload failed and no existing media
+                    updatedOptions.add(option.copyWith(
+                      audioUrl: null,
+                      audioPath: null,
+                    ));
+                  }
+                }
+              } else {
+                if (kDebugMode) {
+                  print('Answer audio file does not exist: ${option.audioPath}');
+                }
+                // File doesn't exist, preserve existing media or clear
+                if (existingOption?.audioUrl != null && existingOption!.audioUrl!.isNotEmpty) {
+                  updatedOptions.add(option.copyWith(
+                    audioUrl: existingOption.audioUrl,
+                    audioPath: existingOption.audioPath,
+                  ));
+                } else {
+                  updatedOptions.add(option.copyWith(
+                    audioUrl: null,
+                    audioPath: null,
+                  ));
+                }
+              }
+            } else {
+              updatedOptions.add(option);
             }
-            
-            newUploadedPaths.add(answerStoragePath);
-            updatedOptions.add(option.copyWith(
-              imageUrl: answerDownloadUrl,
-              imagePath: answerStoragePath,
-            ));
-          } else if (isNewAnswerAudio) {
-            if (existingOption?.audioPath != null && existingOption!.audioPath!.isNotEmpty) {
-              pathsToDelete.add(existingOption.audioPath!);
-            }
-            
-            final answerAudioFile = File(option.audioPath!);
-            final extension = _getAudioExtension(option.audioPath!);
-            final answerStoragePath = 'tests/$testId/questions/${question.id}/answers/$i$extension';
-            final answerFileRef = storage.ref().child(answerStoragePath);
-            
-            final answerUploadTask = await answerFileRef.putFile(
-              answerAudioFile,
-              SettableMetadata(contentType: _getAudioContentType(extension))
-            );
-            
-            final answerDownloadUrl = await answerUploadTask.ref.getDownloadURL();
-            
-            if (answerDownloadUrl.isEmpty) {
-              throw Exception('Failed to get download URL for answer audio');
-            }
-            
-            newUploadedPaths.add(answerStoragePath);
-            updatedOptions.add(option.copyWith(
-              audioUrl: answerDownloadUrl,
-              audioPath: answerStoragePath,
-            ));
-          } else if (!option.isImage && !option.isAudio && 
+          } 
+          // ========== HANDLE TYPE CHANGES ==========
+          else if (!option.isImage && !option.isAudio && 
                     existingOption?.isImage == true && 
                     existingOption?.imagePath != null && 
                     existingOption!.imagePath!.isNotEmpty) {
+            // User changed from image to text
             pathsToDelete.add(existingOption.imagePath!);
+            if (kDebugMode) {
+              print('User changed option from image to text, marking image for deletion: ${existingOption.imagePath}');
+            }
             updatedOptions.add(option);
           } else if (!option.isImage && !option.isAudio && 
                     existingOption?.isAudio == true && 
                     existingOption?.audioPath != null && 
                     existingOption!.audioPath!.isNotEmpty) {
+            // User changed from audio to text
             pathsToDelete.add(existingOption.audioPath!);
+            if (kDebugMode) {
+              print('User changed option from audio to text, marking audio for deletion: ${existingOption.audioPath}');
+            }
             updatedOptions.add(option);
-          } else if ((option.isImage && 
+          } 
+          // ========== HANDLE MEDIA REMOVAL ==========
+          else if ((option.isImage && 
                     (option.imageUrl == null || option.imageUrl!.isEmpty) &&
                     (option.imagePath == null || option.imagePath!.isEmpty) &&
                     existingOption?.isImage == true &&
@@ -433,18 +796,27 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
                     existingOption?.isAudio == true &&
                     existingOption?.audioPath != null &&
                     existingOption!.audioPath!.isNotEmpty)) {
+            // User removed media
             if (existingOption.imagePath != null && existingOption.imagePath!.isNotEmpty) {
               pathsToDelete.add(existingOption.imagePath!);
+              if (kDebugMode) {
+                print('User removed answer image, marking for deletion: ${existingOption.imagePath}');
+              }
             }
             if (existingOption.audioPath != null && existingOption.audioPath!.isNotEmpty) {
               pathsToDelete.add(existingOption.audioPath!);
+              if (kDebugMode) {
+                print('User removed answer audio, marking for deletion: ${existingOption.audioPath}');
+              }
             }
             updatedOptions.add(option);
           } else {
+            // No changes, keep existing option
             updatedOptions.add(option);
           }
         }
 
+        // Handle removed options (if question now has fewer options)
         if (existingQuestion != null) {
           for (int i = question.options.length; i < existingQuestion.options.length; i++) {
             final removedOption = existingQuestion.options[i];
@@ -452,11 +824,17 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
                 removedOption.imagePath != null && 
                 removedOption.imagePath!.isNotEmpty) {
               pathsToDelete.add(removedOption.imagePath!);
+              if (kDebugMode) {
+                print('Removed option had image, marking for deletion: ${removedOption.imagePath}');
+              }
             }
             if (removedOption.isAudio && 
                 removedOption.audioPath != null && 
                 removedOption.audioPath!.isNotEmpty) {
               pathsToDelete.add(removedOption.audioPath!);
+              if (kDebugMode) {
+                print('Removed option had audio, marking for deletion: ${removedOption.audioPath}');
+              }
             }
           }
         }
@@ -465,15 +843,22 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
         updatedQuestions.add(updatedQuestion);
       }
       
+      // Handle removed questions (if test now has fewer questions)
       for (final existingQuestion in existingTest.questions) {
         if (!currentQuestionIds.contains(existingQuestion.id)) {
           if (existingQuestion.questionImagePath != null && 
               existingQuestion.questionImagePath!.isNotEmpty) {
             pathsToDelete.add(existingQuestion.questionImagePath!);
+            if (kDebugMode) {
+              print('Removed question had image, marking for deletion: ${existingQuestion.questionImagePath}');
+            }
           }
           if (existingQuestion.questionAudioPath != null && 
               existingQuestion.questionAudioPath!.isNotEmpty) {
             pathsToDelete.add(existingQuestion.questionAudioPath!);
+            if (kDebugMode) {
+              print('Removed question had audio, marking for deletion: ${existingQuestion.questionAudioPath}');
+            }
           }
           
           for (final option in existingQuestion.options) {
@@ -481,11 +866,17 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
                 option.imagePath != null && 
                 option.imagePath!.isNotEmpty) {
               pathsToDelete.add(option.imagePath!);
+              if (kDebugMode) {
+                print('Removed question option had image, marking for deletion: ${option.imagePath}');
+              }
             }
             if (option.isAudio && 
                 option.audioPath != null && 
                 option.audioPath!.isNotEmpty) {
               pathsToDelete.add(option.audioPath!);
+              if (kDebugMode) {
+                print('Removed question option had audio, marking for deletion: ${option.audioPath}');
+              }
             }
           }
         }
@@ -517,6 +908,72 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
       await _cleanupFiles(newUploadedPaths);
       throw Exception('Failed to update test: $e');
     }
+  }
+
+  /// **Improved logic to determine if media is new**
+  bool _isNewMedia({
+    required String? currentImagePath,
+    required String? currentImageUrl,
+    required String? existingImagePath,
+    required String? existingImageUrl,
+  }) {
+    // Case 1: No current media (user removed it)
+    if ((currentImagePath == null || currentImagePath.isEmpty) &&
+        (currentImageUrl == null || currentImageUrl.isEmpty)) {
+      return false;
+    }
+    
+    // Case 2: Has current media but no existing media (new media added)
+    if ((existingImagePath == null || existingImagePath.isEmpty) &&
+        (existingImageUrl == null || existingImageUrl.isEmpty)) {
+      return true;
+    }
+    
+    // Case 3: Current media is a local file path (newly picked from image_picker or similar)
+    if (currentImagePath != null && 
+        currentImagePath.startsWith('/') && 
+        !_isFirebaseStoragePath(currentImagePath) &&
+        !_isCachedFile(currentImagePath)) {
+      // Additional validation: check if file actually exists
+      try {
+        final file = File(currentImagePath);
+        if (file.existsSync()) {
+          if (kDebugMode) {
+            print('Detected new local media file: $currentImagePath');
+          }
+          return true;
+        } else {
+          if (kDebugMode) {
+            print('Local media file does not exist: $currentImagePath');
+          }
+          return false;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error checking file existence for $currentImagePath: $e');
+        }
+        return false;
+      }
+    }
+    
+    // Case 4: Current media is different from existing (URL comparison)
+    if (currentImageUrl != null && existingImageUrl != null) {
+      return currentImageUrl != existingImageUrl;
+    }
+    
+    // Case 5: Current media path is different from existing (path comparison)
+    if (currentImagePath != null && existingImagePath != null) {
+      return currentImagePath != existingImagePath;
+    }
+    
+    // Case 6: Mixed comparison (one has URL, other has path) - assume different
+    if ((currentImageUrl != null && existingImagePath != null) ||
+        (currentImagePath != null && existingImageUrl != null)) {
+      return true;
+    }
+    
+    // Default: no change
+    return false;
   }
 
   @override
@@ -705,36 +1162,20 @@ class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
     }
   }
 
-  bool _isNewLocalFile(String? currentPath, String? existingStoragePath) {
-    if (currentPath == null || currentPath.isEmpty) {
-      return false;
-    }
-    
-    if (!File(currentPath).existsSync()) {
-      return false;
-    }
-    
-    if (existingStoragePath == null || existingStoragePath.isEmpty) {
-      return true;
-    }
-    
-    if (currentPath == existingStoragePath) {
-      return false;
-    }
-    
-    if (existingStoragePath.startsWith('tests/') && 
-        (existingStoragePath.contains('.jpg') || 
-         existingStoragePath.contains('.m4a') ||
-         existingStoragePath.contains('.mp3') ||
-         existingStoragePath.contains('.wav') ||
-         existingStoragePath.contains('.aac'))) {
-      return true;
-    }
-    
-    if (currentPath.startsWith('/') && existingStoragePath.startsWith('/')) {
-      return currentPath != existingStoragePath;
-    }
-    
-    return false;
+  bool _isCachedFile(String path) {
+    return path.startsWith('/') && 
+          (path.contains('tests_images_cache') || 
+            path.contains('tests_audio_cache'));
+  }
+
+  bool _isFirebaseStoragePath(String path) {
+    return path.startsWith('tests/') && 
+          (path.contains('.jpg') || 
+            path.contains('.jpeg') ||
+            path.contains('.png') ||
+            path.contains('.m4a') ||
+            path.contains('.mp3') ||
+            path.contains('.wav') ||
+            path.contains('.aac'));
   }
 }

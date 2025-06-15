@@ -1,11 +1,15 @@
 import 'package:equatable/equatable.dart';
+import 'package:korean_language_app/core/enums/question_type.dart';
 import 'test_answer.dart';
+import 'test_question.dart';
 
 class TestResult extends Equatable {
   final String id;
   final String testId;
   final String userId;
   final String testTitle;
+  final String testDescription;
+  final List<TestQuestion> testQuestions; // Store the actual questions from when test was taken
   final List<TestAnswer> answers;
   final int score; // percentage
   final int totalQuestions;
@@ -21,6 +25,8 @@ class TestResult extends Equatable {
     required this.testId,
     required this.userId,
     required this.testTitle,
+    required this.testDescription,
+    required this.testQuestions,
     required this.answers,
     required this.score,
     required this.totalQuestions,
@@ -37,6 +43,8 @@ class TestResult extends Equatable {
     String? testId,
     String? userId,
     String? testTitle,
+    String? testDescription,
+    List<TestQuestion>? testQuestions,
     List<TestAnswer>? answers,
     int? score,
     int? totalQuestions,
@@ -52,6 +60,8 @@ class TestResult extends Equatable {
       testId: testId ?? this.testId,
       userId: userId ?? this.userId,
       testTitle: testTitle ?? this.testTitle,
+      testDescription: testDescription ?? this.testDescription,
+      testQuestions: testQuestions ?? this.testQuestions,
       answers: answers ?? this.answers,
       score: score ?? this.score,
       totalQuestions: totalQuestions ?? this.totalQuestions,
@@ -74,6 +84,8 @@ class TestResult extends Equatable {
 
   String get formattedScore => '$score%';
   String get resultSummary => '$correctAnswers/$totalQuestions ($formattedScore)';
+
+  bool get isLegacyResult => testQuestions.isNotEmpty && testQuestions.first.id.startsWith('legacy_question_');
 
   factory TestResult.fromJson(Map<String, dynamic> json) {
     DateTime startedAt;
@@ -103,17 +115,42 @@ class TestResult extends Equatable {
           .toList();
     }
 
+    List<TestQuestion> testQuestions = [];
+    if (json['testQuestions'] is List) {
+      testQuestions = (json['testQuestions'] as List)
+          .map((q) => TestQuestion.fromJson(q as Map<String, dynamic>))
+          .toList();
+    } else {
+      // Legacy data - create placeholder questions for existing results
+      for (int i = 0; i < (json['totalQuestions'] as int? ?? 0); i++) {
+        testQuestions.add(TestQuestion(
+          id: 'legacy_question_$i',
+          question: 'Legacy Question ${i + 1}',
+          options: [
+            const AnswerOption(text: 'Option A'),
+            const AnswerOption(text: 'Option B'),
+            const AnswerOption(text: 'Option C'),
+            const AnswerOption(text: 'Option D'),
+          ],
+          correctAnswerIndex: 0, // We don't know the correct answer for legacy data
+          explanation: 'This is a legacy test result. Question details are not available.',
+        ));
+      }
+    }
+
     return TestResult(
-      id: json['id'] as String,
-      testId: json['testId'] as String,
-      userId: json['userId'] as String,
-      testTitle: json['testTitle'] as String,
+      id: json['id'] as String? ?? '',
+      testId: json['testId'] as String? ?? '',
+      userId: json['userId'] as String? ?? '',
+      testTitle: json['testTitle'] as String? ?? 'Legacy Test',
+      testDescription: json['testDescription'] as String? ?? '',
+      testQuestions: testQuestions,
       answers: answers,
-      score: json['score'] as int,
-      totalQuestions: json['totalQuestions'] as int,
-      correctAnswers: json['correctAnswers'] as int,
-      totalTimeSpent: json['totalTimeSpent'] as int,
-      isPassed: json['isPassed'] as bool,
+      score: json['score'] as int? ?? 0,
+      totalQuestions: json['totalQuestions'] as int? ?? 0,
+      correctAnswers: json['correctAnswers'] as int? ?? 0,
+      totalTimeSpent: json['totalTimeSpent'] as int? ?? 0,
+      isPassed: json['isPassed'] as bool? ?? false,
       startedAt: startedAt,
       completedAt: completedAt,
       metadata: json['metadata'] as Map<String, dynamic>?,
@@ -126,6 +163,8 @@ class TestResult extends Equatable {
       'testId': testId,
       'userId': userId,
       'testTitle': testTitle,
+      'testDescription': testDescription,
+      'testQuestions': testQuestions.map((q) => q.toJson()).toList(),
       'answers': answers.map((a) => a.toJson()).toList(),
       'score': score,
       'totalQuestions': totalQuestions,
@@ -144,6 +183,8 @@ class TestResult extends Equatable {
         testId,
         userId,
         testTitle,
+        testDescription,
+        testQuestions,
         answers,
         score,
         totalQuestions,

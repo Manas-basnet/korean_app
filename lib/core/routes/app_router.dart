@@ -29,6 +29,7 @@ import 'package:korean_language_app/features/test_upload/presentation/bloc/test_
 import 'package:korean_language_app/features/test_upload/presentation/pages/test_edit_page.dart';
 import 'package:korean_language_app/features/test_results/presentation/pages/test_result_page.dart';
 import 'package:korean_language_app/features/test_results/presentation/pages/test_results_history_page.dart';
+import 'package:korean_language_app/features/test_results/presentation/pages/test_review_page.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
@@ -160,6 +161,18 @@ class AppRouter {
           );
         },
       ),
+      GoRoute(
+        path: '/test-review',
+        name: 'testReview',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final result = state.extra as TestResult;
+          return BlocProvider<TestsCubit>(
+            create: (context) => sl<TestsCubit>(),
+            child: TestReviewPage(testResult: result),
+          );
+        },
+      ),
 
       // Main shell with bottom navigation
       ShellRoute(
@@ -179,6 +192,9 @@ class AppRouter {
               BlocProvider<ProfileCubit>(
                 create: (context) => sl<ProfileCubit>(),
               ),
+              BlocProvider<TestUploadCubit>(
+                create: (context) => sl<TestUploadCubit>(),
+              )
             ],
             child: ScaffoldWithBottomNavBar(child: child),
           );
@@ -218,20 +234,14 @@ class AppRouter {
               GoRoute(
                 path: '/tests/upload',
                 name: 'testUpload',
-                builder: (context, state) => BlocProvider<TestUploadCubit>(
-                  create: (context) => sl<TestUploadCubit>(),
-                  child: const TestUploadPage(),
-                ),
+                builder: (context, state) => const TestUploadPage(),
               ),
               GoRoute(
                 path: '/tests/edit/:testId',
                 name: 'testEdit',
                 builder: (context, state) {
                   final testId = state.pathParameters['testId']!;
-                  return BlocProvider<TestUploadCubit>(
-                    create: (context) => sl<TestUploadCubit>(),
-                    child: TestEditPage(testId: testId),
-                  );
+                  return TestEditPage(testId: testId);
                 },
               ),
               GoRoute(
@@ -351,6 +361,7 @@ class Routes {
   static const testUpload = '/tests/upload';
   static const testResults = '/tests/results';
   static const testResult = '/test-result';
+  static const testReview = '/test-review';
   static const unpublishedTests = '/tests/unpublished';
   static const testTakingBase = '/test-taking';
 

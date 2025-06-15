@@ -334,100 +334,131 @@ class _TestResultsHistoryPageState extends State<TestResultsHistoryPage> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _viewResultDetails(result),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      result.testTitle,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    result.testTitle,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: result.isPassed 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
                       color: result.isPassed 
-                          ? Colors.green.withValues(alpha: 0.1)
-                          : Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: result.isPassed 
-                            ? Colors.green.withValues(alpha: 0.3)
-                            : Colors.red.withValues(alpha: 0.3),
+                          ? Colors.green.withValues(alpha: 0.3)
+                          : Colors.red.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    result.isPassed 
+                        ? _languageCubit.getLocalizedText(korean: '합격', english: 'PASSED')
+                        : _languageCubit.getLocalizedText(korean: '불합격', english: 'FAILED'),
+                    style: TextStyle(
+                      color: result.isPassed ? Colors.green[800] : Colors.red[800],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                _buildResultInfo(
+                  Icons.percent,
+                  '${result.score}%',
+                  _languageCubit.getLocalizedText(korean: '점수', english: 'Score'),
+                  result.isPassed ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 16),
+                _buildResultInfo(
+                  Icons.check_circle_outline,
+                  '${result.correctAnswers}/${result.totalQuestions}',
+                  _languageCubit.getLocalizedText(korean: '정답', english: 'Correct'),
+                  Colors.blue,
+                ),
+                const SizedBox(width: 16),
+                _buildResultInfo(
+                  Icons.timer,
+                  result.formattedDuration,
+                  _languageCubit.getLocalizedText(korean: '시간', english: 'Time'),
+                  Colors.orange,
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDate(result.completedAt),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _reviewResult(result),
+                      icon: const Icon(Icons.rate_review_rounded, size: 16),
+                      label: Text(
+                        _languageCubit.getLocalizedText(
+                          korean: '리뷰',
+                          english: 'Review',
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: const Size(0, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
-                    child: Text(
-                      result.isPassed 
-                          ? _languageCubit.getLocalizedText(korean: '합격', english: 'PASSED')
-                          : _languageCubit.getLocalizedText(korean: '불합격', english: 'FAILED'),
-                      style: TextStyle(
-                        color: result.isPassed ? Colors.green[800] : Colors.red[800],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => _viewResultDetails(result),
+                      icon: const Icon(Icons.visibility_rounded, size: 16),
+                      label: Text(
+                        _languageCubit.getLocalizedText(
+                          korean: '상세',
+                          english: 'Details',
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: const Size(0, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              Row(
-                children: [
-                  _buildResultInfo(
-                    Icons.percent,
-                    '${result.score}%',
-                    _languageCubit.getLocalizedText(korean: '점수', english: 'Score'),
-                    result.isPassed ? Colors.green : Colors.red,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildResultInfo(
-                    Icons.check_circle_outline,
-                    '${result.correctAnswers}/${result.totalQuestions}',
-                    _languageCubit.getLocalizedText(korean: '정답', english: 'Correct'),
-                    Colors.blue,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildResultInfo(
-                    Icons.timer,
-                    result.formattedDuration,
-                    _languageCubit.getLocalizedText(korean: '시간', english: 'Time'),
-                    Colors.orange,
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDate(result.completedAt),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey[400],
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -477,6 +508,10 @@ class _TestResultsHistoryPageState extends State<TestResultsHistoryPage> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  void _reviewResult(TestResult result) {
+    context.push(Routes.testReview, extra: result);
   }
 
   void _viewResultDetails(TestResult result) {
