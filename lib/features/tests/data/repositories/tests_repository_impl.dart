@@ -285,18 +285,19 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final cachedTests = await localDataSource.getAllTests();
           final cachedTest = cachedTests.where((t) => t.id == testId).firstOrNull;
           
-          if (cachedTest != null && await _isCacheValid()) {
+          if (cachedTest == null) {
+            return ApiResult.failure('No cached test found', FailureType.cache);
+          }
+          
+          final hasAllMedia = await _hasAllMediaCached(cachedTest);
+          
+          if (await _isCacheValid() && hasAllMedia) {
             final processedTests = await _processTestsWithMedia([cachedTest]);
             return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
           }
           
-          if (cachedTest != null) {
-            final processedTests = await _processTestsWithMedia([cachedTest]);
-            dev.log('Returning expired cached test, will refresh from remote');
-            return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
-          }
-          
-          return ApiResult.failure('No cached test found', FailureType.cache);
+          dev.log('Cache expired or media missing for test ${cachedTest.id}, will refresh from remote');
+          return ApiResult.failure('Cache expired or media missing', FailureType.cache);
         },
         () async {
           final remoteTest = await remoteDataSource.getTestById(testId);
@@ -307,16 +308,15 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
             await localDataSource.updateTest(remoteTest);
             await _updateTestHash(remoteTest);
             dev.log('Caching full media for individual test: ${remoteTest.id}');
+
             _cacheTestMediaInBackground([remoteTest]);
           }
         },
       );
       
       if (result.isSuccess && result.data != null) {
-        if (result.data!.imagePath == null || result.data!.imagePath!.isEmpty) {
-          final processedTests = await _processTestsWithMedia([result.data!]);
-          return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
-        }
+        final processedTests = await _processTestsWithMedia([result.data!]);
+        return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
       }
       
       return result;
@@ -385,6 +385,63 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     }
   }
 
+  Future<bool> _hasAllMediaCached(TestItem test) async {
+    try {
+      if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
+        final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
+        if (cachedPath == null) {
+          dev.log('Cover image not cached for test: ${test.id}');
+          return false;
+        }
+      }
+      
+      for (int i = 0; i < test.questions.length; i++) {
+        final question = test.questions[i];
+        if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
+          final cachedPath = await localDataSource.getCachedImagePath(question.questionImageUrl!, test.id, 'question_$i');
+          if (cachedPath == null) {
+            dev.log('Question image not cached for test: ${test.id}, question: $i');
+            return false;
+          }
+        }
+        
+        if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+          final cachedPath = await localDataSource.getCachedAudioPath(question.questionAudioUrl!, test.id, 'question_audio_$i');
+          if (cachedPath == null) {
+            dev.log('Question audio not cached for test: ${test.id}, question: $i');
+            return false;
+          }
+        }
+        
+        for (int j = 0; j < question.options.length; j++) {
+          final option = question.options[j];
+          
+          if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedImagePath(option.imageUrl!, test.id, 'answer_${i}_$j');
+            if (cachedPath == null) {
+              dev.log('Answer image not cached for test: ${test.id}, question: $i, option: $j');
+              return false;
+            }
+          }
+
+          if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedAudioPath(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
+            if (cachedPath == null) {
+              dev.log('Answer audio not cached for test: ${test.id}, question: $i, option: $j');
+              return false;
+            }
+          }
+        }
+      }
+      
+      dev.log('All media cached for test: ${test.id}');
+      return true;
+    } catch (e) {
+      dev.log('Error checking cached media for test: ${test.id}, error: $e');
+      return false;
+    }
+  }
+  
   void _cacheTestMediaInBackground(List<TestItem> tests) {
     Future.microtask(() async {
       try {

@@ -22,7 +22,6 @@ void registerTestsDependencies(GetIt sl) {
   sl.registerFactory(() => TestSessionCubit(
     testResultsRepository: sl(), 
     authService: sl(),
-    testsRepository: sl(),
   ));
   
   sl.registerLazySingleton<TestsRepository>(
