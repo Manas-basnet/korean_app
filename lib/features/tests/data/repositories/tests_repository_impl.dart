@@ -49,7 +49,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
             dev.log('Requested page $page is within cached range but no data found');
             return ApiResult.success(<TestItem>[]);
           }
-
         }
         
         return ApiResult.failure('No cached data available', FailureType.cache);
@@ -61,20 +60,17 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       cacheData: (remoteTests) async {
         if (page == 0) {
           await _cacheTestsDataOnly(remoteTests);
-          _cacheTestMediaInBackground(remoteTests);
+          _cacheCoverImagesInBackground(remoteTests);
         } else {
           await _updateCacheWithNewTestsDataOnly(remoteTests);
-          _cacheTestMediaInBackground(remoteTests);
+          _cacheCoverImagesInBackground(remoteTests);
         }
       },
     );
     
     if (result.isSuccess && result.data != null) {
-      final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
-      if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithMedia(result.data!);
-        return ApiResult.success(processedTests);
-      }
+      final processedTests = await _processTestsWithMedia(result.data!);
+      return ApiResult.success(processedTests);
     }
     
     return result;
@@ -115,43 +111,17 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       },
       cacheData: (remoteTests) async {
         await _updateCacheWithNewTestsDataOnly(remoteTests);
-        _cacheTestMediaInBackground(remoteTests);
+        _cacheCoverImagesInBackground(remoteTests);
       },
     );
     
     if (result.isSuccess && result.data != null) {
-      final firstItem = result.data!.isNotEmpty ? result.data!.first : null;
-      if (firstItem != null && (firstItem.imagePath == null || firstItem.imagePath!.isEmpty)) {
-        final processedTests = await _processTestsWithMedia(result.data!);
-        return ApiResult.success(processedTests);
-      }
+      final processedTests = await _processTestsWithMedia(result.data!);
+      return ApiResult.success(processedTests);
     }
     
     return result;
   }
-  // Tried to use cache first call but it didn't work
-  // @override
-  // Future<ApiResult<bool>> hasMoreTests(int currentCount) async {
-  //   return handleCacheFirstCall<bool>(
-  //     () async {
-  //       try {
-  //         final cachedTotal = await localDataSource.getTotalTestsCount();
-  //         if (cachedTotal != null && await _isCacheValid()) {
-  //           return ApiResult.success(currentCount < cachedTotal);
-  //         }
-          
-  //         final totalCached = await localDataSource.getTestsCount();
-  //         return ApiResult.success(currentCount < totalCached);
-  //       } catch (e) {
-  //         return ApiResult.failure('Cache check failed', FailureType.cache);
-  //       }
-  //     },
-  //     () async {
-  //       final hasMore = await remoteDataSource.hasMoreTests(currentCount);
-  //       return ApiResult.success(hasMore);
-  //     },
-  //   );
-  // }
 
   @override
   Future<ApiResult<bool>> hasMoreTests(int currentCount) async {
@@ -212,7 +182,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       },
       cacheData: (remoteTests) async {
         await _cacheTestsDataOnly(remoteTests);
-        _cacheTestMediaInBackground(remoteTests);
+        _cacheCoverImagesInBackground(remoteTests);
       },
     );
     
@@ -244,7 +214,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       },
       cacheData: (remoteTests) async {
         await _updateCacheWithNewTestsDataOnly(remoteTests);
-        _cacheTestMediaInBackground(remoteTests);
+        _cacheCoverImagesInBackground(remoteTests);
       },
     );
     
@@ -272,7 +242,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           
           if (remoteResults.isNotEmpty) {
             await _updateCacheWithNewTestsDataOnly(remoteResults);
-            _cacheTestMediaInBackground(remoteResults);
+            _cacheCoverImagesInBackground(remoteResults);
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
@@ -336,6 +306,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           if (remoteTest != null) {
             await localDataSource.updateTest(remoteTest);
             await _updateTestHash(remoteTest);
+            dev.log('Caching full media for individual test: ${remoteTest.id}');
             _cacheTestMediaInBackground([remoteTest]);
           }
         },
@@ -395,7 +366,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       await localDataSource.setLastSyncTime(DateTime.now());
       await _updateTestsHashes(tests);
       
-      dev.log('Cached ${tests.length} tests data only (media will be cached in background)');
+      dev.log('Cached ${tests.length} tests data only (media will be cached on-demand)');
     } catch (e) {
       dev.log('Failed to cache tests data: $e');
     }
@@ -408,7 +379,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         await _updateTestHash(test);
       }
       
-      dev.log('Added ${newTests.length} new tests data to cache (media will be cached in background)');
+      dev.log('Added ${newTests.length} new tests data to cache (media will be cached on-demand)');
     } catch (e) {
       dev.log('Failed to update cache with new tests data: $e');
     }
@@ -426,33 +397,74 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     });
   }
 
-  Future<void> _cacheTestMedia(List<TestItem> tests) async {
+  void _cacheCoverImagesInBackground(List<TestItem> tests) {
+    Future.microtask(() async {
+      try {
+        dev.log('Starting background cover image caching for ${tests.length} tests...');
+        await _cacheCoverImages(tests);
+        dev.log('Completed background cover image caching for ${tests.length} tests');
+      } catch (e) {
+        dev.log('Background cover image caching failed: $e');
+      }
+    });
+  }
+
+  Future<void> _cacheCoverImages(List<TestItem> tests) async {
     try {
       for (final test in tests) {
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
-          await localDataSource.cacheImage(test.imageUrl!, test.id, 'main');
+          final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
+          if (cachedPath == null) {
+            dev.log('Caching cover image for test: ${test.id}');
+            await localDataSource.cacheImage(test.imageUrl!, test.id, 'main');
+          } else {
+            dev.log('Cover image already cached for test: ${test.id}');
+          }
         }
+      }
+    } catch (e) {
+      dev.log('Error caching cover images: $e');
+    }
+  }
+
+  Future<void> _cacheTestMedia(List<TestItem> tests) async {
+    try {
+      for (final test in tests) {
+        // Cover image is cached separately when loading test lists
+        // This method only caches question media (for individual test access)
         
         for (int i = 0; i < test.questions.length; i++) {
           final question = test.questions[i];
           
           if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
-            await localDataSource.cacheImage(question.questionImageUrl!, test.id, 'question_$i');
+            final cachedPath = await localDataSource.getCachedImagePath(question.questionImageUrl!, test.id, 'question_$i');
+            if (cachedPath == null) {
+              await localDataSource.cacheImage(question.questionImageUrl!, test.id, 'question_$i');
+            }
           }
 
           if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
-            await localDataSource.cacheAudio(question.questionAudioUrl!, test.id, 'question_audio_$i');
+            final cachedPath = await localDataSource.getCachedAudioPath(question.questionAudioUrl!, test.id, 'question_audio_$i');
+            if (cachedPath == null) {
+              await localDataSource.cacheAudio(question.questionAudioUrl!, test.id, 'question_audio_$i');
+            }
           }
 
           for (int j = 0; j < question.options.length; j++) {
             final option = question.options[j];
             
             if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
-              await localDataSource.cacheImage(option.imageUrl!, test.id, 'answer_${i}_$j');
+              final cachedPath = await localDataSource.getCachedImagePath(option.imageUrl!, test.id, 'answer_${i}_$j');
+              if (cachedPath == null) {
+                await localDataSource.cacheImage(option.imageUrl!, test.id, 'answer_${i}_$j');
+              }
             }
             
             if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
-              await localDataSource.cacheAudio(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
+              final cachedPath = await localDataSource.getCachedAudioPath(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
+              if (cachedPath == null) {
+                await localDataSource.cacheAudio(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
+              }
             }
           }
         }
@@ -488,7 +500,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         for (final test in tests) {
           TestItem updatedTest = test;
           
-          // Process main test image
           if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
             final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
             if (cachedPath != null) {
@@ -496,7 +507,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
               updatedTest = updatedTest.copyWith(imagePath: cachedPath);
             } else {
               dev.log('No cached image found for test ${test.id}, will use network URL');
-              // Clear any existing invalid path
               if (test.imagePath != null && test.imagePath!.isNotEmpty) {
                 updatedTest = updatedTest.copyWith(imagePath: null);
               }
@@ -508,7 +518,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
             final question = test.questions[i];
             TestQuestion updatedQuestion = question;
             
-            // Process question image
             if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
               final cachedPath = await localDataSource.getCachedImagePath(
                 question.questionImageUrl!, test.id, 'question_$i'
@@ -518,14 +527,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
                 updatedQuestion = updatedQuestion.copyWith(questionImagePath: cachedPath);
               } else {
                 dev.log('No cached question image found for test ${test.id}, question $i');
-                // Clear any existing invalid path
                 if (question.questionImagePath != null && question.questionImagePath!.isNotEmpty) {
                   updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
                 }
               }
             }
 
-            // Process question audio
             if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
               final cachedPath = await localDataSource.getCachedAudioPath(
                 question.questionAudioUrl!, test.id, 'question_audio_$i'
@@ -535,20 +542,17 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
                 updatedQuestion = updatedQuestion.copyWith(questionAudioPath: cachedPath);
               } else {
                 dev.log('No cached question audio found for test ${test.id}, question $i');
-                // Clear any existing invalid path
                 if (question.questionAudioPath != null && question.questionAudioPath!.isNotEmpty) {
                   updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
                 }
               }
             }
             
-            // Process answer options
             final updatedOptions = <AnswerOption>[];
             for (int j = 0; j < question.options.length; j++) {
               final option = question.options[j];
               AnswerOption updatedOption = option;
               
-              // Process option image
               if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
                 final cachedPath = await localDataSource.getCachedImagePath(
                   option.imageUrl!, test.id, 'answer_${i}_$j'
@@ -558,14 +562,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
                   updatedOption = updatedOption.copyWith(imagePath: cachedPath);
                 } else {
                   dev.log('No cached answer image found for test ${test.id}, question $i, option $j');
-                  // Clear any existing invalid path
                   if (option.imagePath != null && option.imagePath!.isNotEmpty) {
                     updatedOption = updatedOption.copyWith(imagePath: null);
                   }
                 }
               }
               
-              // Process option audio
               if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
                 final cachedPath = await localDataSource.getCachedAudioPath(
                   option.audioUrl!, test.id, 'answer_audio_${i}_$j'
@@ -575,7 +577,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
                   updatedOption = updatedOption.copyWith(audioPath: cachedPath);
                 } else {
                   dev.log('No cached answer audio found for test ${test.id}, question $i, option $j');
-                  // Clear any existing invalid path
                   if (option.audioPath != null && option.audioPath!.isNotEmpty) {
                     updatedOption = updatedOption.copyWith(audioPath: null);
                   }
@@ -597,7 +598,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return processedTests;
       } catch (e) {
         dev.log('Error processing tests with media: $e');
-        return tests; // Return original tests if processing fails
+        return tests;
       }
     }
 

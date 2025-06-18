@@ -19,7 +19,11 @@ import 'package:korean_language_app/features/unpublished_tests/presentation/bloc
 void registerTestsDependencies(GetIt sl) {
   sl.registerFactory(() => TestsCubit(repository: sl(), authService: sl(), adminService: sl()));
   sl.registerFactory(() => TestSearchCubit(repository: sl(), authService: sl(), adminService: sl()));
-  sl.registerFactory(() => TestSessionCubit(testResultsRepository: sl(), authService: sl()));
+  sl.registerFactory(() => TestSessionCubit(
+    testResultsRepository: sl(), 
+    authService: sl(),
+    testsRepository: sl(),
+  ));
   
   sl.registerLazySingleton<TestsRepository>(
     () => TestsRepositoryImpl(
