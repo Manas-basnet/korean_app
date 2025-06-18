@@ -551,113 +551,118 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   Future<List<TestItem>> _processTestsWithMedia(List<TestItem> tests) async {
-      try {
-        final processedTests = <TestItem>[];
+    try {
+      final processedTests = <TestItem>[];
+      
+      for (final test in tests) {
+        TestItem updatedTest = test;
         
-        for (final test in tests) {
-          TestItem updatedTest = test;
-          
-          if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
-            final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
-            if (cachedPath != null) {
-              dev.log('Using cached image for test ${test.id}: $cachedPath');
-              updatedTest = updatedTest.copyWith(imagePath: cachedPath);
-            } else {
-              dev.log('No cached image found for test ${test.id}, will use network URL');
-              if (test.imagePath != null && test.imagePath!.isNotEmpty) {
-                updatedTest = updatedTest.copyWith(imagePath: null);
-              }
-            }
+        if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
+          final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
+          if (cachedPath != null) {
+            dev.log('Using cached image for test ${test.id}: $cachedPath');
+            updatedTest = updatedTest.copyWith(
+              imagePath: cachedPath,
+              imageUrl: null
+            );
+          } else {
+            dev.log('No cached image found for test ${test.id}, will use network URL');
+            updatedTest = updatedTest.copyWith(imagePath: null);
           }
-          
-          final updatedQuestions = <TestQuestion>[];
-          for (int i = 0; i < test.questions.length; i++) {
-            final question = test.questions[i];
-            TestQuestion updatedQuestion = question;
-            
-            if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
-              final cachedPath = await localDataSource.getCachedImagePath(
-                question.questionImageUrl!, test.id, 'question_$i'
-              );
-              if (cachedPath != null) {
-                dev.log('Using cached question image for test ${test.id}, question $i: $cachedPath');
-                updatedQuestion = updatedQuestion.copyWith(questionImagePath: cachedPath);
-              } else {
-                dev.log('No cached question image found for test ${test.id}, question $i');
-                if (question.questionImagePath != null && question.questionImagePath!.isNotEmpty) {
-                  updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
-                }
-              }
-            }
-
-            if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
-              final cachedPath = await localDataSource.getCachedAudioPath(
-                question.questionAudioUrl!, test.id, 'question_audio_$i'
-              );
-              if (cachedPath != null) {
-                dev.log('Using cached question audio for test ${test.id}, question $i: $cachedPath');
-                updatedQuestion = updatedQuestion.copyWith(questionAudioPath: cachedPath);
-              } else {
-                dev.log('No cached question audio found for test ${test.id}, question $i');
-                if (question.questionAudioPath != null && question.questionAudioPath!.isNotEmpty) {
-                  updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
-                }
-              }
-            }
-            
-            final updatedOptions = <AnswerOption>[];
-            for (int j = 0; j < question.options.length; j++) {
-              final option = question.options[j];
-              AnswerOption updatedOption = option;
-              
-              if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
-                final cachedPath = await localDataSource.getCachedImagePath(
-                  option.imageUrl!, test.id, 'answer_${i}_$j'
-                );
-                if (cachedPath != null) {
-                  dev.log('Using cached answer image for test ${test.id}, question $i, option $j: $cachedPath');
-                  updatedOption = updatedOption.copyWith(imagePath: cachedPath);
-                } else {
-                  dev.log('No cached answer image found for test ${test.id}, question $i, option $j');
-                  if (option.imagePath != null && option.imagePath!.isNotEmpty) {
-                    updatedOption = updatedOption.copyWith(imagePath: null);
-                  }
-                }
-              }
-              
-              if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
-                final cachedPath = await localDataSource.getCachedAudioPath(
-                  option.audioUrl!, test.id, 'answer_audio_${i}_$j'
-                );
-                if (cachedPath != null) {
-                  dev.log('Using cached answer audio for test ${test.id}, question $i, option $j: $cachedPath');
-                  updatedOption = updatedOption.copyWith(audioPath: cachedPath);
-                } else {
-                  dev.log('No cached answer audio found for test ${test.id}, question $i, option $j');
-                  if (option.audioPath != null && option.audioPath!.isNotEmpty) {
-                    updatedOption = updatedOption.copyWith(audioPath: null);
-                  }
-                }
-              }
-              
-              updatedOptions.add(updatedOption);
-            }
-            
-            updatedQuestion = updatedQuestion.copyWith(options: updatedOptions);
-            updatedQuestions.add(updatedQuestion);
-          }
-          
-          updatedTest = updatedTest.copyWith(questions: updatedQuestions);
-          processedTests.add(updatedTest);
         }
         
-        dev.log('Processed ${processedTests.length} tests with media paths');
-        return processedTests;
-      } catch (e) {
-        dev.log('Error processing tests with media: $e');
-        return tests;
+        final updatedQuestions = <TestQuestion>[];
+        for (int i = 0; i < test.questions.length; i++) {
+          final question = test.questions[i];
+          TestQuestion updatedQuestion = question;
+          
+          if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedImagePath(
+              question.questionImageUrl!, test.id, 'question_$i'
+            );
+            if (cachedPath != null) {
+              dev.log('Using cached question image for test ${test.id}, question $i: $cachedPath');
+              updatedQuestion = updatedQuestion.copyWith(
+                questionImagePath: cachedPath,
+                questionImageUrl: null,
+              );
+            } else {
+              dev.log('No cached question image found for test ${test.id}, question $i');
+              updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
+            }
+          }
+
+          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+            final cachedPath = await localDataSource.getCachedAudioPath(
+              question.questionAudioUrl!, test.id, 'question_audio_$i'
+            );
+            if (cachedPath != null) {
+              dev.log('Using cached question audio for test ${test.id}, question $i: $cachedPath');
+              updatedQuestion = updatedQuestion.copyWith(
+                questionAudioPath: cachedPath,
+                questionAudioUrl: null,
+              );
+            } else {
+              dev.log('No cached question audio found for test ${test.id}, question $i');
+              updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
+            }
+          }
+          
+          final updatedOptions = <AnswerOption>[];
+          for (int j = 0; j < question.options.length; j++) {
+            final option = question.options[j];
+            AnswerOption updatedOption = option;
+            
+            if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
+              final cachedPath = await localDataSource.getCachedImagePath(
+                option.imageUrl!, test.id, 'answer_${i}_$j'
+              );
+              if (cachedPath != null) {
+                dev.log('Using cached answer image for test ${test.id}, question $i, option $j: $cachedPath');
+                updatedOption = updatedOption.copyWith(
+                  imagePath: cachedPath,
+                  imageUrl: null,
+                );
+              } else {
+                dev.log('No cached answer image found for test ${test.id}, question $i, option $j');
+                updatedOption = updatedOption.copyWith(imagePath: null);
+              }
+            }
+            
+            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+              final cachedPath = await localDataSource.getCachedAudioPath(
+                option.audioUrl!, test.id, 'answer_audio_${i}_$j'
+              );
+              if (cachedPath != null) {
+                dev.log('Using cached answer audio for test ${test.id}, question $i, option $j: $cachedPath');
+                updatedOption = updatedOption.copyWith(
+                  audioPath: cachedPath,
+                  audioUrl: null,
+                );
+              } else {
+                dev.log('No cached answer audio found for test ${test.id}, question $i, option $j');
+                updatedOption = updatedOption.copyWith(audioPath: null);
+              }
+            }
+            
+            updatedOptions.add(updatedOption);
+          }
+          
+          updatedQuestion = updatedQuestion.copyWith(options: updatedOptions);
+          updatedQuestions.add(updatedQuestion);
+        }
+        
+        updatedTest = updatedTest.copyWith(questions: updatedQuestions);
+        processedTests.add(updatedTest);
       }
+      
+      dev.log('Processed ${processedTests.length} tests with media paths');
+      return processedTests;
+    } catch (e) {
+      dev.log('Error processing tests with media: $e');
+      return tests;
     }
+  }
 
   List<TestItem> _combineAndDeduplicateResults(
     List<TestItem> cachedTests,
