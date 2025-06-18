@@ -77,26 +77,15 @@ class _TestTakingPageState extends State<TestTakingPage>
   }
 
   Future<void> _loadAndStartTest() async {
-    try {
-      await _testsCubit.loadTestById(widget.testId);
-
-      final testsState = _testsCubit.state;
-      if (testsState.selectedTest != null) {
-        _sessionCubit.startTest(testsState.selectedTest!);
-        _slideAnimationController.forward();
-      } else {
-        _snackBarCubit.showErrorLocalized(
-          korean: '시험을 찾을 수 없습니다',
-          english: 'Test not found',
-        );
-        if (mounted) {
-          context.pop();
-        }
-      }
-    } catch (e) {
+    final testsState = _testsCubit.state;
+    
+    if (testsState.selectedTest != null && testsState.selectedTest!.id == widget.testId) {
+      _sessionCubit.startTest(testsState.selectedTest!);
+      _slideAnimationController.forward();
+    } else {
       _snackBarCubit.showErrorLocalized(
-        korean: '시험을 불러오는 중 오류가 발생했습니다',
-        english: 'Error loading test',
+        korean: '시험 데이터를 찾을 수 없습니다',
+        english: 'Test data not found',
       );
       if (mounted) {
         context.pop();

@@ -598,7 +598,8 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
-  void _startTest(TestItem test) {
+  
+  void _startTest(TestItem test) async {
     if (test.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
         korean: '시험 ID가 유효하지 않습니다',
@@ -606,9 +607,52 @@ class _TestsPageState extends State<TestsPage> {
       );
       return;
     }
-    context.push(Routes.testTaking(test.id));
+
+    _snackBarCubit.showProgressLocalized(
+      korean: '시험을 준비하고 있습니다...',
+      english: 'Preparing test...',
+    );
+
+    try {
+      await _testsCubit.loadTestById(test.id);
+
+      final testsState = _testsCubit.state;
+      final operation = testsState.currentOperation;
+      
+      if (operation.type == TestsOperationType.loadTestById && 
+          operation.status == TestsOperationStatus.completed && 
+          testsState.selectedTest != null) {
+        _snackBarCubit.dismiss();
+        context.push(Routes.testTaking(test.id));
+      } else {
+        String errorMessage;
+        if (testsState.hasError) {
+          errorMessage = testsState.errorType == FailureType.network
+              ? _languageCubit.getLocalizedText(
+                  korean: '오프라인 상태에서는 캐시된 시험만 이용할 수 있습니다',
+                  english: 'Only cached tests are available offline',
+                )
+              : testsState.error ?? _languageCubit.getLocalizedText(
+                  korean: '시험을 불러올 수 없습니다',
+                  english: 'Failed to load test',
+                );
+        } else {
+          errorMessage = _languageCubit.getLocalizedText(
+            korean: '시험을 찾을 수 없습니다',
+            english: 'Test not found',
+          );
+        }
+        
+        _snackBarCubit.showError(message: errorMessage);
+      }
+    } catch (e) {
+      _snackBarCubit.showErrorLocalized(
+        korean: '시험을 불러오는 중 오류가 발생했습니다',
+        english: 'Error loading test',
+      );
+    }
   }
-  
+    
   void _viewTestDetails(TestItem test) {
     showModalBottomSheet(
       context: context,

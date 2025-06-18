@@ -378,6 +378,7 @@ class TestsCubit extends Cubit<TestsState> {
 
     try {
       emit(state.copyWith(
+        selectedTest: null,
         currentOperation: TestsOperation(
           type: TestsOperationType.loadTestById,
           status: TestsOperationStatus.inProgress,
