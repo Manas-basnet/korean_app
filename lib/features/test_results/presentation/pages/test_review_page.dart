@@ -6,6 +6,7 @@ import 'package:korean_language_app/core/presentation/language_preference/bloc/l
 import 'package:korean_language_app/core/shared/models/test_question.dart';
 import 'package:korean_language_app/core/shared/models/test_result.dart';
 import 'package:korean_language_app/core/shared/models/test_answer.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
@@ -92,37 +93,6 @@ class _TestReviewPageState extends State<TestReviewPage>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildQuestionNavigationSheet(),
-    );
-  }
-
-  void _showFullScreenImage(String? imageUrl, String? imagePath, String type) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: CustomCachedImage(
-                imageUrl: imageUrl,
-                imagePath: imagePath,
-                fit: BoxFit.contain,
-              ),
-            ),
-            Positioned(
-              top: 16,
-              right: 16,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close, color: Colors.white),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -391,7 +361,7 @@ class _TestReviewPageState extends State<TestReviewPage>
 
   Widget _buildQuestionImage(String? imageUrl, String? imagePath, {bool isLandscape = false, bool isFixed = false}) {
     return GestureDetector(
-      onTap: () => _showFullScreenImage(imageUrl, imagePath, 'question'),
+      onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
       child: Container(
         constraints: isFixed ? const BoxConstraints.expand() : BoxConstraints(
           maxHeight: isLandscape ? 200 : 250,
@@ -579,7 +549,7 @@ class _TestReviewPageState extends State<TestReviewPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green,
+              color: colorScheme.primary,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -609,7 +579,7 @@ class _TestReviewPageState extends State<TestReviewPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.red,
+              color: colorScheme.primary,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -729,7 +699,7 @@ class _TestReviewPageState extends State<TestReviewPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => _showFullScreenImage(option.imageUrl, option.imagePath, 'answer'),
+            onTap: () => DialogUtils.showFullScreenImage(context, option.imageUrl, option.imagePath),
             child: Container(
               constraints: BoxConstraints(maxHeight: isCompact ? 80 : 120),
               child: CustomCachedImage(

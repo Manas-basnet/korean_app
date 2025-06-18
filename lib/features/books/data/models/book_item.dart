@@ -41,7 +41,6 @@ class BookItem {
     this.updatedAt,
   });
 
-  // Add copyWith method to create a copy with some properties changed
   BookItem copyWith({
     String? id,
     String? title,
@@ -93,7 +92,6 @@ class BookItem {
   int get hashCode => id.hashCode;
 
   factory BookItem.fromJson(Map<String, dynamic> json) {
-    // Handle level conversion
     BookLevel level;
     if (json['level'] is int) {
       level = BookLevel.values[json['level']];
@@ -106,7 +104,6 @@ class BookItem {
       level = BookLevel.beginner;
     }
     
-    // Handle course category conversion
     CourseCategory courseCategory;
     if (json['courseCategory'] is int) {
       courseCategory = CourseCategory.values[json['courseCategory']];
@@ -119,29 +116,22 @@ class BookItem {
       courseCategory = CourseCategory.korean;
     }
     
-    // Handle icon conversion
+    // Fixed icon handling - only use constant IconData instances
     IconData icon;
     if (json['iconCodePoint'] != null) {
       icon = _iconMapping[json['iconCodePoint']] ?? Icons.book;
     } else if (json['icon'] is int) {
-      final iconData = json['icon'];
-      final iconFontFamily = json['iconFontFamily'] as String? ?? 'MaterialIcons';
-      icon = IconData(
-        iconData,
-        fontFamily: iconFontFamily,
-        fontPackage: json['iconFontPackage'] as String?,
-      );
+      // Look up the icon in our mapping instead of creating dynamic IconData
+      icon = _iconMapping[json['icon']] ?? Icons.book;
     } else {
       icon = Icons.book;
     }
     
-    // Handle dates
     DateTime? createdAt;
     if (json['createdAt'] != null) {
       if (json['createdAt'] is int) {
         createdAt = DateTime.fromMillisecondsSinceEpoch(json['createdAt']);
       } else if (json['createdAt'] is Map) {
-        // Handle Firestore Timestamp
         final seconds = json['createdAt']['_seconds'] as int?;
         if (seconds != null) {
           createdAt = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
@@ -154,7 +144,6 @@ class BookItem {
       if (json['updatedAt'] is int) {
         updatedAt = DateTime.fromMillisecondsSinceEpoch(json['updatedAt']);
       } else if (json['updatedAt'] is Map) {
-        // Handle Firestore Timestamp
         final seconds = json['updatedAt']['_seconds'] as int?;
         if (seconds != null) {
           updatedAt = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
@@ -207,7 +196,7 @@ class BookItem {
     };
   }
 
-  static final Map<int, IconData> _iconMapping = {
+  static  final Map<int, IconData> _iconMapping = {
     // Icons used in your Korean books list
     Icons.menu_book.codePoint: Icons.menu_book,
     Icons.quiz.codePoint: Icons.quiz,
@@ -221,8 +210,6 @@ class BookItem {
     Icons.edit.codePoint: Icons.edit,
     Icons.forum.codePoint: Icons.forum,
     Icons.book.codePoint: Icons.book,
-    
-    // Add a fallback icon
     Icons.help_outline.codePoint: Icons.help_outline,
   };
 }

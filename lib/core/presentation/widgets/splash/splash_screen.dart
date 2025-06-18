@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -32,9 +33,9 @@ class _SplashScreenState extends State<SplashScreen> {
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            context.go('/home');
+            context.go(Routes.home);
           } else if (state is Unauthenticated) {
-            context.go('/login');
+            context.go(Routes.login);
           }
         },
         child: const Center(

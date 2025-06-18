@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
 
@@ -153,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  context.push('/forgot-password');
+                                  context.push(Routes.forgotPassword);
                                 },
                                 child: Text(
                                   languageCubit.getLocalizedText(
@@ -220,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     TextButton(
                                       onPressed: () {
-                                        context.push('/register');
+                                        context.push(Routes.register);
                                       },
                                       child: Text(
                                         languageCubit.getLocalizedText(
@@ -246,7 +247,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     TextButton(
                                       onPressed: () {
-                                        context.push('/admin-signup');
+                                        context.push(Routes.adminSignup);
                                       },
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.deepPurple,

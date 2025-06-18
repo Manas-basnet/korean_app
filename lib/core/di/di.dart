@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:korean_language_app/core/di/admin_di.dart';
 import 'package:korean_language_app/core/di/auth_di.dart';
 import 'package:korean_language_app/core/di/books_di.dart';
@@ -41,7 +40,6 @@ Future<void> _registerExternalDependencies() async {
   sl.registerLazySingleton(() => sharedPreferences);
   
   // Network related
-  sl.registerLazySingleton(() => InternetConnectionChecker());
   sl.registerLazySingleton(() => Connectivity());
   
   // Firebase services

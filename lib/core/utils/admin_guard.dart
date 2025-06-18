@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 
@@ -62,7 +63,7 @@ mixin AdminAccessMixin<T extends StatefulWidget> on State<T> {
       );
       
       // Redirect to home page
-      context.go('/home');
+      context.go(Routes.home);
     }
     
     _checkedAdminStatus = true;

@@ -7,8 +7,10 @@ import 'package:korean_language_app/core/enums/book_level.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
 import 'package:korean_language_app/features/test_upload/presentation/pages/question_editor_page.dart';
@@ -112,7 +114,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
               korean: '시험이 성공적으로 업로드되었습니다',
               english: 'Test uploaded successfully',
             );
-            context.go('/tests');
+            context.go(Routes.tests);
           } else if (state.currentOperation.status == TestUploadOperationStatus.failed) {
             _snackBarCubit.showErrorLocalized(
               korean: state.error ?? '시험 업로드에 실패했습니다',
@@ -453,13 +455,16 @@ class _TestUploadPageState extends State<TestUploadPage> {
         if (_selectedImage != null)
           Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _selectedImage!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+              GestureDetector(
+                onTap: () => DialogUtils.showFullScreenImage(context, null, _selectedImage!.path),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _selectedImage!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               Positioned(

@@ -8,6 +8,7 @@ import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cub
 import 'package:korean_language_app/core/shared/models/test_question.dart';
 import 'package:korean_language_app/core/shared/widgets/audio_player.dart';
 import 'package:korean_language_app/core/shared/widgets/audio_recorder.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
 class QuestionEditorPage extends StatefulWidget {
@@ -641,7 +642,9 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
   }) {
     return Stack(
       children: [
-        ClipRRect(
+      GestureDetector(
+        onTap: () => DialogUtils.showFullScreenImage(context, null, image.path),
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.file(
             image,
@@ -650,6 +653,7 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
             fit: BoxFit.cover,
           ),
         ),
+      ),
         Positioned(
           top: 8,
           right: 8,
@@ -678,14 +682,17 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
   }) {
     return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CustomCachedImage(
-            imageUrl: imageUrl,
-            imagePath: imagePath,
-            height: height ?? 200,
-            width: double.infinity,
-            fit: BoxFit.cover,
+        GestureDetector(
+          onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: CustomCachedImage(
+              imageUrl: imageUrl,
+              imagePath: imagePath,
+              height: height ?? 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         Positioned(

@@ -10,6 +10,7 @@ import 'package:korean_language_app/core/presentation/language_preference/bloc/l
 import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/shared/models/test_item.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
 import 'package:korean_language_app/features/test_upload/presentation/pages/question_editor_page.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
@@ -530,13 +531,16 @@ class _TestEditPageState extends State<TestEditPage> {
         if (_selectedImage != null)
           Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _selectedImage!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+              GestureDetector(
+                onTap: () => DialogUtils.showFullScreenImage(context, null, _selectedImage!.path),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _selectedImage!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               Positioned(
@@ -567,23 +571,30 @@ class _TestEditPageState extends State<TestEditPage> {
         else if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
           Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
+              GestureDetector(
+                onTap: () => DialogUtils.showFullScreenImage(
+                  context,
                   _currentImageUrl!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(child: Icon(Icons.broken_image)),
-                    );
-                  },
+                  null,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    _currentImageUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(child: Icon(Icons.broken_image)),
+                      );
+                    },
+                  ),
                 ),
               ),
               Positioned(

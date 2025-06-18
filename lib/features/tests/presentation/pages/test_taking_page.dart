@@ -8,6 +8,7 @@ import 'package:korean_language_app/core/presentation/language_preference/bloc/l
 import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
@@ -30,6 +31,7 @@ class _TestTakingPageState extends State<TestTakingPage>
   late AnimationController _slideAnimationController;
   late Animation<double> _slideAnimation;
   Timer? _autoAdvanceTimer;
+  bool _isNavigatingToResult = false;
 
   TestSessionCubit get _sessionCubit => context.read<TestSessionCubit>();
   TestsCubit get _testsCubit => context.read<TestsCubit>();
@@ -75,18 +77,30 @@ class _TestTakingPageState extends State<TestTakingPage>
   }
 
   Future<void> _loadAndStartTest() async {
-    await _testsCubit.loadTestById(widget.testId);
+    try {
+      await _testsCubit.loadTestById(widget.testId);
 
-    final testsState = _testsCubit.state;
-    if (testsState.selectedTest != null) {
-      _sessionCubit.startTest(testsState.selectedTest!);
-      _slideAnimationController.forward();
-    } else {
+      final testsState = _testsCubit.state;
+      if (testsState.selectedTest != null) {
+        _sessionCubit.startTest(testsState.selectedTest!);
+        _slideAnimationController.forward();
+      } else {
+        _snackBarCubit.showErrorLocalized(
+          korean: '시험을 찾을 수 없습니다',
+          english: 'Test not found',
+        );
+        if (mounted) {
+          context.pop();
+        }
+      }
+    } catch (e) {
       _snackBarCubit.showErrorLocalized(
-        korean: '시험을 찾을 수 없습니다',
-        english: 'Test not found',
+        korean: '시험을 불러오는 중 오류가 발생했습니다',
+        english: 'Error loading test',
       );
-      context.pop();
+      if (mounted) {
+        context.pop();
+      }
     }
   }
 
@@ -106,78 +120,6 @@ class _TestTakingPageState extends State<TestTakingPage>
         DeviceOrientation.portraitDown,
       ]);
     }
-  }
-
-  void _showFullScreenImage(String? imageUrl, String? imagePath, String type) {
-    if ((imageUrl?.isEmpty ?? true) && (imagePath?.isEmpty ?? true)) {
-      _snackBarCubit.showErrorLocalized(
-        korean: '이미지를 찾을 수 없습니다',
-        english: 'Image not found',
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (context) => Dialog.fullscreen(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                panEnabled: true,
-                boundaryMargin: const EdgeInsets.all(20),
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: CustomCachedImage(
-                  imageUrl: imageUrl,
-                  imagePath: imagePath,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => Center(
-                    child: CircularProgressIndicator(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.broken_image_rounded,
-                          size: 64,
-                          color: Colors.white54,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _languageCubit.getLocalizedText(
-                            korean: '이미지를 불러올 수 없습니다',
-                            english: 'Cannot load image',
-                          ),
-                          style: const TextStyle(color: Colors.white54),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                  padding: const EdgeInsets.all(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _selectAnswer(int index) {
@@ -260,9 +202,14 @@ class _TestTakingPageState extends State<TestTakingPage>
   Widget build(BuildContext context) {
     return BlocConsumer<TestSessionCubit, TestSessionState>(
       listener: (context, state) {
-        if (state is TestSessionCompleted) {
-          context.push(Routes.testResult, extra: state.result);
-        } else if (state is TestSessionError) {
+        if (state is TestSessionCompleted && !_isNavigatingToResult) {
+          _isNavigatingToResult = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.pushReplacement(Routes.testResult, extra: state.result);
+            }
+          });
+        } else if (state is TestSessionError && !_isNavigatingToResult) {
           _snackBarCubit.showErrorLocalized(
             korean: state.error ?? '오류가 발생했습니다',
             english: state.error ?? 'An error occurred',
@@ -281,11 +228,15 @@ class _TestTakingPageState extends State<TestTakingPage>
           return _buildTestScreen(session, state is TestSessionPaused);
         }
 
-        if (state is TestSessionSubmitting) {
+        if (state is TestSessionSubmitting || state is TestSessionCompleted) {
           return _buildSubmittingScreen();
         }
 
-        return _buildErrorScreen();
+        if (state is TestSessionError) {
+          return _buildErrorScreen();
+        }
+
+        return _buildLoadingScreen();
       },
     );
   }
@@ -992,7 +943,7 @@ class _TestTakingPageState extends State<TestTakingPage>
 
   Widget _buildQuestionImage(String? imageUrl, String? imagePath, {bool isLandscape = false, bool isFixed = false}) {
     return GestureDetector(
-      onTap: () => _showFullScreenImage(imageUrl, imagePath, 'question'),
+      onTap: () => DialogUtils.showFullScreenImage(context ,imageUrl, imagePath),
       child: Container(
         width: double.infinity,
         constraints: isFixed ? const BoxConstraints.expand() : BoxConstraints(
@@ -1181,7 +1132,7 @@ class _TestTakingPageState extends State<TestTakingPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => _showFullScreenImage(option.imageUrl, option.imagePath, 'answer'),
+            onTap: () => DialogUtils.showFullScreenImage(context, option.imageUrl, option.imagePath),
             child: Container(
               constraints: BoxConstraints(maxHeight: isCompact ? 80 : 120),
               child: CustomCachedImage(

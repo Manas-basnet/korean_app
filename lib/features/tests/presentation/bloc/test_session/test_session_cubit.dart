@@ -44,12 +44,10 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
       emit(TestSessionInProgress(session));
       
-      // Start test timer if there's a time limit
       if (test.timeLimit > 0) {
         _startTestTimer(test.timeLimit * 60);
       }
       
-      // Start question timer if question has time limit
       final currentQuestion = test.questions[0];
       if (currentQuestion.timeLimit > 0) {
         _startQuestionTimer(currentQuestion.timeLimit);
@@ -69,7 +67,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       final session = currentState.session;
       final currentQuestion = session.test.questions[session.currentQuestionIndex];
       
-      // Calculate time spent on this question
       final timeSpent = _calculateQuestionTimeSpent(session);
       
       final answer = TestAnswer(
@@ -111,10 +108,8 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
         emit(TestSessionInProgress(updatedSession));
         
-        // Cancel previous question timer
         _questionTimer?.cancel();
         
-        // Start timer for next question if it has a time limit
         final nextQuestion = session.test.questions[nextIndex];
         if (nextQuestion.timeLimit > 0) {
           _startQuestionTimer(nextQuestion.timeLimit);
@@ -122,7 +117,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         
         dev.log('Moved to question ${nextIndex + 1}/${session.test.questions.length}');
       } else {
-        // Test completed
         _completeTest();
       }
     } catch (e) {
@@ -146,10 +140,8 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
         emit(TestSessionInProgress(updatedSession));
         
-        // Cancel previous question timer
         _questionTimer?.cancel();
         
-        // Start timer for previous question if it has a time limit
         final prevQuestion = session.test.questions[prevIndex];
         if (prevQuestion.timeLimit > 0) {
           _startQuestionTimer(prevQuestion.timeLimit);
@@ -177,10 +169,8 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
         emit(TestSessionInProgress(updatedSession));
         
-        // Cancel previous question timer
         _questionTimer?.cancel();
         
-        // Start timer for selected question if it has a time limit
         final question = session.test.questions[questionIndex];
         if (question.timeLimit > 0) {
           _startQuestionTimer(question.timeLimit);
@@ -211,15 +201,13 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       final completedAt = DateTime.now();
       final totalTimeSpent = completedAt.difference(session.startTime).inSeconds;
       
-      // Calculate results
       final correctAnswers = session.answers.values.where((a) => a.isCorrect).length;
       final totalQuestions = session.test.questions.length;
       final score = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).round() : 0;
       final isPassed = score >= session.test.passingScore;
       
-      // Create TestResult with complete test structure
       final testResult = TestResult(
-        id: '', // Will be set by repository
+        id: '',
         testId: session.test.id,
         userId: session.userId,
         testTitle: session.test.title,
@@ -240,22 +228,37 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         },
       );
       
-      // Save the result
-      final result = await testResultsRepository.saveTestResult(testResult);
+      dev.log('Test completed - Score: $score%, Passed: $isPassed. Attempting to save...');
       
-      result.fold(
-        onSuccess: (success) {
-          dev.log('Test completed successfully - Score: $score%, Passed: $isPassed');
+      try {
+        final result = await testResultsRepository.saveTestResult(testResult);
+        
+        result.fold(
+          onSuccess: (success) {
+            dev.log('Test result saved successfully');
+            if (!isClosed) {
+              emit(TestSessionCompleted(testResult));
+            }
+          },
+          onFailure: (message, type) {
+            dev.log('Failed to save test result: $message');
+            if (!isClosed) {
+              emit(TestSessionCompleted(testResult));
+            }
+          },
+        );
+      } catch (saveError) {
+        dev.log('Error saving test result: $saveError, but test is completed');
+        if (!isClosed) {
           emit(TestSessionCompleted(testResult));
-        },
-        onFailure: (message, type) {
-          emit(TestSessionError('Failed to save test result: $message', type));
-        },
-      );
+        }
+      }
       
     } catch (e) {
       dev.log('Error completing test: $e');
-      emit(TestSessionError('Failed to complete test: $e', FailureType.unknown));
+      if (!isClosed) {
+        emit(TestSessionError('Failed to complete test: $e', FailureType.unknown));
+      }
     }
   }
 
@@ -290,7 +293,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       emit(TestSessionInProgress(updatedSession));
       
-      // Resume timers
       if (session.timeRemaining != null && session.timeRemaining! > 0) {
         _startTestTimer(session.timeRemaining!);
       }
@@ -336,7 +338,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       if (newTimeRemaining <= 0) {
         timer.cancel();
-        _completeTest(); // Auto-complete when time runs out
+        _completeTest();
       } else {
         final updatedSession = session.copyWith(timeRemaining: newTimeRemaining);
         emit(TestSessionInProgress(updatedSession));
@@ -346,7 +348,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
   void _startQuestionTimer(int seconds) {
     _questionTimer = Timer(Duration(seconds: seconds), () {
-      // Auto-move to next question when time runs out
       nextQuestion();
     });
   }
@@ -371,4 +372,4 @@ class TestSessionCubit extends Cubit<TestSessionState> {
     _questionTimer?.cancel();
     return super.close();
   }
-}  
+}
