@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 
 class SnackBarWidget extends StatelessWidget {
   final Widget child;

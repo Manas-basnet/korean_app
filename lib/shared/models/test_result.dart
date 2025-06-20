@@ -126,11 +126,11 @@ class TestResult extends Equatable {
         testQuestions.add(TestQuestion(
           id: 'legacy_question_$i',
           question: 'Legacy Question ${i + 1}',
-          options: [
-            const AnswerOption(text: 'Option A'),
-            const AnswerOption(text: 'Option B'),
-            const AnswerOption(text: 'Option C'),
-            const AnswerOption(text: 'Option D'),
+          options: const [
+            AnswerOption(text: 'Option A'),
+            AnswerOption(text: 'Option B'),
+            AnswerOption(text: 'Option C'),
+            AnswerOption(text: 'Option D'),
           ],
           correctAnswerIndex: 0, // We don't know the correct answer for legacy data
           explanation: 'This is a legacy test result. Question details are not available.',

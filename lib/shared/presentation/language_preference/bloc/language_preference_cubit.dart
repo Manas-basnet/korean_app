@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/core/presentation/language_preference/enums/language_mode.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/enums/language_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 part 'language_preference_state.dart';
 

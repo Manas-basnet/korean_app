@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
 class DialogUtils {

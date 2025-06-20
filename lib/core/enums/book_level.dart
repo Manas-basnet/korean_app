@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 enum BookLevel {
   beginner,
@@ -28,7 +28,7 @@ extension BookLevelExtension on BookLevel {
         );
       case BookLevel.expert:
         return languageCubit.getLocalizedText(
-          korean: '고급',//TODO: change
+          korean: '전문가',
           english: 'Expert',
         );
     }

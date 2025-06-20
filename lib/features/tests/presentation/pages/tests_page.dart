@@ -4,12 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/core/presentation/connectivity/bloc/connectivity_cubit.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/presentation/widgets/errors/error_widget.dart';
+import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/widgets/errors/error_widget.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
@@ -32,6 +32,11 @@ class _TestsPageState extends State<TestsPage> {
   TestCategory _selectedCategory = TestCategory.all;
   String _searchQuery = '';
   bool _isSearching = false;
+  
+  // Add scroll debouncing to prevent multiple calls
+  Timer? _scrollDebounceTimer;
+  static const Duration _scrollDebounceDelay = Duration(milliseconds: 100);
+  bool _hasTriggeredLoadMore = false;
   
   TestsCubit get _testsCubit => context.read<TestsCubit>();
   TestSearchCubit get _testSearchCubit => context.read<TestSearchCubit>();
@@ -58,19 +63,39 @@ class _TestsPageState extends State<TestsPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _scrollDebounceTimer?.cancel();
     super.dispose();
   }
   
   void _onScroll() {
     if (!_scrollController.hasClients || _isRefreshing || _isSearching) return;
     
-    if (_isNearBottom()) {
-      final state = _testsCubit.state;
+    _scrollDebounceTimer?.cancel();
+    _scrollDebounceTimer = Timer(_scrollDebounceDelay, () {
+      if (!mounted) return;
       
-      if (state.hasMore && !state.currentOperation.isInProgress) {
-        _testsCubit.loadMoreTests();
+      if (_isNearBottom()) {
+        final state = _testsCubit.state;
+        
+        if (state.hasMore && 
+            !state.currentOperation.isInProgress && 
+            !_hasTriggeredLoadMore) {
+          
+          _hasTriggeredLoadMore = true;
+          _testsCubit.requestLoadMoreTests();
+          
+          // Reset the flag after a delay to allow for the next load more
+          Timer(const Duration(seconds: 1), () {
+            if (mounted) {
+              _hasTriggeredLoadMore = false;
+            }
+          });
+        }
+      } else {
+        // Reset flag when not near bottom
+        _hasTriggeredLoadMore = false;
       }
-    }
+    });
   }
   
   bool _isNearBottom() {
@@ -78,7 +103,9 @@ class _TestsPageState extends State<TestsPage> {
     
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-    return currentScroll >= (maxScroll * 0.9);
+    
+    // Use a larger threshold and ensure we have some content to scroll
+    return maxScroll > 0 && currentScroll >= (maxScroll * 0.8);
   }
 
   Future<void> _refreshData() async {
@@ -91,6 +118,7 @@ class _TestsPageState extends State<TestsPage> {
         await _testsCubit.hardRefresh();
       }
       _editPermissionCache.clear();
+      _hasTriggeredLoadMore = false; // Reset load more flag
     } finally {
       setState(() => _isRefreshing = false);
     }
@@ -106,7 +134,6 @@ class _TestsPageState extends State<TestsPage> {
     return hasPermission;
   }
 
-
   void _onCategoryChanged(TestCategory category) {
     if (_selectedCategory == category) return;
     
@@ -114,6 +141,7 @@ class _TestsPageState extends State<TestsPage> {
       _selectedCategory = category;
       _isSearching = false;
       _searchQuery = '';
+      _hasTriggeredLoadMore = false; // Reset load more flag
     });
     
     _editPermissionCache.clear();
@@ -217,7 +245,7 @@ class _TestsPageState extends State<TestsPage> {
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.3),
+                    color: colorScheme.outlineVariant.withValues(alpha : 0.3),
                     width: 0.5,
                   ),
                 ),
@@ -279,13 +307,13 @@ class _TestsPageState extends State<TestsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    ? theme.colorScheme.primary.withValues(alpha : 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withOpacity(0.3),
+                      : theme.colorScheme.outline.withValues(alpha : 0.3),
                   width: 1,
                 ),
               ),
@@ -294,7 +322,7 @@ class _TestsPageState extends State<TestsPage> {
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.6),
+                      : theme.colorScheme.onSurface.withValues(alpha : 0.6),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 14,
                 ),
@@ -513,7 +541,7 @@ class _TestsPageState extends State<TestsPage> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha : 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -546,7 +574,7 @@ class _TestsPageState extends State<TestsPage> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
+              color: colorScheme.primaryContainer.withValues(alpha : 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -686,7 +714,7 @@ class _TestsPageState extends State<TestsPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colorScheme.outlineVariant.withOpacity(0.5),
+                    color: colorScheme.outlineVariant.withValues(alpha : 0.5),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -785,9 +813,9 @@ class _TestsPageState extends State<TestsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha : 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha : 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

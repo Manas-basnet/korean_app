@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 part 'snackbar_state.dart';
 
 class SnackBarCubit extends Cubit<SnackBarState> {

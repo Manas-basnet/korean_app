@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:korean_language_app/core/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_result.dart';
 import 'package:korean_language_app/features/test_results/presentation/bloc/test_results_cubit.dart';
 
 enum ResultFilter { all, passed, failed, recent }
@@ -210,7 +210,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
               color: colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: colorScheme.outlineVariant.withOpacity(0.3),
+                  color: colorScheme.outlineVariant.withValues(alpha : 0.3),
                   width: 0.5,
                 ),
               ),
@@ -298,13 +298,13 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    ? theme.colorScheme.primary.withValues(alpha : 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withOpacity(0.3),
+                      : theme.colorScheme.outline.withValues(alpha : 0.3),
                   width: 1,
                 ),
               ),
@@ -313,7 +313,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.6),
+                      : theme.colorScheme.onSurface.withValues(alpha : 0.6),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 14,
                 ),
@@ -335,15 +335,15 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.surface.withOpacity(0.8),
+        color: colorScheme.surface.withValues(alpha : 0.8),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.1),
+          color: colorScheme.outline.withValues(alpha : 0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.04),
+            color: colorScheme.shadow.withValues(alpha : 0.04),
             offset: const Offset(0, 4),
             blurRadius: 12,
           ),
@@ -357,7 +357,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha : 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -422,10 +422,10 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha : 0.06),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha : 0.15),
           width: 1,
         ),
       ),
@@ -444,7 +444,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha : 0.8),
               fontWeight: FontWeight.w500,
               fontSize: 10,
             ),
@@ -517,7 +517,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha : 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -585,7 +585,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
+                color: colorScheme.primaryContainer.withValues(alpha : 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -702,13 +702,13 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: result.isPassed 
-              ? Colors.green.withOpacity(0.15)
-              : Colors.red.withOpacity(0.15),
+              ? Colors.green.withValues(alpha : 0.15)
+              : Colors.red.withValues(alpha : 0.15),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.04),
+            color: colorScheme.shadow.withValues(alpha : 0.04),
             offset: const Offset(0, 2),
             blurRadius: 12,
           ),
@@ -756,8 +756,8 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: result.isPassed 
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha : 0.1)
+                            : Colors.red.withValues(alpha : 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -790,7 +790,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHigh.withOpacity(0.3),
+                    color: colorScheme.surfaceContainerHigh.withValues(alpha : 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -807,7 +807,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                       Container(
                         width: 1,
                         height: 36,
-                        color: colorScheme.surfaceContainerHigh.withOpacity(0.6),
+                        color: colorScheme.surfaceContainerHigh.withValues(alpha : 0.6),
                       ),
                       Expanded(
                         child: _buildResultInfo(
@@ -821,7 +821,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                       Container(
                         width: 1,
                         height: 36,
-                        color: colorScheme.surfaceContainerHigh.withOpacity(0.6),
+                        color: colorScheme.surfaceContainerHigh.withValues(alpha : 0.6),
                       ),
                       Expanded(
                         child: _buildResultInfo(
@@ -860,7 +860,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
           label,
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 10,
-            color: color.withOpacity(0.8),
+            color: color.withValues(alpha : 0.8),
             fontWeight: FontWeight.w500,
           ),
         ),

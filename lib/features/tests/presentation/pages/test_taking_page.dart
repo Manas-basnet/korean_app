@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
@@ -244,7 +244,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.1),
+                color: colorScheme.primaryContainer.withValues(alpha : 0.1),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -285,7 +285,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.1),
+                color: colorScheme.primaryContainer.withValues(alpha : 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -327,7 +327,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: colorScheme.errorContainer.withOpacity(0.1),
+                  color: colorScheme.errorContainer.withValues(alpha : 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -421,7 +421,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               Container(
                 width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 16),
-                color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha : 0.3),
               ),
               
               Expanded(
@@ -506,7 +506,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.4),
+                    color: colorScheme.primaryContainer.withValues(alpha : 0.4),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -566,7 +566,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
         ),
       ),
       child: Row(
@@ -638,7 +638,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
         ),
       ),
       child: Column(
@@ -736,7 +736,7 @@ class _TestTakingPageState extends State<TestTakingPage>
           icon: Icon(_showingExplanation ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded, size: 18),
           style: IconButton.styleFrom(
             backgroundColor: _showingExplanation 
-                ? colorScheme.primary.withOpacity(0.1) 
+                ? colorScheme.primary.withValues(alpha : 0.1) 
                 : colorScheme.surfaceContainerHighest,
             foregroundColor: _showingExplanation 
                 ? colorScheme.primary 
@@ -766,15 +766,15 @@ class _TestTakingPageState extends State<TestTakingPage>
     IconData icon;
     
     if (isPaused) {
-      backgroundColor = colorScheme.tertiary.withOpacity(0.1);
+      backgroundColor = colorScheme.tertiary.withValues(alpha : 0.1);
       textColor = colorScheme.tertiary;
       icon = Icons.pause_rounded;
     } else if (isLowTime) {
-      backgroundColor = colorScheme.errorContainer.withOpacity(0.3);
+      backgroundColor = colorScheme.errorContainer.withValues(alpha : 0.3);
       textColor = colorScheme.error;
       icon = Icons.timer_outlined;
     } else {
-      backgroundColor = colorScheme.primaryContainer.withOpacity(0.3);
+      backgroundColor = colorScheme.primaryContainer.withValues(alpha : 0.3);
       textColor = colorScheme.primary;
       icon = Icons.timer_outlined;
     }
@@ -874,7 +874,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,7 +890,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.4),
+                    color: colorScheme.primaryContainer.withValues(alpha : 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -959,7 +959,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha : 0.6),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1015,16 +1015,16 @@ class _TestTakingPageState extends State<TestTakingPage>
     if (showResult) {
       if (isCorrectAnswer) {
         borderColor = Colors.green;
-        backgroundColor = Colors.green.withOpacity(0.1);
+        backgroundColor = Colors.green.withValues(alpha : 0.1);
         statusIcon = const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20);
       } else if (wasSelectedAnswer) {
         borderColor = Colors.red;
-        backgroundColor = Colors.red.withOpacity(0.1);
+        backgroundColor = Colors.red.withValues(alpha : 0.1);
         statusIcon = const Icon(Icons.cancel_rounded, color: Colors.red, size: 20);
       }
     } else if (isSelected || wasSelectedAnswer) {
       borderColor = colorScheme.primary;
-      backgroundColor = colorScheme.primaryContainer.withOpacity(0.2);
+      backgroundColor = colorScheme.primaryContainer.withValues(alpha : 0.2);
     }
     
     return Material(
@@ -1164,9 +1164,9 @@ class _TestTakingPageState extends State<TestTakingPage>
       width: double.infinity,
       padding: EdgeInsets.all(isCompact ? 12 : 20),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withOpacity(0.3),
+        color: colorScheme.secondaryContainer.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.secondary.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha : 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1177,7 +1177,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: colorScheme.secondary.withOpacity(0.1),
+                  color: colorScheme.secondary.withValues(alpha : 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(Icons.lightbulb_rounded, color: colorScheme.secondary, size: 16),
@@ -1301,7 +1301,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
         ),
       ),
       child: Row(
@@ -1363,7 +1363,7 @@ class _TestTakingPageState extends State<TestTakingPage>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5))),
+              border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.5))),
             ),
             child: Row(
               children: [
@@ -1413,7 +1413,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 } else if (isAnswered) {
                   backgroundColor = colorScheme.primaryContainer;
                   textColor = colorScheme.onPrimaryContainer;
-                  borderColor = colorScheme.primary.withOpacity(0.5);
+                  borderColor = colorScheme.primary.withValues(alpha : 0.5);
                 } else {
                   backgroundColor = colorScheme.surfaceContainerHighest;
                   textColor = colorScheme.onSurfaceVariant;

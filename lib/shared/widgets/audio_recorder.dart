@@ -171,9 +171,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
           : null,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.outline.withValues(alpha : 0.3)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -196,7 +196,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: colorScheme.error.withOpacity(0.1),
+                color: colorScheme.error.withValues(alpha : 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(

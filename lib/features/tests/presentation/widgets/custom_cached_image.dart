@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/core/enums/image_display_type.dart';
-import 'package:korean_language_app/core/shared/models/image_display_source.dart';
+import 'package:korean_language_app/shared/models/image_display_source.dart';
 
 class CustomCachedImage extends StatefulWidget {
   final String? imageUrl;
@@ -248,7 +248,7 @@ class _CustomCachedImageState extends State<CustomCachedImage> {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: colorScheme.errorContainer.withOpacity(0.3),
+        color: colorScheme.errorContainer.withValues(alpha : 0.3),
         borderRadius: borderRadius,
         border: Border.all(color: colorScheme.outline),
       ),

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
-import 'package:korean_language_app/core/shared/models/test_result.dart';
-import 'package:korean_language_app/core/shared/models/test_answer.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_answer.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
@@ -185,7 +185,7 @@ class _TestReviewPageState extends State<TestReviewPage>
               ),
               Container(
                 width: 1,
-                color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha : 0.3),
               ),
               Expanded(
                 flex: 4,
@@ -216,7 +216,7 @@ class _TestReviewPageState extends State<TestReviewPage>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3))),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3))),
       ),
       child: Column(
         children: [
@@ -303,7 +303,7 @@ class _TestReviewPageState extends State<TestReviewPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,7 +319,7 @@ class _TestReviewPageState extends State<TestReviewPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.4),
+                    color: colorScheme.primaryContainer.withValues(alpha : 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -387,7 +387,7 @@ class _TestReviewPageState extends State<TestReviewPage>
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha : 0.6),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -454,8 +454,8 @@ class _TestReviewPageState extends State<TestReviewPage>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isCorrect 
-            ? Colors.green.withOpacity(0.1) 
-            : Colors.red.withOpacity(0.1),
+            ? Colors.green.withValues(alpha : 0.1) 
+            : Colors.red.withValues(alpha : 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isCorrect ? Colors.green : Colors.red,
@@ -542,7 +542,7 @@ class _TestReviewPageState extends State<TestReviewPage>
     if (isCorrectAnswer && wasSelectedAnswer) {
       // User selected the correct answer
       borderColor = Colors.green;
-      backgroundColor = Colors.green.withOpacity(0.1);
+      backgroundColor = Colors.green.withValues(alpha : 0.1);
       suffixIcon = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -567,12 +567,12 @@ class _TestReviewPageState extends State<TestReviewPage>
     } else if (isCorrectAnswer && !wasSelectedAnswer) {
       // Correct answer but user didn't select it
       borderColor = Colors.green;
-      backgroundColor = Colors.green.withOpacity(0.1);
+      backgroundColor = Colors.green.withValues(alpha : 0.1);
       suffixIcon = const Icon(Icons.check_circle, color: Colors.green, size: 20);
     } else if (!isCorrectAnswer && wasSelectedAnswer) {
       // User selected wrong answer
       borderColor = Colors.red;
-      backgroundColor = Colors.red.withOpacity(0.1);
+      backgroundColor = Colors.red.withValues(alpha : 0.1);
       suffixIcon = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -742,10 +742,10 @@ class _TestReviewPageState extends State<TestReviewPage>
       width: double.infinity,
       padding: EdgeInsets.all(isCompact ? 12 : 16),
       decoration: BoxDecoration(
-        color: colorScheme.tertiaryContainer.withOpacity(0.3),
+        color: colorScheme.tertiaryContainer.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: colorScheme.tertiary.withOpacity(0.3),
+          color: colorScheme.tertiary.withValues(alpha : 0.3),
         ),
       ),
       child: Column(
@@ -789,7 +789,7 @@ class _TestReviewPageState extends State<TestReviewPage>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3))),
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3))),
       ),
       child: Row(
         children: [
@@ -881,15 +881,15 @@ class _TestReviewPageState extends State<TestReviewPage>
                 Color borderColor = Colors.transparent;
 
                 if (isCurrent) {
-                  backgroundColor = colorScheme.primary.withOpacity(0.1);
+                  backgroundColor = colorScheme.primary.withValues(alpha : 0.1);
                   borderColor = colorScheme.primary;
                   textColor = colorScheme.primary;
                 } else if (isAnswered) {
                   if (isCorrect) {
-                    backgroundColor = Colors.green.withOpacity(0.1);
+                    backgroundColor = Colors.green.withValues(alpha : 0.1);
                     textColor = Colors.green;
                   } else {
-                    backgroundColor = Colors.red.withOpacity(0.1);
+                    backgroundColor = Colors.red.withValues(alpha : 0.1);
                     textColor = Colors.red;
                   }
                 }
@@ -929,9 +929,9 @@ class _TestReviewPageState extends State<TestReviewPage>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.errorContainer.withOpacity(0.3),
+        color: colorScheme.errorContainer.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.error.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.error.withValues(alpha : 0.5)),
       ),
       child: Row(
         children: [

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
-import 'package:korean_language_app/core/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_result.dart';
 import 'package:korean_language_app/core/utils/wrapper.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -40,7 +40,7 @@ import 'package:korean_language_app/features/unpublished_tests/presentation/bloc
 import 'package:korean_language_app/features/unpublished_tests/presentation/pages/unpublished_tests_page.dart';
 import 'package:korean_language_app/features/user_management/presentation/bloc/user_management_cubit.dart';
 import 'package:korean_language_app/features/user_management/presentation/pages/user_management_page.dart';
-import 'package:korean_language_app/core/presentation/widgets/splash/splash_screen.dart';
+import 'package:korean_language_app/shared/presentation/widgets/splash/splash_screen.dart';
 
 class AppRouter {
   static final AppRouter _instance = AppRouter._internal();

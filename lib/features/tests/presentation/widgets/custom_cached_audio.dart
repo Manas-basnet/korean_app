@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/core/enums/audio_display_type.dart';
-import 'package:korean_language_app/core/shared/models/audio_display_source.dart';
-import 'package:korean_language_app/core/shared/widgets/audio_player.dart';
+import 'package:korean_language_app/shared/models/audio_display_source.dart';
+import 'package:korean_language_app/shared/widgets/audio_player.dart';
 
 class CustomCachedAudio extends StatefulWidget {
   final String? audioUrl;
@@ -201,10 +201,10 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3)
+          color: Theme.of(context).colorScheme.outline.withValues(alpha : 0.3)
         ),
       ),
       child: Row(
@@ -240,10 +240,10 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.errorContainer.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.error.withOpacity(0.3)
+          color: Theme.of(context).colorScheme.error.withValues(alpha : 0.3)
         ),
       ),
       child: Row(

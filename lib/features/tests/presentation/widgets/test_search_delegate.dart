@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/test_card.dart';
 
@@ -189,7 +189,7 @@ class TestSearchDelegate extends SearchDelegate<TestItem?> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
+              color: colorScheme.primaryContainer.withValues(alpha : 0.3),
               shape: BoxShape.circle,
             ),
             child: CircularProgressIndicator(
@@ -224,7 +224,7 @@ class TestSearchDelegate extends SearchDelegate<TestItem?> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: colorScheme.errorContainer.withOpacity(0.3),
+              color: colorScheme.errorContainer.withValues(alpha : 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -292,7 +292,7 @@ class TestSearchDelegate extends SearchDelegate<TestItem?> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.5),
               shape: BoxShape.circle,
             ),
             child: Icon(

@@ -59,11 +59,11 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     
     return Card(
       elevation: 2,
-      shadowColor: colorScheme.shadow.withOpacity(0.2),
+      shadowColor: colorScheme.shadow.withValues(alpha : 0.2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withOpacity(0.3),
+          color: colorScheme.outlineVariant.withValues(alpha : 0.3),
           width: 0.5,
         ),
       ),
@@ -255,14 +255,14 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     if (isOverlay) {
       if (isDark) {
         return Color.lerp(
-          Colors.white.withOpacity(0.08),
-          Colors.white.withOpacity(0.15),
+          Colors.white.withValues(alpha : 0.08),
+          Colors.white.withValues(alpha : 0.15),
           animationValue,
         )!;
       } else {
         return Color.lerp(
-          Colors.black.withOpacity(0.06),
-          Colors.black.withOpacity(0.12),
+          Colors.black.withValues(alpha : 0.06),
+          Colors.black.withValues(alpha : 0.12),
           animationValue,
         )!;
       }
@@ -270,14 +270,14 @@ class _TestCardSkeletonState extends State<TestCardSkeleton>
     
     if (isDark) {
       return Color.lerp(
-        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha : 0.5),
         animationValue,
       )!;
     } else {
       return Color.lerp(
-        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
-        Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.7),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha : 0.4),
+        Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha : 0.7),
         animationValue,
       )!;
     }

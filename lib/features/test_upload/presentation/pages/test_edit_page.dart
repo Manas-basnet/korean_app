@@ -6,10 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/core/enums/book_level.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
 import 'package:korean_language_app/features/test_upload/presentation/pages/question_editor_page.dart';
@@ -263,13 +263,13 @@ class _TestEditPageState extends State<TestEditPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: Colors.orange.withValues(alpha : 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: Colors.orange.withValues(alpha : 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.edit, color: Colors.orange, size: 20),
+          const Icon(Icons.edit, color: Colors.orange, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -648,10 +648,10 @@ class _TestEditPageState extends State<TestEditPage> {
               height: 160,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: colorScheme.outline.withOpacity(0.3),
+                  color: colorScheme.outline.withValues(alpha : 0.3),
                   style: BorderStyle.solid,
                 ),
               ),
@@ -704,8 +704,8 @@ class _TestEditPageState extends State<TestEditPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: _questions.isEmpty 
-                    ? colorScheme.errorContainer.withOpacity(0.3)
-                    : colorScheme.primaryContainer.withOpacity(0.3),
+                    ? colorScheme.errorContainer.withValues(alpha : 0.3)
+                    : colorScheme.primaryContainer.withValues(alpha : 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -727,7 +727,7 @@ class _TestEditPageState extends State<TestEditPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -735,7 +735,7 @@ class _TestEditPageState extends State<TestEditPage> {
                 Icon(
                   Icons.quiz_outlined,
                   size: 48,
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha : 0.6),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -875,7 +875,7 @@ class _TestEditPageState extends State<TestEditPage> {
       badges.add(Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
+          color: Colors.blue.withValues(alpha : 0.1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -893,7 +893,7 @@ class _TestEditPageState extends State<TestEditPage> {
       badges.add(Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.1),
+          color: Colors.green.withValues(alpha : 0.1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(

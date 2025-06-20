@@ -2,16 +2,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/di/di.dart' as di;
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/presentation/theme/constants/app_theme.dart';
+import 'package:korean_language_app/shared/presentation/theme/constants/app_theme.dart';
 import 'package:korean_language_app/firebase_options.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:korean_language_app/core/presentation/connectivity/bloc/connectivity_cubit.dart';
+import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/presentation/theme/bloc/theme_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/widgets/snackbar_widget.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/theme/bloc/theme_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/widgets/snackbar_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

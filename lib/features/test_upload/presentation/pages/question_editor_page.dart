@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
-import 'package:korean_language_app/core/shared/widgets/audio_player.dart';
-import 'package:korean_language_app/core/shared/widgets/audio_recorder.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/widgets/audio_player.dart';
+import 'package:korean_language_app/shared/widgets/audio_recorder.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
@@ -377,12 +377,12 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isCorrect 
-            ? colorScheme.primaryContainer.withOpacity(0.3)
+            ? colorScheme.primaryContainer.withValues(alpha : 0.3)
             : colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isCorrect 
-              ? colorScheme.primary.withOpacity(0.5)
+              ? colorScheme.primary.withValues(alpha : 0.5)
               : colorScheme.outlineVariant,
           width: isCorrect ? 2 : 1,
         ),
@@ -732,9 +732,9 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         height: height ?? 160,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+          border: Border.all(color: colorScheme.outline.withValues(alpha : 0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

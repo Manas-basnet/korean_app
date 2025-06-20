@@ -1,4 +1,4 @@
-import 'package:korean_language_app/core/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
 
 abstract class TestsLocalDataSource {
   Future<List<TestItem>> getAllTests();

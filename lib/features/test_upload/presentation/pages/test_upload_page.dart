@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/core/enums/book_level.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/features/test_upload/presentation/bloc/test_upload_cubit.dart';
@@ -162,7 +162,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withOpacity(0.3),
+        color: colorScheme.primaryContainer.withValues(alpha : 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -192,7 +192,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: completedSteps / 2,
-            backgroundColor: colorScheme.onSurfaceVariant.withOpacity(0.2),
+            backgroundColor: colorScheme.onSurfaceVariant.withValues(alpha : 0.2),
             valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
             borderRadius: BorderRadius.circular(4),
           ),
@@ -499,10 +499,10 @@ class _TestUploadPageState extends State<TestUploadPage> {
               height: 160,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: colorScheme.outline.withOpacity(0.3),
+                  color: colorScheme.outline.withValues(alpha : 0.3),
                   style: BorderStyle.solid,
                 ),
               ),
@@ -555,8 +555,8 @@ class _TestUploadPageState extends State<TestUploadPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: _questions.isEmpty 
-                    ? colorScheme.errorContainer.withOpacity(0.3)
-                    : colorScheme.primaryContainer.withOpacity(0.3),
+                    ? colorScheme.errorContainer.withValues(alpha : 0.3)
+                    : colorScheme.primaryContainer.withValues(alpha : 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -578,7 +578,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha : 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -586,7 +586,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
                 Icon(
                   Icons.quiz_outlined,
                   size: 48,
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha : 0.6),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -605,7 +605,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
                     english: 'Add your first question to get started',
                   ),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha : 0.7),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -681,7 +681,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
+                                  color: Colors.blue.withValues(alpha : 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(

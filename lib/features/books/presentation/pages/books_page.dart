@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/core/presentation/connectivity/bloc/connectivity_cubit.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/core/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/presentation/widgets/errors/error_widget.dart';
+import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/shared/presentation/widgets/errors/error_widget.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/enums/course_category.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
@@ -551,7 +551,7 @@ class _BooksPageState extends State<BooksPage>
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.3),
+                    color: colorScheme.outlineVariant.withValues(alpha : 0.3),
                     width: 0.5,
                   ),
                 ),
@@ -636,13 +636,13 @@ class _BooksPageState extends State<BooksPage>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    ? theme.colorScheme.primary.withValues(alpha : 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withOpacity(0.3),
+                      : theme.colorScheme.outline.withValues(alpha : 0.3),
                   width: 1,
                 ),
               ),
@@ -651,7 +651,7 @@ class _BooksPageState extends State<BooksPage>
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.6),
+                      : theme.colorScheme.onSurface.withValues(alpha : 0.6),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 14,
                 ),
@@ -808,7 +808,7 @@ class _BooksPageState extends State<BooksPage>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha : 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),

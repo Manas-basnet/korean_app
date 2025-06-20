@@ -17,7 +17,12 @@ import 'package:korean_language_app/features/unpublished_tests/domain/repositori
 import 'package:korean_language_app/features/unpublished_tests/presentation/bloc/unpublished_tests_cubit.dart';
 
 void registerTestsDependencies(GetIt sl) {
-  sl.registerFactory(() => TestsCubit(repository: sl(), authService: sl(), adminService: sl()));
+  sl.registerFactory(() => TestsCubit(
+    repository: sl(), 
+    authService: sl(), 
+    adminService: sl(),
+    networkInfo: sl(),
+  ));
   sl.registerFactory(() => TestSearchCubit(repository: sl(), authService: sl(), adminService: sl()));
   sl.registerFactory(() => TestSessionCubit(
     testResultsRepository: sl(), 

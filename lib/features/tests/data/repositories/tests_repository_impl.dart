@@ -3,12 +3,12 @@ import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
-import 'package:korean_language_app/core/services/auth_service.dart';
+import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/tests/data/datasources/tests_local_datasource.dart';
 import 'package:korean_language_app/features/tests/data/datasources/tests_remote_datasource.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
-import 'package:korean_language_app/core/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 

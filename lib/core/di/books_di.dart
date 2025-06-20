@@ -1,10 +1,10 @@
-// lib/core/di/feature_di/books_di.dart
 import 'package:get_it/get_it.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource_impl.dart';
 import 'package:korean_language_app/features/book_upload/data/repositories/book_upload_repository_impl.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
+import 'package:korean_language_app/shared/services/image_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/favorite_books_local_data_source.dart';
 import 'package:korean_language_app/features/books/data/datasources/favorite_books_local_data_source_impl.dart';
 import 'package:korean_language_app/features/books/data/datasources/firestore_korean_books_remote_data_source_impl.dart';
@@ -20,6 +20,11 @@ import 'package:korean_language_app/features/books/presentation/bloc/favorite_bo
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 
 void registerBooksDependencies(GetIt sl) {
+  // Services
+  sl.registerLazySingleton<ImageCacheService>(
+    () => ImageCacheService(storageService: sl())
+  );
+  
   // Cubits
   sl.registerFactory(() => KoreanBooksCubit(
     repository: sl(),
@@ -61,6 +66,7 @@ void registerBooksDependencies(GetIt sl) {
     () => KoreanBookRepositoryImpl(
       remoteDataSource: sl(),
       localDataSource: sl(),
+      imageCacheService: sl(),
       networkInfo: sl(),
     )
   );
@@ -82,6 +88,6 @@ void registerBooksDependencies(GetIt sl) {
   );
   
   sl.registerLazySingleton<FavoriteBooksLocalDataSource>(
-    () => FavoriteBooksLocalDataSourceImpl(storageService: sl()) // Changed parameter
+    () => FavoriteBooksLocalDataSourceImpl(storageService: sl())
   );
 }

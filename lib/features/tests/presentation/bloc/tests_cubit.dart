@@ -6,10 +6,11 @@ import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/enums/book_level.dart';
 import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/core/services/auth_service.dart';
+import 'package:korean_language_app/core/network/network_info.dart';
+import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/core/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 
 part 'tests_state.dart';
@@ -18,29 +19,33 @@ class TestsCubit extends Cubit<TestsState> {
   final TestsRepository repository;
   final AuthService authService;
   final AdminPermissionService adminService;
+  final NetworkInfo networkInfo;
   
   int _currentPage = 0;
   static const int _pageSize = 5;
-  bool _isConnected = true;
   TestCategory _currentCategory = TestCategory.all;
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
   
+  // Add debouncing for load more requests
+  Timer? _loadMoreDebounceTimer;
+  static const Duration _loadMoreDebounceDelay = Duration(milliseconds: 300);
+  
   TestsCubit({
     required this.repository,
     required this.authService,
     required this.adminService,
+    required this.networkInfo,
   }) : super(const TestsInitial()) {
     _initializeConnectivityListener();
   }
 
   void _initializeConnectivityListener() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
-      final wasConnected = _isConnected;
-      _isConnected = result != ConnectivityResult.none;
+      final isConnected = result != ConnectivityResult.none;
       
-      if (!wasConnected && _isConnected && (state.tests.isEmpty || state.hasError)) {
+      if (isConnected && (state.tests.isEmpty || state.hasError)) {
         dev.log('Connection restored, reloading tests...');
         if (_currentCategory == TestCategory.all) {
           loadInitialTests();
@@ -190,9 +195,29 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
   
-  Future<void> loadMoreTests() async {    
-    if (!state.hasMore || !_isConnected || state.currentOperation.isInProgress) {
-      dev.log('loadMoreTests skipped - hasMore: ${state.hasMore}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');
+  void requestLoadMoreTests() {
+    _loadMoreDebounceTimer?.cancel();
+    _loadMoreDebounceTimer = Timer(_loadMoreDebounceDelay, () {
+      _performLoadMoreTests();
+    });
+  }
+  
+  Future<void> _performLoadMoreTests() async {
+    final currentState = state;
+    
+    if (!currentState.hasMore) {
+      dev.log('loadMoreTests skipped - no more tests available');
+      return;
+    }
+    
+    if (currentState.currentOperation.isInProgress) {
+      dev.log('loadMoreTests skipped - operation already in progress: ${currentState.currentOperation.type}');
+      return;
+    }
+    
+    final isConnected = await networkInfo.isConnected;
+    if (!isConnected) {
+      dev.log('loadMoreTests skipped - not connected');
       return;
     }
     
@@ -200,7 +225,7 @@ class TestsCubit extends Cubit<TestsState> {
     _operationStopwatch.start();
     
     try {
-      emit(state.copyWith(
+      emit(currentState.copyWith(
         currentOperation: const TestsOperation(
           type: TestsOperationType.loadMoreTests,
           status: TestsOperationStatus.inProgress,
@@ -485,8 +510,8 @@ class TestsCubit extends Cubit<TestsState> {
   }
 
   void _clearOperationAfterDelay() {
-    Timer(const Duration(seconds: 3), () {
-      if (state.currentOperation.status != TestsOperationStatus.none) {
+    Timer(const Duration(seconds: 2), () {
+      if (!isClosed && state.currentOperation.status != TestsOperationStatus.none) {
         emit(state.copyWithOperation(
           const TestsOperation(status: TestsOperationStatus.none)
         ));
@@ -498,6 +523,7 @@ class TestsCubit extends Cubit<TestsState> {
   Future<void> close() {
     dev.log('Closing TestsCubit...');
     _connectivitySubscription?.cancel();
+    _loadMoreDebounceTimer?.cancel();
     return super.close();
   }
 }

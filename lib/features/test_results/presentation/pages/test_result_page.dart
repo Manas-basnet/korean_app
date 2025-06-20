@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:korean_language_app/core/presentation/language_preference/bloc/language_preference_cubit.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_result.dart';
 
 class TestResultPage extends StatelessWidget {
   final TestResult result;
@@ -74,13 +74,13 @@ class TestResultPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: result.isPassed 
-              ? Colors.green.withOpacity(0.2)
-              : Colors.red.withOpacity(0.2),
+              ? Colors.green.withValues(alpha : 0.2)
+              : Colors.red.withValues(alpha : 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.06),
+            color: colorScheme.shadow.withValues(alpha : 0.06),
             offset: const Offset(0, 2),
             blurRadius: 16,
           ),
@@ -94,8 +94,8 @@ class TestResultPage extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: result.isPassed 
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha : 0.1)
+                  : Colors.red.withValues(alpha : 0.1),
             ),
             child: Icon(
               result.isPassed ? Icons.celebration_rounded : Icons.sentiment_dissatisfied_rounded,
@@ -141,8 +141,8 @@ class TestResultPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: result.isPassed 
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha : 0.1)
+                  : Colors.red.withValues(alpha : 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -180,7 +180,7 @@ class TestResultPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.06),
+            color: colorScheme.shadow.withValues(alpha : 0.06),
             offset: const Offset(0, 2),
             blurRadius: 16,
           ),
@@ -225,7 +225,7 @@ class TestResultPage extends StatelessWidget {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
+                        color: colorScheme.primary.withValues(alpha : 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
@@ -321,12 +321,12 @@ class TestResultPage extends StatelessWidget {
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha : 0.15),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.06),
+            color: colorScheme.shadow.withValues(alpha : 0.06),
             offset: const Offset(0, 2),
             blurRadius: 16,
           ),
@@ -338,7 +338,7 @@ class TestResultPage extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha : 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 18),
@@ -355,7 +355,7 @@ class TestResultPage extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha : 0.8),
               fontWeight: FontWeight.w500,
               fontSize: 11,
             ),
@@ -379,7 +379,7 @@ class TestResultPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.06),
+            color: colorScheme.shadow.withValues(alpha : 0.06),
             offset: const Offset(0, 2),
             blurRadius: 16,
           ),
@@ -394,7 +394,7 @@ class TestResultPage extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha : 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
@@ -461,7 +461,7 @@ class TestResultPage extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh.withOpacity(0.5),
+            color: colorScheme.surfaceContainerHigh.withValues(alpha : 0.5),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 16, color: colorScheme.onSurfaceVariant),
@@ -531,7 +531,7 @@ class TestResultPage extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colorScheme.onSurface,
-                    side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+                    side: BorderSide(color: colorScheme.outline.withValues(alpha : 0.5)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

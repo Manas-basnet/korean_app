@@ -8,7 +8,7 @@ import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/enums/book_level.dart';
 import 'package:korean_language_app/core/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/core/services/auth_service.dart';
+import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
@@ -21,15 +21,11 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   final AuthService authService;
   final AdminPermissionService adminService;
   
-  int _currentPage = 0;
   static const int _pageSize = 5;
   bool _isConnected = true;
   final Set<String> _downloadsInProgress = {};
   
-  // Connection monitoring
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
-  
-  // Performance monitoring
   final Stopwatch _operationStopwatch = Stopwatch();
   
   KoreanBooksCubit({
@@ -40,13 +36,11 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     _initializeConnectivityListener();
   }
 
-
   void _initializeConnectivityListener() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
       final wasConnected = _isConnected;
       _isConnected = result != ConnectivityResult.none;
       
-      // Auto-reload if connection restored and we have no data or errors
       if (!wasConnected && _isConnected && (state.books.isEmpty || state.hasError)) {
         dev.log('Connection restored, reloading books...');
         loadInitialBooks();
@@ -87,7 +81,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
             books.length
           );
 
-          _currentPage = books.length ~/ _pageSize;
+
           final uniqueBooks = _removeDuplicates(books);
           
           _operationStopwatch.stop();
@@ -129,7 +123,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     }
   }
   
-  Future<void> loadMoreBooks() async {    
+  Future<void> loadMoreBooks() async {
     if (!state.hasMore || !_isConnected || state.currentOperation.isInProgress) {
       dev.log('loadMoreBooks skipped - hasMore: ${state.hasMore}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');
       return;
@@ -137,6 +131,8 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     
     _operationStopwatch.reset();
     _operationStopwatch.start();
+    
+    final currentPage = (state.books.length / _pageSize).ceil();
     
     try {
       emit(state.copyWith(
@@ -148,7 +144,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       
       final result = await repository.getBooks(
         CourseCategory.korean,
-        page: _currentPage + 1,
+        page: currentPage,
         pageSize: _pageSize
       );
       
@@ -160,8 +156,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
           if (uniqueNewBooks.isNotEmpty) {
             final allBooks = [...state.books, ...uniqueNewBooks];
             final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, allBooks.length);
-            
-            _currentPage = allBooks.length ~/ _pageSize;
             
             _operationStopwatch.stop();
             dev.log('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewBooks.length} new books');
@@ -232,7 +226,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         ),
       ));
       
-      _currentPage = 0;
       final result = await repository.hardRefreshBooks(
         CourseCategory.korean,
         pageSize: _pageSize
@@ -242,8 +235,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         onSuccess: (books) async {
           final uniqueBooks = _removeDuplicates(books);
           final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, uniqueBooks.length);
-          
-          _currentPage = uniqueBooks.length ~/ _pageSize;
           
           _operationStopwatch.stop();
           dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
@@ -368,7 +359,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     }
   }
   
-  // State management methods - optimized without duplicate caching
   void addBookToState(BookItem book) {
     final updatedBooks = [book, ...state.books];
     final uniqueBooks = _removeDuplicates(updatedBooks);
@@ -398,7 +388,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     emit(state.copyWith(books: updatedBooks));
   }
   
-  // Permission checking methods
   Future<bool> canUserEditBook(String bookId) async {
     try {
       final UserEntity? user = _getCurrentUser();
@@ -407,13 +396,11 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         return false;
       }
       
-      // Check if user is admin
       if (await adminService.isUserAdmin(user.uid)) {
         dev.log('User is admin, granting edit permission for book: $bookId');
         return true;
       }
       
-      // Check if user is the creator
       final book = state.books.firstWhere(
         (b) => b.id == bookId,
         orElse: () => const BookItem(
@@ -467,7 +454,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     }
   }
   
-  // Helper methods
   UserEntity? _getCurrentUser() {
     return authService.getCurrentUser();
   }

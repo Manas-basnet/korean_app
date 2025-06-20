@@ -211,10 +211,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             vertical: shouldUseCompactLayout ? 4 : 8,
           ),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: colorScheme.surfaceContainerHighest.withValues( alpha: 0.3),
             borderRadius: BorderRadius.circular(shouldUseCompactLayout ? 6 : 8),
             border: Border.all(
-              color: colorScheme.outline.withOpacity(0.3),
+              color: colorScheme.outline.withValues(alpha : 0.3),
               width: 0.5,
             ),
           ),
@@ -377,9 +377,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           overlayRadius: (height + 2) * 2,
         ),
         activeTrackColor: colorScheme.primary,
-        inactiveTrackColor: colorScheme.outline.withOpacity(0.3),
+        inactiveTrackColor: colorScheme.outline.withValues(alpha : 0.3),
         thumbColor: colorScheme.primary,
-        overlayColor: colorScheme.primary.withOpacity(0.1),
+        overlayColor: colorScheme.primary.withValues(alpha : 0.1),
       ),
       child: Slider(
         value: _duration.inSeconds > 0
