@@ -1,4 +1,4 @@
-import 'package:korean_language_app/core/enums/image_display_type.dart';
+import 'package:korean_language_app/shared/enums/image_display_type.dart';
 
 class ImageDisplaySource {
   final ImageDisplayType type;

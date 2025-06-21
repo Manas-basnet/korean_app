@@ -3,10 +3,12 @@ import 'dart:developer' as dev;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
-import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
+import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
@@ -24,11 +26,11 @@ class TestsCubit extends Cubit<TestsState> {
   int _currentPage = 0;
   static const int _pageSize = 5;
   TestCategory _currentCategory = TestCategory.all;
+  TestSortType _currentSortType = TestSortType.recent;
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
   
-  // Add debouncing for load more requests
   Timer? _loadMoreDebounceTimer;
   static const Duration _loadMoreDebounceDelay = Duration(milliseconds: 300);
   
@@ -48,21 +50,22 @@ class TestsCubit extends Cubit<TestsState> {
       if (isConnected && (state.tests.isEmpty || state.hasError)) {
         dev.log('Connection restored, reloading tests...');
         if (_currentCategory == TestCategory.all) {
-          loadInitialTests();
+          loadInitialTests(sortType: _currentSortType);
         } else {
-          loadTestsByCategory(_currentCategory);
+          loadTestsByCategory(_currentCategory, sortType: _currentSortType);
         }
       }
     });
   }
   
-  Future<void> loadInitialTests() async {
+  Future<void> loadInitialTests({TestSortType sortType = TestSortType.recent}) async {
     if (state.currentOperation.isInProgress) {
       dev.log('Load operation already in progress, skipping...');
       return;
     }
     
     _currentCategory = TestCategory.all;
+    _currentSortType = sortType;
     _operationStopwatch.reset();
     _operationStopwatch.start();
     
@@ -77,17 +80,21 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
-      final result = await repository.getTests(page: 0, pageSize: _pageSize);
+      final result = await repository.getTests(
+        page: 0, 
+        pageSize: _pageSize,
+        sortType: sortType,
+      );
       
       await result.fold(
         onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTests(tests.length);
+          final hasMoreResult = await repository.hasMoreTests(tests.length, sortType);
 
           _currentPage = tests.length ~/ _pageSize;
           final uniqueTests = _removeDuplicates(tests);
           
           _operationStopwatch.stop();
-          dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests (${sortType.name})');
           
           emit(TestsState(
             tests: uniqueTests,
@@ -99,6 +106,7 @@ class TestsCubit extends Cubit<TestsState> {
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
             ),
+            currentSortType: sortType,
           ));
           
           _clearOperationAfterDelay();
@@ -125,13 +133,14 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
 
-  Future<void> loadTestsByCategory(TestCategory category) async {
+  Future<void> loadTestsByCategory(TestCategory category, {TestSortType sortType = TestSortType.recent}) async {
     if (state.currentOperation.isInProgress) {
       dev.log('Load operation already in progress, skipping...');
       return;
     }
     
     _currentCategory = category;
+    _currentSortType = sortType;
     _currentPage = 0;
     _operationStopwatch.reset();
     _operationStopwatch.start();
@@ -147,17 +156,22 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
-      final result = await repository.getTestsByCategory(category, page: 0, pageSize: _pageSize);
+      final result = await repository.getTestsByCategory(
+        category,
+        page: 0,
+        pageSize: _pageSize,
+        sortType: sortType,
+      );
       
       await result.fold(
         onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTestsByCategory(category, tests.length);
+          final hasMoreResult = await repository.hasMoreTestsByCategory(category, tests.length, sortType);
           final uniqueTests = _removeDuplicates(tests);
           
           _currentPage = uniqueTests.length ~/ _pageSize;
           
           _operationStopwatch.stop();
-          dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests (${sortType.name})');
           
           emit(TestsState(
             tests: uniqueTests,
@@ -169,6 +183,7 @@ class TestsCubit extends Cubit<TestsState> {
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
             ),
+            currentSortType: sortType,
           ));
           
           _clearOperationAfterDelay();
@@ -192,6 +207,17 @@ class TestsCubit extends Cubit<TestsState> {
       _operationStopwatch.stop();
       dev.log('Error loading tests by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load tests: $e', TestsOperationType.loadTests);
+    }
+  }
+
+  void changeSortType(TestSortType sortType) {
+    if (_currentSortType == sortType) return;
+    
+    _currentSortType = sortType;
+    if (_currentCategory == TestCategory.all) {
+      loadInitialTests(sortType: sortType);
+    } else {
+      loadTestsByCategory(_currentCategory, sortType: sortType);
     }
   }
   
@@ -237,13 +263,15 @@ class TestsCubit extends Cubit<TestsState> {
       if (_currentCategory == TestCategory.all) {
         result = await repository.getTests(
           page: _currentPage,
-          pageSize: _pageSize
+          pageSize: _pageSize,
+          sortType: _currentSortType,
         );
       } else {
         result = await repository.getTestsByCategory(
           _currentCategory,
           page: _currentPage,
-          pageSize: _pageSize
+          pageSize: _pageSize,
+          sortType: _currentSortType,
         );
       }
       
@@ -257,9 +285,9 @@ class TestsCubit extends Cubit<TestsState> {
             
             ApiResult<bool> hasMoreResult;
             if (_currentCategory == TestCategory.all) {
-              hasMoreResult = await repository.hasMoreTests(allTests.length);
+              hasMoreResult = await repository.hasMoreTests(allTests.length, _currentSortType);
             } else {
-              hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, allTests.length);
+              hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, allTests.length, _currentSortType);
             }
             
             _currentPage = allTests.length ~/ _pageSize;
@@ -337,9 +365,16 @@ class TestsCubit extends Cubit<TestsState> {
       
       ApiResult<List<TestItem>> result;
       if (_currentCategory == TestCategory.all) {
-        result = await repository.hardRefreshTests(pageSize: _pageSize);
+        result = await repository.hardRefreshTests(
+          pageSize: _pageSize,
+          sortType: _currentSortType,
+        );
       } else {
-        result = await repository.hardRefreshTestsByCategory(_currentCategory, pageSize: _pageSize);
+        result = await repository.hardRefreshTestsByCategory(
+          _currentCategory,
+          pageSize: _pageSize,
+          sortType: _currentSortType,
+        );
       }
       
       await result.fold(
@@ -348,9 +383,9 @@ class TestsCubit extends Cubit<TestsState> {
           
           ApiResult<bool> hasMoreResult;
           if (_currentCategory == TestCategory.all) {
-            hasMoreResult = await repository.hasMoreTests(uniqueTests.length);
+            hasMoreResult = await repository.hasMoreTests(uniqueTests.length, _currentSortType);
           } else {
-            hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, uniqueTests.length);
+            hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, uniqueTests.length, _currentSortType);
           }
           
           _currentPage = uniqueTests.length ~/ _pageSize;
@@ -368,6 +403,7 @@ class TestsCubit extends Cubit<TestsState> {
               type: TestsOperationType.refreshTests,
               status: TestsOperationStatus.completed,
             ),
+            currentSortType: _currentSortType,
           ));
           _clearOperationAfterDelay();
         },
@@ -394,6 +430,7 @@ class TestsCubit extends Cubit<TestsState> {
   }
 
   TestCategory get currentCategory => _currentCategory;
+  TestSortType get currentSortType => _currentSortType;
 
   Future<void> loadTestById(String testId) async {
     if (state.currentOperation.isInProgress) {
@@ -410,6 +447,11 @@ class TestsCubit extends Cubit<TestsState> {
           testId: testId,
         ),
       ));
+
+      final user = _getCurrentUser();
+      if (user != null) {
+        await repository.recordTestView(testId, user.uid);
+      }
 
       final result = await repository.getTestById(testId);
 
@@ -440,6 +482,51 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _handleError('Failed to load test: $e', TestsOperationType.loadTestById, testId);
+    }
+  }
+
+  Future<void> rateTest(String testId, double rating) async {
+    try {
+      final user = _getCurrentUser();
+      if (user == null) return;
+
+      await repository.rateTest(testId, user.uid, rating);
+      
+      if (state.selectedTest?.id == testId) {
+        final updatedTest = state.selectedTest!.copyWith(
+          rating: rating,
+          ratingCount: state.selectedTest!.ratingCount + 1,
+        );
+        emit(state.copyWith(selectedTest: updatedTest));
+      }
+      
+      final testIndex = state.tests.indexWhere((test) => test.id == testId);
+      if (testIndex != -1) {
+        final updatedTests = List<TestItem>.from(state.tests);
+        updatedTests[testIndex] = updatedTests[testIndex].copyWith(
+          rating: rating,
+          ratingCount: updatedTests[testIndex].ratingCount + 1,
+        );
+        emit(state.copyWith(tests: updatedTests));
+      }
+    } catch (e) {
+      dev.log('Error rating test: $e');
+    }
+  }
+
+  Future<UserTestInteraction?> getUserTestInteraction(String testId) async {
+    try {
+      final user = _getCurrentUser();
+      if (user == null) return null;
+
+      final result = await repository.getUserTestInteraction(testId, user.uid);
+      return result.fold(
+        onSuccess: (interaction) => interaction,
+        onFailure: (_, __) => null,
+      );
+    } catch (e) {
+      dev.log('Error getting user test interaction: $e');
+      return null;
     }
   }
   

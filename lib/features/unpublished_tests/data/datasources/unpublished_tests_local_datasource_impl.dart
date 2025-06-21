@@ -7,8 +7,8 @@ import 'package:crypto/crypto.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
-import 'package:korean_language_app/core/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
 
 class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSource {
   final StorageService _storageService;

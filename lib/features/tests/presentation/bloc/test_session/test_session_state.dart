@@ -8,8 +8,9 @@ class TestSession {
   final DateTime startTime;
   final DateTime? questionStartTime;
   final DateTime? lastAnswerTime;
-  final int? timeRemaining; // in seconds
+  final int? timeRemaining;
   final bool isPaused;
+  final bool shouldShowRating;
 
   const TestSession({
     required this.test,
@@ -21,6 +22,7 @@ class TestSession {
     this.lastAnswerTime,
     this.timeRemaining,
     this.isPaused = false,
+    this.shouldShowRating = false,
   });
 
   TestSession copyWith({
@@ -33,6 +35,7 @@ class TestSession {
     DateTime? lastAnswerTime,
     int? timeRemaining,
     bool? isPaused,
+    bool? shouldShowRating,
   }) {
     return TestSession(
       test: test ?? this.test,
@@ -44,6 +47,7 @@ class TestSession {
       lastAnswerTime: lastAnswerTime ?? this.lastAnswerTime,
       timeRemaining: timeRemaining ?? this.timeRemaining,
       isPaused: isPaused ?? this.isPaused,
+      shouldShowRating: shouldShowRating ?? this.shouldShowRating,
     );
   }
 
@@ -158,8 +162,9 @@ class TestSessionSubmitting extends TestSessionState {
 
 class TestSessionCompleted extends TestSessionState {
   final TestResult result;
+  final bool shouldShowRating;
 
-  const TestSessionCompleted(this.result);
+  const TestSessionCompleted(this.result, {this.shouldShowRating = false});
 
   @override
   TestSessionState copyWithBaseState({
@@ -167,11 +172,11 @@ class TestSessionCompleted extends TestSessionState {
     String? error,
     FailureType? errorType,
   }) {
-    return TestSessionCompleted(result);
+    return TestSessionCompleted(result, shouldShowRating: shouldShowRating);
   }
 
   @override
-  List<Object?> get props => [result];
+  List<Object?> get props => [result, shouldShowRating];
 }
 
 class TestSessionError extends TestSessionState {

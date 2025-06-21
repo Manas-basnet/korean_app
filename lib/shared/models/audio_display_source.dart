@@ -1,4 +1,4 @@
-import 'package:korean_language_app/core/enums/audio_display_type.dart';
+import 'package:korean_language_app/shared/enums/audio_display_type.dart';
 
 class AudioDisplaySource {
   final AudioDisplayType type;

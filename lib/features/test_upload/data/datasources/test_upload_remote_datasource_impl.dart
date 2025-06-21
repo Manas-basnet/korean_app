@@ -6,7 +6,7 @@ import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/test_upload/data/datasources/test_upload_remote_datasource.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
-import 'package:korean_language_app/core/enums/question_type.dart';
+import 'package:korean_language_app/shared/enums/question_type.dart';
 
 class FirestoreTestUploadDataSourceImpl implements TestUploadRemoteDataSource {
   final FirebaseFirestore firestore;

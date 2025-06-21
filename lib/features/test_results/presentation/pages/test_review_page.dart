@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/core/enums/question_type.dart';
+import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';

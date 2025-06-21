@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:korean_language_app/core/enums/audio_display_type.dart';
+import 'package:korean_language_app/shared/enums/audio_display_type.dart';
 import 'package:korean_language_app/shared/models/audio_display_source.dart';
 import 'package:korean_language_app/shared/widgets/audio_player.dart';
 

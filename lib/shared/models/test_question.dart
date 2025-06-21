@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:korean_language_app/core/enums/question_type.dart';
+import 'package:korean_language_app/shared/enums/question_type.dart';
 
 class TestQuestion extends Equatable {
   final String id;

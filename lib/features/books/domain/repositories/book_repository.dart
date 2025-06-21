@@ -1,4 +1,4 @@
-import 'package:korean_language_app/core/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
 
 abstract class BookRepository {

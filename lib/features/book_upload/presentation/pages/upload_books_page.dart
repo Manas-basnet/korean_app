@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
-import 'package:korean_language_app/core/enums/course_category.dart';
-import 'package:korean_language_app/core/enums/file_upload_type.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/file_upload_type.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';

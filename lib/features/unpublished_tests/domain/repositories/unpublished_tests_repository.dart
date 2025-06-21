@@ -1,4 +1,4 @@
-import 'package:korean_language_app/core/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 

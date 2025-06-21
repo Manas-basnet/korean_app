@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
-import 'package:korean_language_app/core/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 
 class TestItem {
@@ -10,8 +10,8 @@ class TestItem {
   final String? imageUrl;
   final String? imagePath;
   final List<TestQuestion> questions;
-  final int timeLimit; // in minutes, 0 means no limit
-  final int passingScore; // percentage required to pass
+  final int timeLimit;
+  final int passingScore;
   final BookLevel level;
   final TestCategory category;
   final String language;
@@ -21,6 +21,12 @@ class TestItem {
   final DateTime? updatedAt;
   final bool isPublished;
   final Map<String, dynamic>? metadata;
+  
+  // New fields for enhanced features
+  final int viewCount;
+  final double rating;
+  final int ratingCount;
+  final double popularity;
 
   const TestItem({
     required this.id,
@@ -40,6 +46,10 @@ class TestItem {
     this.updatedAt,
     this.isPublished = true,
     this.metadata,
+    this.viewCount = 0,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    this.popularity = 0.0,
   });
 
   TestItem copyWith({
@@ -60,6 +70,10 @@ class TestItem {
     DateTime? updatedAt,
     bool? isPublished,
     Map<String, dynamic>? metadata,
+    int? viewCount,
+    double? rating,
+    int? ratingCount,
+    double? popularity,
   }) {
     return TestItem(
       id: id ?? this.id,
@@ -79,6 +93,10 @@ class TestItem {
       updatedAt: updatedAt ?? this.updatedAt,
       isPublished: isPublished ?? this.isPublished,
       metadata: metadata ?? this.metadata,
+      viewCount: viewCount ?? this.viewCount,
+      rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      popularity: popularity ?? this.popularity,
     );
   }
 
@@ -86,6 +104,8 @@ class TestItem {
   int get totalTimeLimit => timeLimit;
   String get formattedTimeLimit => timeLimit > 0 ? '$timeLimit분' : '무제한';
   String get formattedPassingScore => '$passingScore%';
+  String get formattedRating => rating > 0 ? rating.toStringAsFixed(1) : '0.0';
+  String get formattedViewCount => viewCount > 999 ? '${(viewCount / 1000).toStringAsFixed(1)}k' : viewCount.toString();
 
   @override
   bool operator ==(Object other) {
@@ -177,6 +197,10 @@ class TestItem {
       updatedAt: updatedAt,
       isPublished: json['isPublished'] as bool? ?? true,
       metadata: json['metadata'] as Map<String, dynamic>?,
+      viewCount: json['viewCount'] as int? ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: json['ratingCount'] as int? ?? 0,
+      popularity: (json['popularity'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -201,6 +225,10 @@ class TestItem {
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
       'isPublished': isPublished,
       'metadata': metadata,
+      'viewCount': viewCount,
+      'rating': rating,
+      'ratingCount': ratingCount,
+      'popularity': popularity,
     };
   }
 

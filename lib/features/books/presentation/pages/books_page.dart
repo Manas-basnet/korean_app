@@ -9,7 +9,7 @@ import 'package:korean_language_app/shared/presentation/language_preference/bloc
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/presentation/widgets/errors/error_widget.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/core/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';

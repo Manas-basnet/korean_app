@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:korean_language_app/core/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
 

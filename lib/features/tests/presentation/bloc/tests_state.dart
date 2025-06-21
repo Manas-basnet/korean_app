@@ -53,6 +53,7 @@ class TestsState extends BaseState {
   final bool hasMore;
   final TestsOperation currentOperation;
   final TestItem? selectedTest;
+  final TestSortType currentSortType;
 
   const TestsState({
     super.isLoading = false,
@@ -62,6 +63,7 @@ class TestsState extends BaseState {
     this.hasMore = false,
     required this.currentOperation,
     this.selectedTest,
+    this.currentSortType = TestSortType.recent,
   });
 
   @override
@@ -78,6 +80,7 @@ class TestsState extends BaseState {
       hasMore: hasMore,
       currentOperation: currentOperation,
       selectedTest: selectedTest,
+      currentSortType: currentSortType,
     );
   }
 
@@ -89,6 +92,7 @@ class TestsState extends BaseState {
     bool? hasMore,
     TestsOperation? currentOperation,
     TestItem? selectedTest,
+    TestSortType? currentSortType,
   }) {
     return TestsState(
       isLoading: isLoading ?? this.isLoading,
@@ -98,6 +102,7 @@ class TestsState extends BaseState {
       hasMore: hasMore ?? this.hasMore,
       currentOperation: currentOperation ?? this.currentOperation,
       selectedTest: selectedTest ?? this.selectedTest,
+      currentSortType: currentSortType ?? this.currentSortType,
     );
   }
 
@@ -110,6 +115,7 @@ class TestsState extends BaseState {
       hasMore: hasMore,
       currentOperation: operation,
       selectedTest: selectedTest,
+      currentSortType: currentSortType,
     );
   }
 
@@ -120,6 +126,7 @@ class TestsState extends BaseState {
         hasMore,
         currentOperation,
         selectedTest,
+        currentSortType,
       ];
 }
 

@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:korean_language_app/core/data/base_repository.dart';
-import 'package:korean_language_app/core/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';

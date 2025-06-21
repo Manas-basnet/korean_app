@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:korean_language_app/core/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
@@ -30,10 +31,10 @@ class _TestsPageState extends State<TestsPage> {
   final Map<String, bool> _editPermissionCache = {};
   bool _isInitialized = false;
   TestCategory _selectedCategory = TestCategory.all;
+  TestSortType _selectedSortType = TestSortType.recent;
   String _searchQuery = '';
   bool _isSearching = false;
   
-  // Add scroll debouncing to prevent multiple calls
   Timer? _scrollDebounceTimer;
   static const Duration _scrollDebounceDelay = Duration(milliseconds: 100);
   bool _hasTriggeredLoadMore = false;
@@ -84,7 +85,6 @@ class _TestsPageState extends State<TestsPage> {
           _hasTriggeredLoadMore = true;
           _testsCubit.requestLoadMoreTests();
           
-          // Reset the flag after a delay to allow for the next load more
           Timer(const Duration(seconds: 1), () {
             if (mounted) {
               _hasTriggeredLoadMore = false;
@@ -92,7 +92,6 @@ class _TestsPageState extends State<TestsPage> {
           });
         }
       } else {
-        // Reset flag when not near bottom
         _hasTriggeredLoadMore = false;
       }
     });
@@ -104,7 +103,6 @@ class _TestsPageState extends State<TestsPage> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
     
-    // Use a larger threshold and ensure we have some content to scroll
     return maxScroll > 0 && currentScroll >= (maxScroll * 0.8);
   }
 
@@ -118,7 +116,7 @@ class _TestsPageState extends State<TestsPage> {
         await _testsCubit.hardRefresh();
       }
       _editPermissionCache.clear();
-      _hasTriggeredLoadMore = false; // Reset load more flag
+      _hasTriggeredLoadMore = false;
     } finally {
       setState(() => _isRefreshing = false);
     }
@@ -141,15 +139,111 @@ class _TestsPageState extends State<TestsPage> {
       _selectedCategory = category;
       _isSearching = false;
       _searchQuery = '';
-      _hasTriggeredLoadMore = false; // Reset load more flag
+      _hasTriggeredLoadMore = false;
     });
     
     _editPermissionCache.clear();
     
     if (category == TestCategory.all) {
-      _testsCubit.loadInitialTests();
+      _testsCubit.loadInitialTests(sortType: _selectedSortType);
     } else {
-      _testsCubit.loadTestsByCategory(category);
+      _testsCubit.loadTestsByCategory(category, sortType: _selectedSortType);
+    }
+  }
+
+  void _onSortTypeChanged(TestSortType sortType) {
+    if (_selectedSortType == sortType) return;
+    
+    setState(() {
+      _selectedSortType = sortType;
+      _hasTriggeredLoadMore = false;
+    });
+    
+    _editPermissionCache.clear();
+    _testsCubit.changeSortType(sortType);
+  }
+
+  void _showSortBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _buildSortBottomSheet(),
+    );
+  }
+
+  Widget _buildSortBottomSheet() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                _languageCubit.getLocalizedText(
+                  korean: '정렬',
+                  english: 'Sort',
+                ),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...TestSortType.values.map((sortType) {
+            final isSelected = _selectedSortType == sortType;
+            return ListTile(
+              leading: Icon(
+                _getSortTypeIcon(sortType),
+                color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+              ),
+              title: Text(
+                sortType.getDisplayName(_languageCubit.getLocalizedText),
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                ),
+              ),
+              trailing: isSelected 
+                  ? Icon(Icons.check_rounded, color: colorScheme.primary)
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _onSortTypeChanged(sortType);
+              },
+            );
+          }).toList(),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  IconData _getSortTypeIcon(TestSortType sortType) {
+    switch (sortType) {
+      case TestSortType.recent:
+        return Icons.schedule_rounded;
+      case TestSortType.popular:
+        return Icons.trending_up_rounded;
+      case TestSortType.rating:
+        return Icons.star_rounded;
+      case TestSortType.viewCount:
+        return Icons.visibility_rounded;
     }
   }
 
@@ -224,7 +318,7 @@ class _TestsPageState extends State<TestsPage> {
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverAppBar(
-      expandedHeight: 150,
+      expandedHeight: 170,
       pinned: false,
       floating: true,
       snap: true,
@@ -236,7 +330,7 @@ class _TestsPageState extends State<TestsPage> {
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
           final expandRatio =
-              (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
+              (constraints.maxHeight - kToolbarHeight) / (160 - kToolbarHeight);
           final isExpanded = expandRatio > 0.1;
 
           return FlexibleSpaceBar(
@@ -245,7 +339,7 @@ class _TestsPageState extends State<TestsPage> {
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha : 0.3),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
                     width: 0.5,
                   ),
                 ),
@@ -277,6 +371,8 @@ class _TestsPageState extends State<TestsPage> {
                         ),
                         const SizedBox(height: 16),
                         _buildCategoryTabsSliver(theme),
+                        const SizedBox(height: 12),
+                        _buildSortChip(theme, colorScheme),
                       ],
                     ),
                   ),
@@ -285,6 +381,48 @@ class _TestsPageState extends State<TestsPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSortChip(ThemeData theme, ColorScheme colorScheme) {
+    return GestureDetector(
+      onTap: _showSortBottomSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _getSortTypeIcon(_selectedSortType),
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _selectedSortType.getDisplayName(_languageCubit.getLocalizedText),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -307,13 +445,13 @@ class _TestsPageState extends State<TestsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha : 0.1)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withValues(alpha : 0.3),
+                      : theme.colorScheme.outline.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -322,7 +460,7 @@ class _TestsPageState extends State<TestsPage> {
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha : 0.6),
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 14,
                 ),
@@ -449,9 +587,9 @@ class _TestsPageState extends State<TestsPage> {
                   context.read<ConnectivityCubit>().checkConnectivity();
                   if (context.read<ConnectivityCubit>().state is ConnectivityConnected) {
                     if (_selectedCategory == TestCategory.all) {
-                      _testsCubit.loadInitialTests();
+                      _testsCubit.loadInitialTests(sortType: _selectedSortType);
                     } else {
-                      _testsCubit.loadTestsByCategory(_selectedCategory);
+                      _testsCubit.loadTestsByCategory(_selectedCategory, sortType: _selectedSortType);
                     }
                   }
                 },
@@ -478,9 +616,9 @@ class _TestsPageState extends State<TestsPage> {
                 errorType: state.errorType,
                 onRetry: () {
                   if (_selectedCategory == TestCategory.all) {
-                    _testsCubit.loadInitialTests();
+                    _testsCubit.loadInitialTests(sortType: _selectedSortType);
                   } else {
-                    _testsCubit.loadTestsByCategory(_selectedCategory);
+                    _testsCubit.loadTestsByCategory(_selectedCategory, sortType: _selectedSortType);
                   }
                 },
               ),
@@ -541,7 +679,7 @@ class _TestsPageState extends State<TestsPage> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha : 0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -574,7 +712,7 @@ class _TestsPageState extends State<TestsPage> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha : 0.3),
+              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -714,7 +852,7 @@ class _TestsPageState extends State<TestsPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colorScheme.outlineVariant.withValues(alpha : 0.5),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -765,6 +903,19 @@ class _TestsPageState extends State<TestsPage> {
                               color: colorScheme.secondary,
                               theme: theme,
                             ),
+                            if (test.rating > 0)
+                              _buildDetailChip(
+                                icon: Icons.star_rounded,
+                                label: '${test.formattedRating} (${test.ratingCount})',
+                                color: Colors.amber[600]!,
+                                theme: theme,
+                              ),
+                            _buildDetailChip(
+                              icon: Icons.visibility_rounded,
+                              label: '${test.formattedViewCount} views',
+                              color: Colors.blue[600]!,
+                              theme: theme,
+                            ),
                           ],
                         ),
                         
@@ -813,9 +964,9 @@ class _TestsPageState extends State<TestsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha : 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha : 0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

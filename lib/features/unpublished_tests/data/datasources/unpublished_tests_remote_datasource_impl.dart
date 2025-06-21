@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:korean_language_app/core/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_remote_datasource.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';

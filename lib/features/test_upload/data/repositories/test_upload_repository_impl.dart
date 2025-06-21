@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:korean_language_app/core/data/base_repository.dart';
-import 'package:korean_language_app/core/enums/question_type.dart';
+import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/network/network_info.dart';

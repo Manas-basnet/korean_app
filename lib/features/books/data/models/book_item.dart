@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
-import 'package:korean_language_app/core/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 
 class BookItem {
   final String id;

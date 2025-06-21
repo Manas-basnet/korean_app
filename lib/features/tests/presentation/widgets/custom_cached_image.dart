@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:korean_language_app/core/enums/image_display_type.dart';
+import 'package:korean_language_app/shared/enums/image_display_type.dart';
 import 'package:korean_language_app/shared/models/image_display_source.dart';
 
 class CustomCachedImage extends StatefulWidget {

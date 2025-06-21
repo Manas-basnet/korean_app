@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 
 class TestCard extends StatelessWidget {
@@ -42,13 +42,11 @@ class TestCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with image or icon
                 Expanded(
                   flex: 3,
                   child: _buildHeader(context),
                 ),
                 
-                // Content
                 Expanded(
                   flex: 4,
                   child: _buildContent(context, theme),
@@ -56,7 +54,6 @@ class TestCard extends StatelessWidget {
               ],
             ),
             
-            // Top badges and options
             _buildTopOverlay(context, theme),
           ],
         ),
@@ -107,7 +104,6 @@ class TestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
           Text(
             test.title,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -119,7 +115,6 @@ class TestCard extends StatelessWidget {
           
           const SizedBox(height: 4),
           
-          // Questions count and time
           Row(
             children: [
               Icon(
@@ -152,9 +147,55 @@ class TestCard extends StatelessWidget {
             ],
           ),
           
+          const SizedBox(height: 6),
+          
+          Row(
+            children: [
+              if (test.rating > 0) ...[
+                Icon(
+                  Icons.star_rounded,
+                  size: 14,
+                  color: Colors.amber[600],
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  test.formattedRating,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (test.ratingCount > 0) ...[
+                  const SizedBox(width: 2),
+                  Text(
+                    '(${test.ratingCount})',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 10),
+              ],
+              Icon(
+                Icons.visibility_rounded,
+                size: 14,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 2),
+              Text(
+                test.formattedViewCount,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          
           const SizedBox(height: 8),
           
-          // Description
           Expanded(
             child: Text(
               test.description,
@@ -169,11 +210,9 @@ class TestCard extends StatelessWidget {
           
           const SizedBox(height: 8),
           
-          // Bottom info
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Level chip
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -194,7 +233,6 @@ class TestCard extends StatelessWidget {
                 ),
               ),
               
-              // Category
               Text(
                 test.category.name,
                 style: TextStyle(
@@ -218,7 +256,6 @@ class TestCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Passing score badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -242,7 +279,6 @@ class TestCard extends StatelessWidget {
             ),
           ),
           
-          // Options menu
           Material(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(50),
@@ -292,7 +328,6 @@ class TestCard extends StatelessWidget {
       ),
     ];
     
-    // Add edit/delete options if user has permission
     if (canEdit) {
       if (onEdit != null) {
         menuItems.add(const PopupMenuItem<String>(
