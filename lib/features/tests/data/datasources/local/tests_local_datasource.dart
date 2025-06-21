@@ -1,4 +1,5 @@
 import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 
 abstract class TestsLocalDataSource {
   Future<List<TestItem>> getAllTests();
@@ -15,8 +16,8 @@ abstract class TestsLocalDataSource {
   Future<void> setTestHashes(Map<String, String> hashes);
   Future<Map<String, String>> getTestHashes();
   
-  Future<List<TestItem>> getTestsPage(int page, int pageSize);
-  Future<List<TestItem>> getTestsByCategoryPage(String category, int page, int pageSize);
+  Future<List<TestItem>> getTestsPage(int page, int pageSize, {TestSortType sortType = TestSortType.recent});
+  Future<List<TestItem>> getTestsByCategoryPage(String category, int page, int pageSize, {TestSortType sortType = TestSortType.recent});
   
   Future<void> setTotalTestsCount(int count);
   Future<int?> getTotalTestsCount();

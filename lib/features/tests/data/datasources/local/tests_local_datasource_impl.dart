@@ -9,6 +9,7 @@ import 'package:korean_language_app/features/tests/data/datasources/local/tests_
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 
 class TestsLocalDataSourceImpl implements TestsLocalDataSource {
   final StorageService _storageService;
@@ -219,15 +220,20 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
   }
 
   @override
-  Future<List<TestItem>> getTestsPage(int page, int pageSize) async {
+  Future<List<TestItem>> getTestsPage(int page, int pageSize, {TestSortType sortType = TestSortType.recent}) async {
     try {
       final allTests = await getAllTests();
+      final sortedTests = _applySorting(allTests, sortType);
+      
       final startIndex = page * pageSize;
-      final endIndex = (startIndex + pageSize).clamp(0, allTests.length);
+      final endIndex = (startIndex + pageSize).clamp(0, sortedTests.length);
       
-      if (startIndex >= allTests.length) return [];
+      if (startIndex >= sortedTests.length) return [];
       
-      return allTests.sublist(startIndex, endIndex);
+      final result = sortedTests.sublist(startIndex, endIndex);
+      dev.log('Retrieved ${result.length} tests (page $page, sortType: ${sortType.name})');
+      
+      return result;
     } catch (e) {
       dev.log('Error getting tests page: $e');
       return [];
@@ -235,23 +241,62 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
   }
 
   @override
-  Future<List<TestItem>> getTestsByCategoryPage(String category, int page, int pageSize) async {
+  Future<List<TestItem>> getTestsByCategoryPage(String category, int page, int pageSize, {TestSortType sortType = TestSortType.recent}) async {
     try {
       final allTests = await getAllTests();
       final categoryTests = allTests.where((test) => 
         test.category.toString().split('.').last == category
       ).toList();
       
+      final sortedTests = _applySorting(categoryTests, sortType);
+      
       final startIndex = page * pageSize;
-      final endIndex = (startIndex + pageSize).clamp(0, categoryTests.length);
+      final endIndex = (startIndex + pageSize).clamp(0, sortedTests.length);
       
-      if (startIndex >= categoryTests.length) return [];
+      if (startIndex >= sortedTests.length) return [];
       
-      return categoryTests.sublist(startIndex, endIndex);
+      final result = sortedTests.sublist(startIndex, endIndex);
+      dev.log('Retrieved ${result.length} category tests (page $page, category: $category, sortType: ${sortType.name})');
+      
+      return result;
     } catch (e) {
       dev.log('Error getting category tests page: $e');
       return [];
     }
+  }
+
+  List<TestItem> _applySorting(List<TestItem> tests, TestSortType sortType) {
+    final sortedTests = List<TestItem>.from(tests);
+    
+    switch (sortType) {
+      case TestSortType.recent:
+        sortedTests.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bTime.compareTo(aTime); // Descending (most recent first)
+        });
+        break;
+        
+      case TestSortType.popular:
+        sortedTests.sort((a, b) {
+          return b.popularity.compareTo(a.popularity); // Descending (most popular first)
+        });
+        break;
+        
+      case TestSortType.rating:
+        sortedTests.sort((a, b) {
+          return b.rating.compareTo(a.rating); // Descending (highest rating first)
+        });
+        break;
+        
+      case TestSortType.viewCount:
+        sortedTests.sort((a, b) {
+          return b.viewCount.compareTo(a.viewCount); // Descending (most viewed first)
+        });
+        break;
+    }
+    
+    return sortedTests;
   }
 
   @override

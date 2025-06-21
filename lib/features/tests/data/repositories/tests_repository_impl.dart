@@ -40,9 +40,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     
     final result = await handleCacheFirstCall<List<TestItem>>(
       () async {
-        final cachedTests = await localDataSource.getTestsPage(page, pageSize);
+        final cachedTests = await localDataSource.getTestsPage(page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} tests from cache (page $page)');
+          dev.log('Returning ${cachedTests.length} tests from cache (page $page, sortType: ${sortType.name})');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -100,9 +100,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     
     final result = await handleCacheFirstCall<List<TestItem>>(
       () async {
-        final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, page, pageSize);
+        final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} category tests from cache (page $page)');
+          dev.log('Returning ${cachedTests.length} category tests from cache (page $page, sortType: ${sortType.name})');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -206,8 +206,8 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh requested but offline - returning cached data');
-        final cachedTests = await localDataSource.getTestsPage(0, pageSize);
+        dev.log('Hard refresh requested but offline - returning cached data with sortType: ${sortType.name}');
+        final cachedTests = await localDataSource.getTestsPage(0, pageSize, sortType: sortType);
         final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },
@@ -246,9 +246,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh category requested but offline - returning cached data');
+        dev.log('Hard refresh category requested but offline - returning cached data with sortType: ${sortType.name}');
         final categoryString = category.toString().split('.').last;
-        final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, 0, pageSize);
+        final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, 0, pageSize, sortType: sortType);
         final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
       },

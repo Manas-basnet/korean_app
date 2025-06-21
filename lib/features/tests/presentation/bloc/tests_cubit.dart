@@ -5,24 +5,35 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
-import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/shared/services/auth_service.dart';
-import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
-import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
+
+// Use Cases
+import 'package:korean_language_app/features/tests/domain/usecases/load_tests_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/search_tests_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/get_test_by_id_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/start_test_session_usecase.dart';
+
+// Use Case Parameters
+import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
 
 part 'tests_state.dart';
 
 class TestsCubit extends Cubit<TestsState> {
-  final TestsRepository repository;
-  final AuthService authService;
-  final AdminPermissionService adminService;
+  // Use Cases - Clean dependency injection
+  final LoadTestsUseCase loadTestsUseCase;
+  final CheckTestEditPermissionSimpleUseCase checkEditPermissionUseCase;
+  final RateTestUseCase rateTestUseCase;
+  final SearchTestsUseCase searchTestsUseCase;
+  final GetTestByIdUseCase getTestByIdUseCase;
+  final StartTestSessionUseCase startTestSessionUseCase;
   final NetworkInfo networkInfo;
   
+  // State management variables - much simpler now
   int _currentPage = 0;
   static const int _pageSize = 5;
   TestCategory _currentCategory = TestCategory.all;
@@ -30,14 +41,16 @@ class TestsCubit extends Cubit<TestsState> {
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final Stopwatch _operationStopwatch = Stopwatch();
-  
   Timer? _loadMoreDebounceTimer;
   static const Duration _loadMoreDebounceDelay = Duration(milliseconds: 300);
   
   TestsCubit({
-    required this.repository,
-    required this.authService,
-    required this.adminService,
+    required this.loadTestsUseCase,
+    required this.checkEditPermissionUseCase,
+    required this.rateTestUseCase,
+    required this.searchTestsUseCase,
+    required this.getTestByIdUseCase,
+    required this.startTestSessionUseCase,
     required this.networkInfo,
   }) : super(const TestsInitial()) {
     _initializeConnectivityListener();
@@ -80,28 +93,21 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
-      final result = await repository.getTests(
-        page: 0, 
+      final result = await loadTestsUseCase.execute(LoadTestsParams(
+        page: 0,
         pageSize: _pageSize,
         sortType: sortType,
-      );
+      ));
       
-      await result.fold(
-        onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTests(tests.length, sortType);
-
-          _currentPage = tests.length ~/ _pageSize;
-          final uniqueTests = _removeDuplicates(tests);
-          
+      result.fold(
+        onSuccess: (loadResult) {
+          _currentPage = loadResult.currentPage;
           _operationStopwatch.stop();
-          dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests (${sortType.name})');
+          dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
-            tests: uniqueTests,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            tests: loadResult.tests,
+            hasMore: loadResult.hasMore,
             currentOperation: const TestsOperation(
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
@@ -156,29 +162,23 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
-      final result = await repository.getTestsByCategory(
-        category,
+      // SINGLE LINE - Use case handles all business logic
+      final result = await loadTestsUseCase.execute(LoadTestsParams(
         page: 0,
         pageSize: _pageSize,
         sortType: sortType,
-      );
+        category: category,
+      ));
       
-      await result.fold(
-        onSuccess: (tests) async {
-          final hasMoreResult = await repository.hasMoreTestsByCategory(category, tests.length, sortType);
-          final uniqueTests = _removeDuplicates(tests);
-          
-          _currentPage = uniqueTests.length ~/ _pageSize;
-          
+      result.fold(
+        onSuccess: (loadResult) {
+          _currentPage = loadResult.currentPage;
           _operationStopwatch.stop();
-          dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests (${sortType.name})');
+          dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
-            tests: uniqueTests,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            tests: loadResult.tests,
+            hasMore: loadResult.hasMore,
             currentOperation: const TestsOperation(
               type: TestsOperationType.loadTests,
               status: TestsOperationStatus.completed,
@@ -228,16 +228,11 @@ class TestsCubit extends Cubit<TestsState> {
     });
   }
   
+
   Future<void> _performLoadMoreTests() async {
     final currentState = state;
     
-    if (!currentState.hasMore) {
-      dev.log('loadMoreTests skipped - no more tests available');
-      return;
-    }
-    
-    if (currentState.currentOperation.isInProgress) {
-      dev.log('loadMoreTests skipped - operation already in progress: ${currentState.currentOperation.type}');
+    if (!currentState.hasMore || currentState.currentOperation.isInProgress) {
       return;
     }
     
@@ -258,66 +253,30 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
-      ApiResult<List<TestItem>> result;
+      final result = await loadTestsUseCase.execute(LoadTestsParams(
+        page: _currentPage,
+        pageSize: _pageSize,
+        sortType: _currentSortType,
+        category: _currentCategory == TestCategory.all ? null : _currentCategory,
+        loadMore: true,
+      ));
       
-      if (_currentCategory == TestCategory.all) {
-        result = await repository.getTests(
-          page: _currentPage,
-          pageSize: _pageSize,
-          sortType: _currentSortType,
-        );
-      } else {
-        result = await repository.getTestsByCategory(
-          _currentCategory,
-          page: _currentPage,
-          pageSize: _pageSize,
-          sortType: _currentSortType,
-        );
-      }
-      
-      await result.fold(
-        onSuccess: (moreTests) async {
-          final existingIds = state.tests.map((test) => test.id).toSet();
-          final uniqueNewTests = moreTests.where((test) => !existingIds.contains(test.id)).toList();
+      result.fold(
+        onSuccess: (loadResult) {
+          final allTests = [...state.tests, ...loadResult.tests];
+          _currentPage = loadResult.currentPage;
           
-          if (uniqueNewTests.isNotEmpty) {
-            final allTests = [...state.tests, ...uniqueNewTests];
-            
-            ApiResult<bool> hasMoreResult;
-            if (_currentCategory == TestCategory.all) {
-              hasMoreResult = await repository.hasMoreTests(allTests.length, _currentSortType);
-            } else {
-              hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, allTests.length, _currentSortType);
-            }
-            
-            _currentPage = allTests.length ~/ _pageSize;
-            
-            _operationStopwatch.stop();
-            dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewTests.length} new tests');
-            
-            emit(state.copyWith(
-              tests: allTests,
-              hasMore: hasMoreResult.fold(
-                onSuccess: (hasMore) => hasMore,
-                onFailure: (_, __) => false,
-              ),
-              currentOperation: const TestsOperation(
-                type: TestsOperationType.loadMoreTests,
-                status: TestsOperationStatus.completed,
-              ),
-            ));
-          } else {
-            _operationStopwatch.stop();
-            dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with no new tests');
-            
-            emit(state.copyWith(
-              hasMore: false,
-              currentOperation: const TestsOperation(
-                type: TestsOperationType.loadMoreTests,
-                status: TestsOperationStatus.completed,
-              ),
-            ));
-          }
+          _operationStopwatch.stop();
+          dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} new tests');
+          
+          emit(state.copyWith(
+            tests: allTests,
+            hasMore: loadResult.hasMore,
+            currentOperation: const TestsOperation(
+              type: TestsOperationType.loadMoreTests,
+              status: TestsOperationStatus.completed,
+            ),
+          ));
           _clearOperationAfterDelay();
         },
         onFailure: (message, type) {
@@ -363,42 +322,25 @@ class TestsCubit extends Cubit<TestsState> {
       
       _currentPage = 0;
       
-      ApiResult<List<TestItem>> result;
-      if (_currentCategory == TestCategory.all) {
-        result = await repository.hardRefreshTests(
-          pageSize: _pageSize,
-          sortType: _currentSortType,
-        );
-      } else {
-        result = await repository.hardRefreshTestsByCategory(
-          _currentCategory,
-          pageSize: _pageSize,
-          sortType: _currentSortType,
-        );
-      }
+      // SINGLE LINE - Use case handles all business logic
+      final result = await loadTestsUseCase.execute(LoadTestsParams(
+        page: 0,
+        pageSize: _pageSize,
+        sortType: _currentSortType,
+        category: _currentCategory == TestCategory.all ? null : _currentCategory,
+        forceRefresh: true,
+      ));
       
-      await result.fold(
-        onSuccess: (tests) async {
-          final uniqueTests = _removeDuplicates(tests);
-          
-          ApiResult<bool> hasMoreResult;
-          if (_currentCategory == TestCategory.all) {
-            hasMoreResult = await repository.hasMoreTests(uniqueTests.length, _currentSortType);
-          } else {
-            hasMoreResult = await repository.hasMoreTestsByCategory(_currentCategory, uniqueTests.length, _currentSortType);
-          }
-          
-          _currentPage = uniqueTests.length ~/ _pageSize;
+      result.fold(
+        onSuccess: (loadResult) {
+          _currentPage = loadResult.currentPage;
           
           _operationStopwatch.stop();
-          dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueTests.length} tests');
+          dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
-            tests: uniqueTests,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            tests: loadResult.tests,
+            hasMore: loadResult.hasMore,
             currentOperation: const TestsOperation(
               type: TestsOperationType.refreshTests,
               status: TestsOperationStatus.completed,
@@ -448,12 +390,11 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
 
-      final user = _getCurrentUser();
-      if (user != null) {
-        await repository.recordTestView(testId, user.uid);
-      }
-
-      final result = await repository.getTestById(testId);
+      // SINGLE LINE - Use case handles all business logic
+      final result = await getTestByIdUseCase.execute(GetTestByIdParams(
+        testId: testId,
+        recordView: true,
+      ));
 
       result.fold(
         onSuccess: (test) {
@@ -487,62 +428,44 @@ class TestsCubit extends Cubit<TestsState> {
 
   Future<void> rateTest(String testId, double rating) async {
     try {
-      final user = _getCurrentUser();
-      if (user == null) return;
-
-      await repository.rateTest(testId, user.uid, rating);
+      // SINGLE LINE - Use case handles all business logic
+      final result = await rateTestUseCase.execute(RateTestParams(
+        testId: testId,
+        rating: rating,
+      ));
       
-      if (state.selectedTest?.id == testId) {
-        final updatedTest = state.selectedTest!.copyWith(
-          rating: rating,
-          ratingCount: state.selectedTest!.ratingCount + 1,
-        );
-        emit(state.copyWith(selectedTest: updatedTest));
-      }
-      
-      final testIndex = state.tests.indexWhere((test) => test.id == testId);
-      if (testIndex != -1) {
-        final updatedTests = List<TestItem>.from(state.tests);
-        updatedTests[testIndex] = updatedTests[testIndex].copyWith(
-          rating: rating,
-          ratingCount: updatedTests[testIndex].ratingCount + 1,
-        );
-        emit(state.copyWith(tests: updatedTests));
-      }
-    } catch (e) {
-      dev.log('Error rating test: $e');
-    }
-  }
-
-  Future<UserTestInteraction?> getUserTestInteraction(String testId) async {
-    try {
-      final user = _getCurrentUser();
-      if (user == null) return null;
-
-      final result = await repository.getUserTestInteraction(testId, user.uid);
-      return result.fold(
-        onSuccess: (interaction) => interaction,
-        onFailure: (_, __) => null,
+      result.fold(
+        onSuccess: (_) {
+          // Update local state
+          if (state.selectedTest?.id == testId) {
+            final updatedTest = state.selectedTest!.copyWith(
+              rating: rating,
+              ratingCount: state.selectedTest!.ratingCount + 1,
+            );
+            emit(state.copyWith(selectedTest: updatedTest));
+          }
+          
+          final testIndex = state.tests.indexWhere((test) => test.id == testId);
+          if (testIndex != -1) {
+            final updatedTests = List<TestItem>.from(state.tests);
+            updatedTests[testIndex] = updatedTests[testIndex].copyWith(
+              rating: rating,
+              ratingCount: updatedTests[testIndex].ratingCount + 1,
+            );
+            emit(state.copyWith(tests: updatedTests));
+          }
+        },
+        onFailure: (message, type) {
+          dev.log('Error rating test: $message');
+        },
       );
     } catch (e) {
-      dev.log('Error getting user test interaction: $e');
-      return null;
+      dev.log('Error rating test: $e');
     }
   }
   
   Future<bool> canUserEditTest(String testId) async {
     try {
-      final UserEntity? user = _getCurrentUser();
-      if (user == null) {
-        dev.log('No authenticated user for edit permission check');
-        return false;
-      }
-      
-      if (await adminService.isUserAdmin(user.uid)) {
-        dev.log('User is admin, granting edit permission for test: $testId');
-        return true;
-      }
-      
       final test = state.tests.firstWhere(
         (t) => t.id == testId,
         orElse: () => const TestItem(
@@ -551,10 +474,10 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       );
       
-      final canEdit = test.id.isNotEmpty && test.creatorUid == user.uid;
-      dev.log('Edit permission for test $testId: $canEdit (user: ${user.uid}, creator: ${test.creatorUid})');
+      if (test.id.isEmpty) return false;
       
-      return canEdit;
+      // SINGLE LINE - Use case handles all business logic
+      return await checkEditPermissionUseCase.execute(testId, test.creatorUid);
     } catch (e) {
       dev.log('Error checking edit permission: $e');
       return false;
@@ -565,23 +488,6 @@ class TestsCubit extends Cubit<TestsState> {
     return canUserEditTest(testId);
   }
   
-  UserEntity? _getCurrentUser() {
-    return authService.getCurrentUser();
-  }
-  
-  List<TestItem> _removeDuplicates(List<TestItem> tests) {
-    final uniqueIds = <String>{};
-    final uniqueTests = <TestItem>[];
-    
-    for (final test in tests) {
-      if (uniqueIds.add(test.id)) {
-        uniqueTests.add(test);
-      }
-    }
-    
-    return uniqueTests;
-  }
-
   void _handleError(String message, TestsOperationType operationType, [String? testId]) {
     emit(state.copyWithBaseState(
       error: message,
