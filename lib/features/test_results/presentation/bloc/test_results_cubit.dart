@@ -3,22 +3,24 @@ import 'dart:developer' as dev;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/services/auth_service.dart';
-import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
-import 'package:korean_language_app/features/test_results/domain/repositories/test_results_repository.dart';
+import 'package:korean_language_app/features/test_results/domain/usecases/save_test_result_usecase.dart';
+import 'package:korean_language_app/features/test_results/domain/usecases/load_user_test_results_usecase.dart';
+import 'package:korean_language_app/features/test_results/domain/usecases/get_user_latest_result_usecase.dart';
 
 part 'test_results_state.dart';
 
 class TestResultsCubit extends Cubit<TestResultsState> {
-  final TestResultsRepository repository;
-  final AuthService authService;
+  final SaveTestResultUseCase saveTestResultUseCase;
+  final LoadUserTestResultsUseCase loadUserTestResultsUseCase;
+  final GetUserLatestResultUseCase getUserLatestResultUseCase;
   
   final Stopwatch _operationStopwatch = Stopwatch();
   
   TestResultsCubit({
-    required this.repository,
-    required this.authService,
+    required this.saveTestResultUseCase,
+    required this.loadUserTestResultsUseCase,
+    required this.getUserLatestResultUseCase,
   }) : super(const TestResultsInitial());
 
   Future<void> saveTestResult(TestResult testResult) async {
@@ -41,7 +43,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
         ),
       ));
 
-      final result = await repository.saveTestResult(testResult);
+      final result = await saveTestResultUseCase.execute(testResult);
 
       result.fold(
         onSuccess: (_) {
@@ -83,16 +85,6 @@ class TestResultsCubit extends Cubit<TestResultsState> {
   }
 
   Future<void> loadUserResults({int limit = 20}) async {
-    final UserEntity? user = _getCurrentUser();
-    if (user == null) {
-      dev.log('No authenticated user for loading results');
-      emit(state.copyWithBaseState(
-        error: 'User not authenticated',
-        errorType: FailureType.auth,
-      ));
-      return;
-    }
-
     if (state.currentOperation.isInProgress) {
       dev.log('Load results operation already in progress, skipping...');
       return;
@@ -112,7 +104,9 @@ class TestResultsCubit extends Cubit<TestResultsState> {
         ),
       ));
 
-      final result = await repository.getUserTestResults(user.uid, limit: limit);
+      final result = await loadUserTestResultsUseCase.execute(
+        LoadUserTestResultsParams(limit: limit)
+      );
 
       result.fold(
         onSuccess: (results) {
@@ -154,80 +148,11 @@ class TestResultsCubit extends Cubit<TestResultsState> {
     }
   }
 
-  Future<void> loadTestResults(String testId, {int limit = 50}) async {
-    if (state.currentOperation.isInProgress) {
-      dev.log('Load test results operation already in progress, skipping...');
-      return;
-    }
-
-    _operationStopwatch.reset();
-    _operationStopwatch.start();
-
-    try {
-      emit(state.copyWith(
-        isLoading: true,
-        error: null,
-        errorType: null,
-        currentOperation: TestResultsOperation(
-          type: TestResultsOperationType.loadTestResults,
-          status: TestResultsOperationStatus.inProgress,
-          testId: testId,
-        ),
-      ));
-
-      final result = await repository.getTestResults(testId, limit: limit);
-
-      result.fold(
-        onSuccess: (results) {
-          _operationStopwatch.stop();
-          dev.log('Loaded ${results.length} test results for test $testId in ${_operationStopwatch.elapsedMilliseconds}ms');
-          
-          emit(state.copyWith(
-            isLoading: false,
-            error: null,
-            errorType: null,
-            testResults: results,
-            currentOperation: TestResultsOperation(
-              type: TestResultsOperationType.loadTestResults,
-              status: TestResultsOperationStatus.completed,
-              testId: testId,
-            ),
-          ));
-          _clearOperationAfterDelay();
-        },
-        onFailure: (message, type) {
-          _operationStopwatch.stop();
-          dev.log('Load test results failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
-          
-          emit(state.copyWithBaseState(
-            error: message,
-            errorType: type,
-            isLoading: false,
-          ).copyWithOperation(TestResultsOperation(
-            type: TestResultsOperationType.loadTestResults,
-            status: TestResultsOperationStatus.failed,
-            testId: testId,
-            message: message,
-          )));
-          _clearOperationAfterDelay();
-        },
-      );
-    } catch (e) {
-      _operationStopwatch.stop();
-      dev.log('Error loading test results after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
-      _handleError('Failed to load test results: $e', TestResultsOperationType.loadTestResults, testId);
-    }
-  }
-
   Future<void> loadUserLatestResult(String testId) async {
-    final UserEntity? user = _getCurrentUser();
-    if (user == null) {
-      dev.log('No authenticated user for loading latest result');
-      return;
-    }
-
     try {
-      final result = await repository.getUserLatestResult(user.uid, testId);
+      final result = await getUserLatestResultUseCase.execute(
+        GetUserLatestResultParams(testId: testId)
+      );
       
       result.fold(
         onSuccess: (latestResult) {
@@ -242,20 +167,16 @@ class TestResultsCubit extends Cubit<TestResultsState> {
     }
   }
 
-  // High-level helper methods for UI
+  // High-level helper methods for UI (maintained for backwards compatibility)
   Future<List<TestResult>> getUserTestResultsWithHandling() async {
     try {
-      final UserEntity? user = _getCurrentUser();
-      if (user == null) {
-        dev.log('No authenticated user for getting test results');
-        return [];
-      }
-
-      final result = await repository.getUserTestResults(user.uid);
+      final result = await loadUserTestResultsUseCase.execute(
+        const LoadUserTestResultsParams()
+      );
       
       return result.fold(
         onSuccess: (results) {
-          dev.log('Retrieved ${results.length} test results for user: ${user.uid}');
+          dev.log('Retrieved ${results.length} test results');
           return results;
         },
         onFailure: (message, type) {
@@ -271,17 +192,13 @@ class TestResultsCubit extends Cubit<TestResultsState> {
 
   Future<List<TestResult>> getCachedUserResults() async {
     try {
-      final UserEntity? user = _getCurrentUser();
-      if (user == null) {
-        dev.log('No authenticated user for getting cached test results');
-        return [];
-      }
-
-      final result = await repository.getCachedUserResults(user.uid);
+      final result = await loadUserTestResultsUseCase.execute(
+        const LoadUserTestResultsParams(cacheOnly: true)
+      );
       
       return result.fold(
         onSuccess: (results) {
-          dev.log('Retrieved ${results.length} cached test results for user: ${user.uid}');
+          dev.log('Retrieved ${results.length} cached test results');
           return results;
         },
         onFailure: (message, type) {
@@ -307,26 +224,6 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       dev.log('Error getting test results: $e');
       return [];
     }
-  }
-
-  Future<void> clearUserResults() async {
-    final UserEntity? user = _getCurrentUser();
-    if (user == null) {
-      dev.log('No authenticated user for clearing results');
-      return;
-    }
-
-    try {
-      await repository.clearUserResults(user.uid);
-      emit(state.copyWith(results: []));
-    } catch (e) {
-      dev.log('Error clearing user results: $e');
-    }
-  }
-
-  // Helper methods
-  UserEntity? _getCurrentUser() {
-    return authService.getCurrentUser();
   }
 
   void _handleError(String message, TestResultsOperationType operationType, [String? testId]) {

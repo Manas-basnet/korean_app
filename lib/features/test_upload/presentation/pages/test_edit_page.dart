@@ -407,7 +407,7 @@ class _TestEditPageState extends State<TestEditPage> {
                     .map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category.name),
+                    child: Text(category.displayName),
                   );
                 }).toList(),
                 onChanged: (value) {

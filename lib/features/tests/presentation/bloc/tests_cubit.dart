@@ -5,35 +5,26 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
-import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
-
-// Use Cases
 import 'package:korean_language_app/features/tests/domain/usecases/load_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
-import 'package:korean_language_app/features/tests/domain/usecases/search_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/get_test_by_id_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/start_test_session_usecase.dart';
-
-// Use Case Parameters
 import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
 
 part 'tests_state.dart';
 
 class TestsCubit extends Cubit<TestsState> {
-  // Use Cases - Clean dependency injection
   final LoadTestsUseCase loadTestsUseCase;
-  final CheckTestEditPermissionSimpleUseCase checkEditPermissionUseCase;
+  final CheckTestEditPermissionUseCase checkEditPermissionUseCase;
   final RateTestUseCase rateTestUseCase;
-  final SearchTestsUseCase searchTestsUseCase;
   final GetTestByIdUseCase getTestByIdUseCase;
   final StartTestSessionUseCase startTestSessionUseCase;
   final NetworkInfo networkInfo;
   
-  // State management variables - much simpler now
   int _currentPage = 0;
   static const int _pageSize = 5;
   TestCategory _currentCategory = TestCategory.all;
@@ -48,7 +39,6 @@ class TestsCubit extends Cubit<TestsState> {
     required this.loadTestsUseCase,
     required this.checkEditPermissionUseCase,
     required this.rateTestUseCase,
-    required this.searchTestsUseCase,
     required this.getTestByIdUseCase,
     required this.startTestSessionUseCase,
     required this.networkInfo,
@@ -161,8 +151,7 @@ class TestsCubit extends Cubit<TestsState> {
           status: TestsOperationStatus.inProgress,
         ),
       ));
-      
-      // SINGLE LINE - Use case handles all business logic
+
       final result = await loadTestsUseCase.execute(LoadTestsParams(
         page: 0,
         pageSize: _pageSize,
@@ -253,8 +242,10 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
       
+      final nextPage = _currentPage + 1;
+      
       final result = await loadTestsUseCase.execute(LoadTestsParams(
-        page: _currentPage,
+        page: nextPage,
         pageSize: _pageSize,
         sortType: _currentSortType,
         category: _currentCategory == TestCategory.all ? null : _currentCategory,
@@ -263,20 +254,30 @@ class TestsCubit extends Cubit<TestsState> {
       
       result.fold(
         onSuccess: (loadResult) {
-          final allTests = [...state.tests, ...loadResult.tests];
-          _currentPage = loadResult.currentPage;
-          
-          _operationStopwatch.stop();
-          dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} new tests');
-          
-          emit(state.copyWith(
-            tests: allTests,
-            hasMore: loadResult.hasMore,
-            currentOperation: const TestsOperation(
-              type: TestsOperationType.loadMoreTests,
-              status: TestsOperationStatus.completed,
-            ),
-          ));
+          if (loadResult.tests.isNotEmpty) {
+            final allTests = [...state.tests, ...loadResult.tests];
+            _currentPage = nextPage;
+            
+            _operationStopwatch.stop();
+            dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} new tests');
+            
+            emit(state.copyWith(
+              tests: allTests,
+              hasMore: loadResult.hasMore,
+              currentOperation: const TestsOperation(
+                type: TestsOperationType.loadMoreTests,
+                status: TestsOperationStatus.completed,
+              ),
+            ));
+          } else {
+            emit(state.copyWith(
+              hasMore: false,
+              currentOperation: const TestsOperation(
+                type: TestsOperationType.loadMoreTests,
+                status: TestsOperationStatus.completed,
+              ),
+            ));
+          }
           _clearOperationAfterDelay();
         },
         onFailure: (message, type) {
@@ -321,8 +322,7 @@ class TestsCubit extends Cubit<TestsState> {
       ));
       
       _currentPage = 0;
-      
-      // SINGLE LINE - Use case handles all business logic
+
       final result = await loadTestsUseCase.execute(LoadTestsParams(
         page: 0,
         pageSize: _pageSize,
@@ -390,7 +390,6 @@ class TestsCubit extends Cubit<TestsState> {
         ),
       ));
 
-      // SINGLE LINE - Use case handles all business logic
       final result = await getTestByIdUseCase.execute(GetTestByIdParams(
         testId: testId,
         recordView: true,
@@ -428,7 +427,6 @@ class TestsCubit extends Cubit<TestsState> {
 
   Future<void> rateTest(String testId, double rating) async {
     try {
-      // SINGLE LINE - Use case handles all business logic
       final result = await rateTestUseCase.execute(RateTestParams(
         testId: testId,
         rating: rating,
@@ -436,7 +434,6 @@ class TestsCubit extends Cubit<TestsState> {
       
       result.fold(
         onSuccess: (_) {
-          // Update local state
           if (state.selectedTest?.id == testId) {
             final updatedTest = state.selectedTest!.copyWith(
               rating: rating,
@@ -464,28 +461,27 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
   
-  Future<bool> canUserEditTest(String testId) async {
+  Future<bool> canUserEditTest(TestItem test) async {
     try {
-      final test = state.tests.firstWhere(
-        (t) => t.id == testId,
-        orElse: () => const TestItem(
-          id: '', title: '', description: '', questions: [],
-          level: BookLevel.beginner, category: TestCategory.practice,
-        ),
+      
+      final result = await checkEditPermissionUseCase.execute(
+        CheckTestPermissionParams(testId: test.id, testCreatorUid: test.creatorUid)
       );
-      
-      if (test.id.isEmpty) return false;
-      
-      // SINGLE LINE - Use case handles all business logic
-      return await checkEditPermissionUseCase.execute(testId, test.creatorUid);
+      return result.fold(
+        onSuccess: (permissionResult) => permissionResult.canEdit,
+        onFailure: (message, type) {
+          dev.log('Failed to check edit permission: $message');
+          return false;
+        },
+      );
     } catch (e) {
       dev.log('Error checking edit permission: $e');
       return false;
     }
   }
   
-  Future<bool> canUserDeleteTest(String testId) async {
-    return canUserEditTest(testId);
+  Future<bool> canUserDeleteTest(TestItem test) async {
+    return canUserEditTest(test);
   }
   
   void _handleError(String message, TestsOperationType operationType, [String? testId]) {

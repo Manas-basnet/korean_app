@@ -122,12 +122,13 @@ class _TestsPageState extends State<TestsPage> {
     }
   }
 
-  Future<bool> _checkEditPermission(String testId) async {
+  Future<bool> _checkEditPermission(TestItem test) async {
+    String testId = test.id;
     if (_editPermissionCache.containsKey(testId)) {
       return _editPermissionCache[testId]!;
     }
     
-    final hasPermission = await _testsCubit.canUserEditTest(testId);
+    final hasPermission = await _testsCubit.canUserEditTest(test);
     _editPermissionCache[testId] = hasPermission;
     return hasPermission;
   }
@@ -179,9 +180,8 @@ class _TestsPageState extends State<TestsPage> {
     final screenSize = MediaQuery.of(context).size;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     
-    // Calculate available height for content
-    final maxHeight = screenSize.height * 0.6; // Max 60% of screen height
-    final headerHeight = screenSize.height * 0.08; // Header section height
+    final maxHeight = screenSize.height * 0.6;
+    final headerHeight = screenSize.height * 0.08;
     final availableContentHeight = maxHeight - headerHeight - bottomPadding;
     
     return Container(
@@ -196,7 +196,6 @@ class _TestsPageState extends State<TestsPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Container(
             margin: EdgeInsets.only(
               top: screenSize.height * 0.01,
@@ -210,7 +209,6 @@ class _TestsPageState extends State<TestsPage> {
             ),
           ),
           
-          // Header
           Container(
             height: headerHeight,
             padding: EdgeInsets.symmetric(
@@ -245,7 +243,6 @@ class _TestsPageState extends State<TestsPage> {
             ),
           ),
           
-          // Scrollable content
           Flexible(
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -393,7 +390,7 @@ class _TestsPageState extends State<TestsPage> {
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     final screenSize = MediaQuery.of(context).size;
-    final expandedHeight = screenSize.height * 0.22; // Responsive height
+    final expandedHeight = screenSize.height * 0.18;
     final minHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
     
     return SliverAppBar(
@@ -419,12 +416,6 @@ class _TestsPageState extends State<TestsPage> {
             background: Container(
               decoration: BoxDecoration(
                 color: colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                    width: 0.5,
-                  ),
-                ),
               ),
               child: SafeArea(
                 child: AnimatedOpacity(
@@ -441,107 +432,120 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   Widget _buildAppBarContent(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
-    final horizontalPadding = screenSize.width * 0.05;
-    final verticalSpacing = screenSize.height * 0.015;
+    final horizontalPadding = screenSize.width * 0.04;
     
     return Padding(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding, 
-        screenSize.height * 0.02, 
+        screenSize.height * 0.015, 
         horizontalPadding, 
-        0
+        screenSize.height * 0.01
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with title and actions
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
+              Expanded(
                 child: Text(
                   _languageCubit.getLocalizedText(
                     korean: '시험',
                     english: 'Tests',
                   ),
                   style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: colorScheme.onSurface,
-                    fontSize: screenSize.width * 0.065,
+                    fontSize: screenSize.width * 0.07,
                   ),
                 ),
               ),
-              _buildHeaderActions(colorScheme, screenSize),
+              _buildCompactHeaderActions(colorScheme, screenSize),
             ],
           ),
           
-          SizedBox(height: verticalSpacing),
+          SizedBox(height: screenSize.height * 0.02),
           
-          // Category tabs
-          _buildCategoryTabs(theme, screenSize),
-          
-          SizedBox(height: verticalSpacing * 0.8),
-          
-          // Sort chip
-          _buildSortChip(theme, colorScheme, screenSize),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMinimalCategoryTabs(theme, screenSize),
+              ),
+              SizedBox(width: screenSize.width * 0.03),
+              _buildMinimalSortButton(theme, colorScheme, screenSize),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSortChip(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
-    return GestureDetector(
-      onTap: _showSortBottomSheet,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: screenSize.width * 0.04,
-          vertical: screenSize.height * 0.01,
-        ),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.3),
-            width: 1,
+  Widget _buildCompactHeaderActions(ColorScheme colorScheme, Size screenSize) {
+    final iconSize = screenSize.width * 0.055;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildMinimalActionButton(
+          icon: Icons.search_rounded,
+          onPressed: _showSearchDelegate,
+          tooltip: _languageCubit.getLocalizedText(
+            korean: '검색',
+            english: 'Search',
           ),
+          colorScheme: colorScheme,
+          iconSize: iconSize,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _getSortTypeIcon(_selectedSortType),
-              size: screenSize.width * 0.04,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(width: screenSize.width * 0.02),
-            Text(
-              _selectedSortType.getDisplayName(_languageCubit.getLocalizedText),
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-                fontSize: screenSize.width * 0.035,
-              ),
-            ),
-            SizedBox(width: screenSize.width * 0.01),
-            Icon(
-              Icons.expand_more_rounded,
-              size: screenSize.width * 0.04,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ],
+        _buildMinimalActionButton(
+          icon: Icons.drafts_outlined,
+          onPressed: () => context.push(Routes.unpublishedTests),
+          tooltip: _languageCubit.getLocalizedText(
+            korean: '비공개 시험',
+            english: 'Unpublished Tests',
+          ),
+          colorScheme: colorScheme,
+          iconSize: iconSize,
+        ),
+        _buildMinimalActionButton(
+          icon: Icons.analytics_outlined,
+          onPressed: () => context.push(Routes.testResults),
+          tooltip: _languageCubit.getLocalizedText(
+            korean: '내 결과',
+            english: 'My Results',
+          ),
+          colorScheme: colorScheme,
+          iconSize: iconSize,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMinimalActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+    required ColorScheme colorScheme,
+    required double iconSize,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(left: MediaQuery.of(context).size.width * 0.01),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, size: iconSize),
+        tooltip: tooltip,
+        style: IconButton.styleFrom(
+          foregroundColor: colorScheme.onSurfaceVariant,
+          backgroundColor: Colors.transparent,
+          padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.025),
         ),
       ),
     );
   }
 
-  Widget _buildCategoryTabs(ThemeData theme, Size screenSize) {
-    final tabHeight = screenSize.height * 0.05;
-    
+  Widget _buildMinimalCategoryTabs(ThemeData theme, Size screenSize) {
     return SizedBox(
-      height: tabHeight,
+      height: screenSize.height * 0.04,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
         itemCount: TestCategory.values.length,
         separatorBuilder: (context, index) => SizedBox(width: screenSize.width * 0.02),
         itemBuilder: (context, index) {
@@ -552,31 +556,23 @@ class _TestsPageState extends State<TestsPage> {
             onTap: () => _onCategoryChanged(category),
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: screenSize.width * 0.04,
-                vertical: screenSize.height * 0.01,
+                horizontal: screenSize.width * 0.035,
+                vertical: screenSize.height * 0.008,
               ),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Center(
-                child: Text(
-                  _getCategoryDisplayName(category),
-                  style: TextStyle(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    fontSize: screenSize.width * 0.035,
-                  ),
+              child: Text(
+                category.getDisplayName(_languageCubit.getLocalizedText),
+                style: TextStyle(
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: screenSize.width * 0.032,
                 ),
               ),
             ),
@@ -586,75 +582,43 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
-  String _getCategoryDisplayName(TestCategory category) {
-    switch (category) {
-      case TestCategory.all:
-        return _languageCubit.getLocalizedText(
-          korean: '전체',
-          english: 'All',
-        );
-      case TestCategory.practice:
-        return _languageCubit.getLocalizedText(
-          korean: '연습',  
-          english: 'Practice',
-        );
-      case TestCategory.topikI:
-        return _languageCubit.getLocalizedText(
-          korean: 'TOPIK I',
-          english: 'TOPIK I',
-        );
-      case TestCategory.topikII:
-        return _languageCubit.getLocalizedText(
-          korean: 'TOPIK II',
-          english: 'TOPIK II',
-        );
-    }
-  }
-
-  Widget _buildHeaderActions(ColorScheme colorScheme, Size screenSize) {
-    final iconSize = screenSize.width * 0.06;
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          onPressed: _showSearchDelegate,
-          icon: Icon(Icons.search_rounded, size: iconSize),
-          style: IconButton.styleFrom(
-            foregroundColor: colorScheme.onSurface,
-          ),
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '검색',
-            english: 'Search',
+  Widget _buildMinimalSortButton(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
+    return GestureDetector(
+      onTap: _showSortBottomSheet,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenSize.width * 0.03,
+          vertical: screenSize.height * 0.008,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.2),
+            width: 0.5,
           ),
         ),
-        SizedBox(width: screenSize.width * 0.01),
-        IconButton(
-          onPressed: () => context.push(Routes.unpublishedTests),
-          icon: Icon(Icons.drafts_rounded, size: iconSize),
-          style: IconButton.styleFrom(
-            foregroundColor: colorScheme.onSurface,
-          ),
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '비공개 시험',
-            english: 'Unpublished Tests',
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _getSortTypeIcon(_selectedSortType),
+              size: screenSize.width * 0.035,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            SizedBox(width: screenSize.width * 0.015),
+            Icon(
+              Icons.sort_rounded,
+              size: screenSize.width * 0.035,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-        SizedBox(width: screenSize.width * 0.01),
-        IconButton(
-          onPressed: () => context.push(Routes.testResults),
-          icon: Icon(Icons.history_rounded, size: iconSize),
-          style: IconButton.styleFrom(
-            foregroundColor: colorScheme.onSurface,
-          ),
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '내 결과',
-            english: 'My Results',
-          ),
-        ),
-      ],
+      ),
     );
   }
+
+
 
   Widget _buildSliverContent(bool isOffline) {
     return BlocConsumer<TestsCubit, TestsState>(
@@ -759,7 +723,6 @@ class _TestsPageState extends State<TestsPage> {
     final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
                          state.currentOperation.isInProgress;
     
-    // Responsive grid parameters
     final isTablet = screenSize.width > 600;
     final crossAxisCount = isTablet ? 3 : 2;
     final childAspectRatio = isTablet ? 0.8 : 0.75;
@@ -780,7 +743,7 @@ class _TestsPageState extends State<TestsPage> {
             if (index < state.tests.length) {
               final test = state.tests[index];
               return FutureBuilder<bool>(
-                future: _checkEditPermission(test.id),
+                future: _checkEditPermission(test),
                 builder: (context, snapshot) {
                   final canEdit = snapshot.data ?? false;
                   
@@ -895,8 +858,6 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
-  
-  // ... [Rest of the methods remain the same: _startTest, _viewTestDetails, _buildTestDetailsBottomSheet, _buildDetailChip, _editTest, _deleteTest]
   
   void _startTest(TestItem test) async {
     if (test.id.isEmpty) {
@@ -1145,7 +1106,7 @@ class _TestsPageState extends State<TestsPage> {
       return;
     }
 
-    final hasPermission = await _testsCubit.canUserEditTest(test.id);
+    final hasPermission = await _testsCubit.canUserEditTest(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 편집할 권한이 없습니다',
@@ -1162,7 +1123,7 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   void _deleteTest(TestItem test) async {
-    final hasPermission = await _testsCubit.canUserDeleteTest(test.id);
+    final hasPermission = await _testsCubit.canUserDeleteTest(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 삭제할 권한이 없습니다',

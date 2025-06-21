@@ -20,24 +20,21 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
     try {
       dev.log('CheckTestEditPermissionUseCase: Checking permissions for test ${params.testId}');
 
-      // Business Rule: Must be authenticated to have any permissions
       final user = authService.getCurrentUser();
       if (user == null) {
         dev.log('CheckTestEditPermissionUseCase: User not authenticated');
         return ApiResult.success(const TestPermissionResult(
           canEdit: false,
           canDelete: false,
-          canView: true, // Anonymous users can view public tests
+          canView: true,
           reason: 'User not authenticated',
         ));
       }
 
-      // Business Rule: Validate test ID
       if (params.testId.isEmpty) {
         return ApiResult.failure('Test ID cannot be empty', FailureType.validation);
       }
 
-      // Business Rule: Check admin permissions first
       bool isAdmin = false;
       try {
         isAdmin = await adminPermissionService.isUserAdmin(user.uid);
@@ -52,10 +49,8 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
         }
       } catch (e) {
         dev.log('CheckTestEditPermissionUseCase: Error checking admin status - $e');
-        // Continue with regular permission check
       }
 
-      // Business Rule: Check ownership
       bool isOwner = false;
       if (params.testCreatorUid != null && params.testCreatorUid!.isNotEmpty) {
         isOwner = params.testCreatorUid == user.uid;
@@ -71,7 +66,6 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
         ));
       }
 
-      // Business Rule: Regular user - can only view
       dev.log('CheckTestEditPermissionUseCase: Regular user, view-only permissions');
       return ApiResult.success(const TestPermissionResult(
         canEdit: false,
@@ -85,34 +79,46 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
       return ApiResult.failure('Failed to check permissions: $e', FailureType.unknown);
     }
   }
-}
 
-// // Alternative simplified version for backward compatibility
-class CheckTestEditPermissionSimpleUseCase {
-  final AuthService authService;
-  final AdminPermissionService adminPermissionService;
-
-  CheckTestEditPermissionSimpleUseCase({
-    required this.authService,
-    required this.adminPermissionService
-  });
-
-  Future<bool> execute(String testId, String? testCreatorUid) async {
+  Future<bool> canEdit(String testId, String? testCreatorUid) async {
     final params = CheckTestPermissionParams(
       testId: testId,
       testCreatorUid: testCreatorUid,
     );
 
-    final useCase = CheckTestEditPermissionUseCase(
-      authService: authService,
-      adminPermissionService: adminPermissionService,
-    );
-
-    final result = await useCase.execute(params);
+    final result = await execute(params);
     
     return result.fold(
       onSuccess: (permissionResult) => permissionResult.canEdit,
       onFailure: (_, __) => false,
+    );
+  }
+
+  Future<bool> canDelete(String testId, String? testCreatorUid) async {
+    final params = CheckTestPermissionParams(
+      testId: testId,
+      testCreatorUid: testCreatorUid,
+    );
+
+    final result = await execute(params);
+    
+    return result.fold(
+      onSuccess: (permissionResult) => permissionResult.canDelete,
+      onFailure: (_, __) => false,
+    );
+  }
+
+  Future<bool> canView(String testId, String? testCreatorUid) async {
+    final params = CheckTestPermissionParams(
+      testId: testId,
+      testCreatorUid: testCreatorUid,
+    );
+
+    final result = await execute(params);
+    
+    return result.fold(
+      onSuccess: (permissionResult) => permissionResult.canView,
+      onFailure: (_, __) => true,
     );
   }
 }

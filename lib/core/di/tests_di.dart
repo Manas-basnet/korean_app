@@ -11,6 +11,7 @@ import 'package:korean_language_app/features/tests/domain/usecases/load_tests_us
 import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/search_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/start_test_session_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/complete_test_session_usecase.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_search/test_search_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
@@ -23,24 +24,65 @@ import 'package:korean_language_app/features/unpublished_tests/domain/repositori
 import 'package:korean_language_app/features/unpublished_tests/presentation/bloc/unpublished_tests_cubit.dart';
 
 void registerTestsDependencies(GetIt sl) {
-  //Cubits/Blocs
+  // Cubits
   sl.registerFactory(() => TestsCubit(
     loadTestsUseCase: sl(),
     checkEditPermissionUseCase: sl(),
     rateTestUseCase: sl(),
-    searchTestsUseCase: sl(),
     getTestByIdUseCase: sl(),
     startTestSessionUseCase: sl(),
-    networkInfo: sl(), 
+    networkInfo: sl(),
   ));
-  sl.registerFactory(() => TestSearchCubit(repository: sl(), authService: sl(), adminService: sl()));
+
   sl.registerFactory(() => TestSessionCubit(
-    testsRepository: sl(),
-    testResultsRepository: sl(), 
+    completeTestSessionUseCase: sl(),
+    rateTestUseCase: sl(),
     authService: sl(),
   ));
-  
-  //Repositories
+
+  sl.registerFactory(() => TestSearchCubit(
+    searchTestsUseCase: sl(),
+    checkEditPermissionUseCase: sl(),
+  ));
+
+  // Use Cases
+  sl.registerLazySingleton(() => LoadTestsUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => RateTestUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => CheckTestEditPermissionUseCase(
+    adminPermissionService: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => SearchTestsUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => GetTestByIdUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => StartTestSessionUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  // New Test Session Use Cases
+  sl.registerLazySingleton(() => CompleteTestSessionUseCase(
+    saveTestResultUseCase: sl(),
+    authService: sl(),
+  ));
+
+  // Repository
   sl.registerLazySingleton<TestsRepository>(
     () => TestsRepositoryImpl(
       remoteDataSource: sl(),
@@ -49,55 +91,18 @@ void registerTestsDependencies(GetIt sl) {
       authService: sl(),
     ),
   );
-  
-  //Datasources
+
+  // Data Sources
   sl.registerLazySingleton<TestsRemoteDataSource>(
-    () => FirestoreTestsDataSourceImpl(firestore: sl()),
-  );
-  
-  sl.registerLazySingleton<TestsLocalDataSourceImpl>(
-    () => TestsLocalDataSourceImpl(storageService: sl()),
-  );
-  sl.registerLazySingleton<TestsLocalDataSource>(
-    () => sl<TestsLocalDataSourceImpl>(),
+    () => FirestoreTestsDataSourceImpl(
+      firestore: sl(),
+    ),
   );
 
-  //Use Cases
-  sl.registerLazySingleton(
-    () => LoadTestsUseCase(
-      repository: sl(), 
-      authService: sl()
-    )
-  );
-  sl.registerLazySingleton(
-    () => CheckTestEditPermissionSimpleUseCase(
-      authService: sl(), 
-      adminPermissionService: sl()
-    )
-  );
-  sl.registerLazySingleton(
-    () => RateTestUseCase(
-      repository: sl(), 
-      authService: sl()
-    )
-  );
-  sl.registerLazySingleton(
-    () => SearchTestsUseCase(
-      repository: sl(), 
-      authService: sl()
-    )
-  );
-  sl.registerLazySingleton(
-    () => GetTestByIdUseCase(
-      repository: sl(), 
-      authService: sl()
-    )
-  );
-  sl.registerLazySingleton(
-    () => StartTestSessionUseCase(
-      repository: sl(), 
-      authService: sl()
-    )
+  sl.registerLazySingleton<TestsLocalDataSource>(
+    () => TestsLocalDataSourceImpl(
+      storageService: sl(),
+    ),
   );
 }
 

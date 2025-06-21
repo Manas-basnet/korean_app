@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
+import 'package:korean_language_app/shared/models/test_result.dart';
 
 class TestsLoadResult extends Equatable {
   final List<TestItem> tests;
@@ -68,4 +69,14 @@ class TestSessionStartResult extends Equatable {
 
   @override
   List<Object?> get props => [session, test, wasViewed];
+}
+
+class CompleteTestSessionResult {
+  final TestResult testResult;
+  final bool shouldShowRating;
+
+  const CompleteTestSessionResult({
+    required this.testResult,
+    required this.shouldShowRating,
+  });
 }

@@ -2,21 +2,17 @@ import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
-import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/services/auth_service.dart';
-import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
-import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/search_tests_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
 
 part 'test_search_state.dart';
 
 class TestSearchCubit extends Cubit<TestSearchState> {
-  final TestsRepository repository;
-  final AuthService authService;
-  final AdminPermissionService adminService;
+  final SearchTestsUseCase searchTestsUseCase;
+  final CheckTestEditPermissionUseCase checkEditPermissionUseCase;
   
   Timer? _searchDebounceTimer;
   static const Duration _searchDebounceDelay = Duration(milliseconds: 500);
@@ -24,9 +20,8 @@ class TestSearchCubit extends Cubit<TestSearchState> {
   final Stopwatch _operationStopwatch = Stopwatch();
   
   TestSearchCubit({
-    required this.repository,
-    required this.authService,
-    required this.adminService,
+    required this.searchTestsUseCase,
+    required this.checkEditPermissionUseCase,
   }) : super(const TestSearchInitial());
 
   void searchTests(String query) {
@@ -88,11 +83,13 @@ class TestSearchCubit extends Cubit<TestSearchState> {
         ),
       ));
       
-      final result = await repository.searchTests(query);
+      final result = await searchTestsUseCase.execute(
+        SearchTestsParams(query: query, limit: 20)
+      );
       
       result.fold(
-        onSuccess: (searchResults) {
-          final uniqueSearchResults = _removeDuplicates(searchResults);
+        onSuccess: (searchResult) {
+          final uniqueSearchResults = _removeDuplicates(searchResult.tests);
           
           _operationStopwatch.stop();
           dev.log('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
@@ -156,56 +153,27 @@ class TestSearchCubit extends Cubit<TestSearchState> {
     _clearOperationAfterDelay();
   }
 
-  Future<bool> canUserEditTest(String testId) async {
+  Future<bool> canUserEditTest(TestItem test) async {
     try {
-      final UserEntity? user = _getCurrentUser();
-      if (user == null) {
-        dev.log('No authenticated user for edit permission check');
-        return false;
-      }
-      
-      if (await adminService.isUserAdmin(user.uid)) {
-        dev.log('User is admin, granting edit permission for test: $testId');
-        return true;
-      }
-      
-      final test = state.searchResults.firstWhere(
-        (t) => t.id == testId,
-        orElse: () => const TestItem(
-          id: '', title: '', description: '', questions: [],
-          level: BookLevel.beginner, category: TestCategory.practice,
-        ),
+      final result = await checkEditPermissionUseCase.execute(
+        CheckTestPermissionParams(testId: test.id,testCreatorUid: test.creatorUid)
       );
-      
-      final canEdit = test.id.isNotEmpty && test.creatorUid == user.uid;
-      dev.log('Edit permission for test $testId: $canEdit (user: ${user.uid}, creator: ${test.creatorUid})');
-      
-      return canEdit;
+      return result.fold(
+        onSuccess: (permissionResult) => permissionResult.canEdit,
+        onFailure: (message, type) {
+          dev.log('Failed to check edit permission: $message');
+          return false;
+        },
+      );
     } catch (e) {
       dev.log('Error checking edit permission: $e');
       return false;
     }
   }
-  
-  Future<bool> canUserDeleteTest(String testId) async {
-    return canUserEditTest(testId);
-  }
-  
-  UserEntity? _getCurrentUser() {
-    return authService.getCurrentUser();
-  }
-  
+
   List<TestItem> _removeDuplicates(List<TestItem> tests) {
-    final uniqueIds = <String>{};
-    final uniqueTests = <TestItem>[];
-    
-    for (final test in tests) {
-      if (uniqueIds.add(test.id)) {
-        uniqueTests.add(test);
-      }
-    }
-    
-    return uniqueTests;
+    final Set<String> seenIds = <String>{};
+    return tests.where((test) => seenIds.add(test.id)).toList();
   }
 
   void _handleError(String message, TestSearchOperationType operationType, [String? query]) {
@@ -223,8 +191,8 @@ class TestSearchCubit extends Cubit<TestSearchState> {
   }
 
   void _clearOperationAfterDelay() {
-    Timer(const Duration(seconds: 3), () {
-      if (state.currentOperation.status != TestSearchOperationStatus.none) {
+    Timer(const Duration(seconds: 2), () {
+      if (!isClosed && state.currentOperation.status != TestSearchOperationStatus.none) {
         emit(state.copyWithOperation(
           const TestSearchOperation(status: TestSearchOperationStatus.none)
         ));

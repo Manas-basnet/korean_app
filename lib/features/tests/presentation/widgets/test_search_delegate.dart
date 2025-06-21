@@ -9,7 +9,7 @@ class TestSearchDelegate extends SearchDelegate<TestItem?> {
   final TestSearchCubit testSearchCubit;
   final LanguagePreferenceCubit languageCubit;
   final Function(TestItem) onTestSelected;
-  final Future<bool> Function(String) checkEditPermission;
+  final Future<bool> Function(TestItem) checkEditPermission;
   final Function(TestItem) onEditTest;
   final Function(TestItem) onDeleteTest;
   final Function(TestItem) onViewDetails;
@@ -338,7 +338,7 @@ class TestSearchDelegate extends SearchDelegate<TestItem?> {
       itemBuilder: (context, index) {
         final test = tests[index];
         return FutureBuilder<bool>(
-          future: testSearchCubit.canUserEditTest(test.id),
+          future: testSearchCubit.canUserEditTest(test),
           builder: (context, snapshot) {
             final canEdit = snapshot.data ?? false;
             

@@ -1,30 +1,31 @@
 import 'dart:async';
 import 'dart:developer' as dev;
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/features/test_results/domain/repositories/test_results_repository.dart';
-import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/shared/models/test_answer.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
 
+import 'package:korean_language_app/features/tests/domain/usecases/complete_test_session_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
+import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
+
 part 'test_session_state.dart';
 
 class TestSessionCubit extends Cubit<TestSessionState> {
-  final TestResultsRepository testResultsRepository;
-  final TestsRepository testsRepository;
+  final CompleteTestSessionUseCase completeTestSessionUseCase;
+  final RateTestUseCase rateTestUseCase;
   final AuthService authService;
   
   Timer? _testTimer;
   Timer? _questionTimer;
   
   TestSessionCubit({
-    required this.testResultsRepository,
-    required this.testsRepository,
+    required this.completeTestSessionUseCase, 
+    required this.rateTestUseCase,
     required this.authService,
   }) : super(const TestSessionInitial());
 
@@ -201,64 +202,30 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       _questionTimer?.cancel();
       
       final session = currentState.session;
-      final completedAt = DateTime.now();
-      final totalTimeSpent = completedAt.difference(session.startTime).inSeconds;
       
-      final correctAnswers = session.answers.values.where((a) => a.isCorrect).length;
-      final totalQuestions = session.test.questions.length;
-      final score = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).round() : 0;
-      final isPassed = score >= session.test.passingScore;
+      dev.log('Completing test session using use case...');
       
-      final testResult = TestResult(
-        id: '',
-        testId: session.test.id,
-        userId: session.userId,
-        testTitle: session.test.title,
-        testDescription: session.test.description,
-        testQuestions: session.test.questions,
-        answers: session.answers.values.toList(),
-        score: score,
-        totalQuestions: totalQuestions,
-        correctAnswers: correctAnswers,
-        totalTimeSpent: totalTimeSpent,
-        isPassed: isPassed,
-        startedAt: session.startTime,
-        completedAt: completedAt,
-        metadata: {
-          'testVersion': session.test.updatedAt?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch,
-          'sessionDuration': totalTimeSpent,
-          'averageTimePerQuestion': totalQuestions > 0 ? totalTimeSpent / totalQuestions : 0,
-        },
+      final result = await completeTestSessionUseCase.execute(
+        CompleteTestSessionParams(session: session)
       );
       
-      dev.log('Test completed - Score: $score%, Passed: $isPassed. Attempting to save...');
-      
-      try {
-        final result = await testResultsRepository.saveTestResult(testResult);
-        
-        result.fold(
-          onSuccess: (success) {
-            dev.log('Test result saved successfully');
-            if (!isClosed) {
-              final shouldShowRating = _shouldShowRatingDialog(session);
-              emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
-            }
-          },
-          onFailure: (message, type) {
-            dev.log('Failed to save test result: $message');
-            if (!isClosed) {
-              final shouldShowRating = _shouldShowRatingDialog(session);
-              emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
-            }
-          },
-        );
-      } catch (saveError) {
-        dev.log('Error saving test result: $saveError, but test is completed');
-        if (!isClosed) {
-          final shouldShowRating = _shouldShowRatingDialog(session);
-          emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
-        }
-      }
+      result.fold(
+        onSuccess: (completionResult) {
+          dev.log('Test session completed successfully');
+          if (!isClosed) {
+            emit(TestSessionCompleted(
+              completionResult.testResult,
+              shouldShowRating: completionResult.shouldShowRating,
+            ));
+          }
+        },
+        onFailure: (message, type) {
+          dev.log('Failed to complete test session: $message');
+          if (!isClosed) {
+            emit(TestSessionError('Failed to complete test: $message', type));
+          }
+        },
+      );
       
     } catch (e) {
       dev.log('Error completing test: $e');
@@ -268,30 +235,16 @@ class TestSessionCubit extends Cubit<TestSessionState> {
     }
   }
 
-  bool _shouldShowRatingDialog(TestSession session) {
-    final user = _getCurrentUser();
-    if (user == null) return false;
-    
-    final completionCount = session.answers.length;
-    final totalQuestions = session.test.questions.length;
-    
-    if (completionCount < totalQuestions * 0.5) {
-      return false;
-    }
-    
-    return true;
-  }
-
   Future<void> rateTest(double rating) async {
     final currentState = state;
     if (currentState is! TestSessionCompleted) return;
 
     try {
-      final user = _getCurrentUser();
-      if (user == null) return;
-
       final testId = currentState.result.testId;
-      final result = await testsRepository.rateTest(testId, user.uid, rating);
+      
+      final result = await rateTestUseCase.execute(
+        RateTestParams(testId: testId, rating: rating)
+      );
       
       result.fold(
         onSuccess: (_) {
@@ -419,9 +372,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
   @override
   Future<void> close() {
-    if (kDebugMode) {
-      print('Closing TestSessionCubit...');
-    }
     _testTimer?.cancel();
     _questionTimer?.cancel();
     return super.close();

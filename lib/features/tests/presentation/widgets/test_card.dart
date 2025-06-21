@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 
 class TestCard extends StatelessWidget {
@@ -26,15 +26,14 @@ class TestCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 360;
     
     return Card(
-      elevation: 2,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.2),
+      elevation: 3,
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outline.withValues(alpha: 0.1), 
+          color: colorScheme.outline.withValues(alpha: 0.08), 
           width: 0.5
         ),
       ),
@@ -42,18 +41,18 @@ class TestCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header with image/icon and overlay
+            // Header with image - reduced size
             Expanded(
-              flex: 3,
+              flex: 2,
               child: _buildHeader(context, screenSize),
             ),
             
-            // Content section
+            // Content section - increased space
             Expanded(
-              flex: 4,
-              child: _buildContent(context, theme, isSmallScreen),
+              flex: 3,
+              child: _buildContent(context, theme, screenSize),
             ),
           ],
         ),
@@ -63,28 +62,47 @@ class TestCard extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, Size screenSize) {
     final theme = Theme.of(context);
-    final headerHeight = screenSize.height * 0.15; // Responsive height
     
-    return SizedBox(
-      height: headerHeight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Background image or gradient
-          if (test.imageUrl != null && test.imageUrl!.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: test.imageUrl!,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => _buildHeaderPlaceholder(theme),
-              errorWidget: (context, url, error) => _buildHeaderPlaceholder(theme),
-            )
-          else
-            _buildHeaderPlaceholder(theme),
-          
-          // Overlay with actions
-          _buildHeaderOverlay(context, theme, screenSize),
-        ],
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background image or gradient
+        if (test.imageUrl != null && test.imageUrl!.isNotEmpty)
+          CachedNetworkImage(
+            imageUrl: test.imageUrl!,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => _buildHeaderPlaceholder(theme),
+            errorWidget: (context, url, error) => _buildHeaderPlaceholder(theme),
+          )
+        else
+          _buildHeaderPlaceholder(theme),
+        
+        // Menu button only (no prominent level badge)
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            child: PopupMenuButton<String>(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.more_vert_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              onSelected: (value) => _handleMenuAction(context, value),
+              itemBuilder: (context) => _buildMenuItems(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -96,282 +114,191 @@ class TestCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             theme.colorScheme.primary.withValues(alpha: 0.8),
-            theme.colorScheme.primary.withValues(alpha: 0.6),
+            theme.colorScheme.secondary.withValues(alpha: 0.6),
           ],
         ),
       ),
       child: Center(
         child: Icon(
           test.icon,
-          size: 32,
+          size: 28,
           color: Colors.white.withValues(alpha: 0.9),
         ),
       ),
     );
   }
 
-  Widget _buildHeaderOverlay(BuildContext context, ThemeData theme, Size screenSize) {
-    final padding = screenSize.width * 0.02; // Responsive padding
-    
-    return Positioned.fill(
-      child: Container(
-        padding: EdgeInsets.all(padding),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Level badge
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenSize.width * 0.02,
-                vertical: screenSize.height * 0.005,
-              ),
-              decoration: BoxDecoration(
-                color: test.level.getColor().withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Text(
-                test.level.toString().split('.').last.toUpperCase(),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenSize.width * 0.025,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            
-            // Menu button
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              child: PopupMenuButton<String>(
-                icon: Container(
-                  padding: EdgeInsets.all(screenSize.width * 0.015),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.more_vert_rounded,
-                    color: Colors.white,
-                    size: screenSize.width * 0.04,
-                  ),
-                ),
-                onSelected: (value) => _handleMenuAction(context, value),
-                itemBuilder: (context) => _buildMenuItems(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, ThemeData theme, bool isSmallScreen) {
-    final screenSize = MediaQuery.of(context).size;
-    final contentPadding = screenSize.width * 0.03;
-    
+  Widget _buildContent(BuildContext context, ThemeData theme, Size screenSize) {
     return Padding(
-      padding: EdgeInsets.all(contentPadding),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
-          Flexible(
-            flex: 2,
-            child: Text(
-              test.title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: isSmallScreen ? 13 : 14,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          // Title only
+          Text(
+            test.title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              height: 1.2,
+              color: theme.colorScheme.onSurface,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           
-          SizedBox(height: screenSize.height * 0.008),
+          const SizedBox(height: 8),
           
-          // Key stats row
-          Flexible(
-            flex: 1,
-            child: _buildStatsRow(theme, screenSize, isSmallScreen),
+          // Key stats in a more compact layout
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              _buildStatChip(
+                icon: Icons.quiz_rounded,
+                text: '${test.questionCount}Q',
+                color: theme.colorScheme.primary,
+              ),
+              _buildStatChip(
+                icon: Icons.timer_rounded,
+                text: _formatTimeLimit(test.formattedTimeLimit),
+                color: theme.colorScheme.tertiary,
+              ),
+              _buildStatChip(
+                icon: Icons.school_rounded,
+                text: '${test.passingScore}%',
+                color: theme.colorScheme.secondary,
+              ),
+            ],
           ),
           
-          SizedBox(height: screenSize.height * 0.008),
+          const SizedBox(height: 8),
           
-          // Description
-          Flexible(
-            flex: 2,
+          // Description with more space
+          Expanded(
             child: Text(
               test.description,
               style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: isSmallScreen ? 10 : 11,
+                fontSize: 11,
                 height: 1.3,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
-              maxLines: 2,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           
-          SizedBox(height: screenSize.height * 0.008),
+          const SizedBox(height: 8),
           
-          // Bottom row with category and rating
-          Flexible(
-            flex: 1,
-            child: _buildBottomRow(theme, screenSize, isSmallScreen),
+          // Bottom row with category and metrics
+          Row(
+            children: [
+              // Category - flexible to prevent overflow
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    test.category.displayName,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // Rating and views
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (test.rating > 0) ...[
+                    Icon(
+                      Icons.star_rounded,
+                      size: 12,
+                      color: Colors.amber[600],
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      test.formattedRating,
+                      style: TextStyle(
+                        color: Colors.amber[600],
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Icon(
+                    Icons.visibility_rounded,
+                    size: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    test.formattedViewCount,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsRow(ThemeData theme, Size screenSize, bool isSmallScreen) {
-    final iconSize = screenSize.width * 0.03;
-    double fontSize = isSmallScreen ? 10 : 11;
-    
-    return Row(
-      children: [
-        Icon(
-          Icons.quiz_rounded,
-          size: iconSize,
-          color: theme.colorScheme.primary,
+  Widget _buildStatChip({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color.withValues(alpha: 0.2),
+          width: 0.5,
         ),
-        SizedBox(width: screenSize.width * 0.01),
-        Text(
-          '${test.questionCount}Q',
-          style: TextStyle(
-            color: theme.colorScheme.primary,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        
-        SizedBox(width: screenSize.width * 0.03),
-        
-        Icon(
-          Icons.timer_rounded,
-          size: iconSize,
-          color: theme.colorScheme.tertiary,
-        ),
-        SizedBox(width: screenSize.width * 0.01),
-        Flexible(
-          child: Text(
-            test.formattedTimeLimit,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 2),
+          Text(
+            text,
             style: TextStyle(
-              color: theme.colorScheme.tertiary,
-              fontSize: fontSize,
+              color: color,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        
-        SizedBox(width: screenSize.width * 0.03),
-        
-        Icon(
-          Icons.school_rounded,
-          size: iconSize,
-          color: theme.colorScheme.secondary,
-        ),
-        SizedBox(width: screenSize.width * 0.01),
-        Text(
-          '${test.passingScore}%',
-          style: TextStyle(
-            color: theme.colorScheme.secondary,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildBottomRow(ThemeData theme, Size screenSize, bool isSmallScreen) {
-    double fontSize = isSmallScreen ? 9 : 10;
-    
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Category
-        Flexible(
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenSize.width * 0.02,
-              vertical: screenSize.height * 0.003,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              test.category.name,
-              style: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: fontSize,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-        
-        SizedBox(width: screenSize.width * 0.02),
-        
-        // Rating and views
-        if (test.rating > 0) ...[
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.star_rounded,
-                size: screenSize.width * 0.025,
-                color: Colors.amber[600],
-              ),
-              SizedBox(width: screenSize.width * 0.005),
-              Text(
-                test.formattedRating,
-                style: TextStyle(
-                  color: Colors.amber[600],
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(width: screenSize.width * 0.02),
-        ],
-        
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.visibility_rounded,
-              size: screenSize.width * 0.025,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(width: screenSize.width * 0.005),
-            Text(
-              test.formattedViewCount,
-              style: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: fontSize,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+  String _formatTimeLimit(String timeLimit) {
+    // Convert "30 min" to "30m" for more compact display
+    return timeLimit
+        .replaceAll(' min', 'm')
+        .replaceAll(' hour', 'h')
+        .replaceAll(' hours', 'h')
+        .replaceAll(' minutes', 'm');
   }
 
   List<PopupMenuItem<String>> _buildMenuItems(BuildContext context) {

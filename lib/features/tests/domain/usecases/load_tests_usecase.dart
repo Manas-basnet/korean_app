@@ -9,6 +9,7 @@ import 'package:korean_language_app/features/tests/domain/repositories/tests_rep
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
+
 class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
   final TestsRepository repository;
   final AuthService authService;
@@ -25,7 +26,6 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
           'pageSize: ${params.pageSize}, sortType: ${params.sortType.name}, '
           'category: ${params.category?.name}, forceRefresh: ${params.forceRefresh}');
 
-      // Business Rule: Validate parameters
       if (params.page < 0) {
         return ApiResult.failure('Page number cannot be negative', FailureType.validation);
       }
@@ -34,7 +34,6 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
         return ApiResult.failure('Page size must be between 1 and 50', FailureType.validation);
       }
 
-      // Business Rule: Determine loading strategy
       ApiResult<List<TestItem>> result;
 
       if (params.forceRefresh) {
@@ -45,11 +44,10 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
 
       return result.fold(
         onSuccess: (tests) async {
-          // Business Rule: Calculate pagination and metadata
           final hasMoreResult = await _calculateHasMore(tests, params);
           final currentPage = _calculateCurrentPage(tests, params);
           
-          dev.log('LoadTestsUseCase: Successfully loaded ${tests.length} tests');
+          dev.log('LoadTestsUseCase: Successfully loaded ${tests.length} tests, hasMore: $hasMoreResult, currentPage: $currentPage');
 
           return ApiResult.success(TestsLoadResult(
             tests: tests,
@@ -67,6 +65,39 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
     } catch (e) {
       dev.log('LoadTestsUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to load tests: $e', FailureType.unknown);
+    }
+  }
+
+  int _calculateCurrentPage(List<TestItem> tests, LoadTestsParams params) {
+    return params.page;
+  }
+
+  Future<bool> _calculateHasMore(List<TestItem> tests, LoadTestsParams params) async {
+    try {
+      if (tests.length < params.pageSize) {
+        return false;
+      }
+      
+      if (params.category != null) {
+        final result = await repository.hasMoreTestsByCategory(
+          params.category!,
+          tests.length,
+          params.sortType,
+        );
+        return result.fold(
+          onSuccess: (hasMore) => hasMore,
+          onFailure: (_, __) => false,
+        );
+      } else {
+        final result = await repository.hasMoreTests(tests.length, params.sortType);
+        return result.fold(
+          onSuccess: (hasMore) => hasMore,
+          onFailure: (_, __) => false,
+        );
+      }
+    } catch (e) {
+      dev.log('LoadTestsUseCase: Error calculating hasMore - $e');
+      return false;
     }
   }
 
@@ -100,38 +131,6 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
         sortType: params.sortType,
       );
     }
-  }
-
-  Future<bool> _calculateHasMore(List<TestItem> tests, LoadTestsParams params) async {
-    try {
-      if (params.category != null) {
-        final result = await repository.hasMoreTestsByCategory(
-          params.category!,
-          tests.length,
-          params.sortType,
-        );
-        return result.fold(
-          onSuccess: (hasMore) => hasMore,
-          onFailure: (_, __) => false,
-        );
-      } else {
-        final result = await repository.hasMoreTests(tests.length, params.sortType);
-        return result.fold(
-          onSuccess: (hasMore) => hasMore,
-          onFailure: (_, __) => false,
-        );
-      }
-    } catch (e) {
-      dev.log('LoadTestsUseCase: Error calculating hasMore - $e');
-      return false;
-    }
-  }
-
-  int _calculateCurrentPage(List<TestItem> tests, LoadTestsParams params) {
-    if (params.loadMore) {
-      return (tests.length / params.pageSize).floor();
-    }
-    return params.page;
   }
 
   bool _isFromCache(ApiResult<List<TestItem>> result) {

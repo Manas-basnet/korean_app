@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 
@@ -89,4 +90,10 @@ class StartTestSessionParams extends Equatable {
 
   @override
   List<Object?> get props => [testId];
+}
+
+class CompleteTestSessionParams {
+  final TestSession session;
+
+  const CompleteTestSessionParams({required this.session});
 }

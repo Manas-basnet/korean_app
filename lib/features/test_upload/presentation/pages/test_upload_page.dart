@@ -331,7 +331,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
                     .map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category.name),
+                    child: Text(category.displayName),
                   );
                 }).toList(),
                 onChanged: (value) {
