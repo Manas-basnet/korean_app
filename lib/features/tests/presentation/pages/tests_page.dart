@@ -176,59 +176,134 @@ class _TestsPageState extends State<TestsPage> {
   Widget _buildSortBottomSheet() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final screenSize = MediaQuery.of(context).size;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    
+    // Calculate available height for content
+    final maxHeight = screenSize.height * 0.6; // Max 60% of screen height
+    final headerHeight = screenSize.height * 0.08; // Header section height
+    final availableContentHeight = maxHeight - headerHeight - bottomPadding;
     
     return Container(
-      padding: const EdgeInsets.all(20),
+      constraints: BoxConstraints(
+        maxHeight: maxHeight,
+        maxWidth: screenSize.width,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                _languageCubit.getLocalizedText(
-                  korean: '정렬',
-                  english: 'Sort',
-                ),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                ),
-              ),
-            ],
+          // Handle bar
+          Container(
+            margin: EdgeInsets.only(
+              top: screenSize.height * 0.01,
+              bottom: screenSize.height * 0.005,
+            ),
+            width: screenSize.width * 0.1,
+            height: screenSize.height * 0.005,
+            decoration: BoxDecoration(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          const SizedBox(height: 16),
-          ...TestSortType.values.map((sortType) {
-            final isSelected = _selectedSortType == sortType;
-            return ListTile(
-              leading: Icon(
-                _getSortTypeIcon(sortType),
-                color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          
+          // Header
+          Container(
+            height: headerHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: screenSize.width * 0.05,
+              vertical: screenSize.height * 0.01,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  _languageCubit.getLocalizedText(
+                    korean: '정렬',
+                    english: 'Sort',
+                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: screenSize.width * 0.05,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: screenSize.width * 0.06,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    padding: EdgeInsets.all(screenSize.width * 0.02),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Scrollable content
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: availableContentHeight,
               ),
-              title: Text(
-                sortType.getDisplayName(_languageCubit.getLocalizedText),
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: screenSize.width * 0.02,
+                  right: screenSize.width * 0.02,
+                  bottom: screenSize.height * 0.02 + bottomPadding,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: TestSortType.values.map((sortType) {
+                    final isSelected = _selectedSortType == sortType;
+                    return Container(
+                      margin: EdgeInsets.symmetric(
+                        vertical: screenSize.height * 0.002,
+                      ),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.04,
+                          vertical: screenSize.height * 0.005,
+                        ),
+                        leading: Icon(
+                          _getSortTypeIcon(sortType),
+                          color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                          size: screenSize.width * 0.06,
+                        ),
+                        title: Text(
+                          sortType.getDisplayName(_languageCubit.getLocalizedText),
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                            fontSize: screenSize.width * 0.04,
+                          ),
+                        ),
+                        trailing: isSelected 
+                            ? Icon(
+                                Icons.check_rounded, 
+                                color: colorScheme.primary,
+                                size: screenSize.width * 0.05,
+                              )
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _onSortTypeChanged(sortType);
+                        },
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              trailing: isSelected 
-                  ? Icon(Icons.check_rounded, color: colorScheme.primary)
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                _onSortTypeChanged(sortType);
-              },
-            );
-          }).toList(),
-          const SizedBox(height: 8),
+            ),
+          ),
         ],
       ),
     );
@@ -317,8 +392,12 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
+    final screenSize = MediaQuery.of(context).size;
+    final expandedHeight = screenSize.height * 0.22; // Responsive height
+    final minHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
+    
     return SliverAppBar(
-      expandedHeight: 170,
+      expandedHeight: expandedHeight,
       pinned: false,
       floating: true,
       snap: true,
@@ -329,8 +408,11 @@ class _TestsPageState extends State<TestsPage> {
       automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          final expandRatio =
-              (constraints.maxHeight - kToolbarHeight) / (160 - kToolbarHeight);
+          final availableHeight = constraints.maxHeight - minHeight;
+          final totalExpandableHeight = expandedHeight - minHeight;
+          final expandRatio = totalExpandableHeight > 0 
+              ? (availableHeight / totalExpandableHeight).clamp(0.0, 1.0)
+              : 0.0;
           final isExpanded = expandRatio > 0.1;
 
           return FlexibleSpaceBar(
@@ -345,37 +427,10 @@ class _TestsPageState extends State<TestsPage> {
                 ),
               ),
               child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: AnimatedOpacity(
-                    opacity: isExpanded ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _languageCubit.getLocalizedText(
-                                korean: '시험',
-                                english: 'Tests',
-                              ),
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                            _buildHeaderActions(colorScheme)
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildCategoryTabsSliver(theme),
-                        const SizedBox(height: 12),
-                        _buildSortChip(theme, colorScheme),
-                      ],
-                    ),
-                  ),
+                child: AnimatedOpacity(
+                  opacity: isExpanded ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildAppBarContent(theme, colorScheme, screenSize),
                 ),
               ),
             ),
@@ -385,11 +440,63 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
-  Widget _buildSortChip(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildAppBarContent(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
+    final horizontalPadding = screenSize.width * 0.05;
+    final verticalSpacing = screenSize.height * 0.015;
+    
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding, 
+        screenSize.height * 0.02, 
+        horizontalPadding, 
+        0
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title and actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  _languageCubit.getLocalizedText(
+                    korean: '시험',
+                    english: 'Tests',
+                  ),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                    fontSize: screenSize.width * 0.065,
+                  ),
+                ),
+              ),
+              _buildHeaderActions(colorScheme, screenSize),
+            ],
+          ),
+          
+          SizedBox(height: verticalSpacing),
+          
+          // Category tabs
+          _buildCategoryTabs(theme, screenSize),
+          
+          SizedBox(height: verticalSpacing * 0.8),
+          
+          // Sort chip
+          _buildSortChip(theme, colorScheme, screenSize),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSortChip(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
     return GestureDetector(
       onTap: _showSortBottomSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: screenSize.width * 0.04,
+          vertical: screenSize.height * 0.01,
+        ),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(20),
@@ -403,22 +510,22 @@ class _TestsPageState extends State<TestsPage> {
           children: [
             Icon(
               _getSortTypeIcon(_selectedSortType),
-              size: 16,
+              size: screenSize.width * 0.04,
               color: colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: screenSize.width * 0.02),
             Text(
               _selectedSortType.getDisplayName(_languageCubit.getLocalizedText),
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontSize: screenSize.width * 0.035,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: screenSize.width * 0.01),
             Icon(
               Icons.expand_more_rounded,
-              size: 16,
+              size: screenSize.width * 0.04,
               color: colorScheme.onSurfaceVariant,
             ),
           ],
@@ -427,14 +534,16 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
-  Widget _buildCategoryTabsSliver(ThemeData theme) {
+  Widget _buildCategoryTabs(ThemeData theme, Size screenSize) {
+    final tabHeight = screenSize.height * 0.05;
+    
     return SizedBox(
-      height: 40,
+      height: tabHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
         itemCount: TestCategory.values.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        separatorBuilder: (context, index) => SizedBox(width: screenSize.width * 0.02),
         itemBuilder: (context, index) {
           final category = TestCategory.values[index];
           final isSelected = _selectedCategory == category;
@@ -442,7 +551,10 @@ class _TestsPageState extends State<TestsPage> {
           return GestureDetector(
             onTap: () => _onCategoryChanged(category),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenSize.width * 0.04,
+                vertical: screenSize.height * 0.01,
+              ),
               decoration: BoxDecoration(
                 color: isSelected
                     ? theme.colorScheme.primary.withValues(alpha: 0.1)
@@ -455,14 +567,16 @@ class _TestsPageState extends State<TestsPage> {
                   width: 1,
                 ),
               ),
-              child: Text(
-                _getCategoryDisplayName(category),
-                style: TextStyle(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 14,
+              child: Center(
+                child: Text(
+                  _getCategoryDisplayName(category),
+                  style: TextStyle(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontSize: screenSize.width * 0.035,
+                  ),
                 ),
               ),
             ),
@@ -497,13 +611,15 @@ class _TestsPageState extends State<TestsPage> {
     }
   }
 
-  Widget _buildHeaderActions(ColorScheme colorScheme) {
+  Widget _buildHeaderActions(ColorScheme colorScheme, Size screenSize) {
+    final iconSize = screenSize.width * 0.06;
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           onPressed: _showSearchDelegate,
-          icon: const Icon(Icons.search_rounded),
+          icon: Icon(Icons.search_rounded, size: iconSize),
           style: IconButton.styleFrom(
             foregroundColor: colorScheme.onSurface,
           ),
@@ -512,10 +628,10 @@ class _TestsPageState extends State<TestsPage> {
             english: 'Search',
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: screenSize.width * 0.01),
         IconButton(
           onPressed: () => context.push(Routes.unpublishedTests),
-          icon: const Icon(Icons.drafts_rounded),
+          icon: Icon(Icons.drafts_rounded, size: iconSize),
           style: IconButton.styleFrom(
             foregroundColor: colorScheme.onSurface,
           ),
@@ -524,10 +640,10 @@ class _TestsPageState extends State<TestsPage> {
             english: 'Unpublished Tests',
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: screenSize.width * 0.01),
         IconButton(
           onPressed: () => context.push(Routes.testResults),
-          icon: const Icon(Icons.history_rounded),
+          icon: Icon(Icons.history_rounded, size: iconSize),
           style: IconButton.styleFrom(
             foregroundColor: colorScheme.onSurface,
           ),
@@ -576,10 +692,12 @@ class _TestsPageState extends State<TestsPage> {
         }
       },
       builder: (context, state) {
+        final screenSize = MediaQuery.of(context).size;
+        
         if (isOffline && state.tests.isEmpty && state.isLoading) {
           return SliverToBoxAdapter(
             child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
+              height: screenSize.height * 0.7,
               child: ErrorView(
                 message: '',
                 errorType: FailureType.network,
@@ -601,7 +719,7 @@ class _TestsPageState extends State<TestsPage> {
         if (state.isLoading && state.tests.isEmpty) {
           return SliverToBoxAdapter(
             child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
+              height: screenSize.height * 0.6,
               child: const TestGridSkeleton(),
             ),
           );
@@ -610,7 +728,7 @@ class _TestsPageState extends State<TestsPage> {
         if (state.hasError && state.tests.isEmpty) {
           return SliverToBoxAdapter(
             child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
+              height: screenSize.height * 0.7,
               child: ErrorView(
                 message: state.error ?? '',
                 errorType: state.errorType,
@@ -626,12 +744,12 @@ class _TestsPageState extends State<TestsPage> {
           );
         }
         
-        return _buildSliverTestsList(state);
+        return _buildSliverTestsList(state, screenSize);
       },
     );
   }
   
-  Widget _buildSliverTestsList(TestsState state) {
+  Widget _buildSliverTestsList(TestsState state, Size screenSize) {
     if (state.tests.isEmpty) {
       return SliverToBoxAdapter(
         child: _buildEmptyTestsView(),
@@ -641,14 +759,21 @@ class _TestsPageState extends State<TestsPage> {
     final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
                          state.currentOperation.isInProgress;
     
+    // Responsive grid parameters
+    final isTablet = screenSize.width > 600;
+    final crossAxisCount = isTablet ? 3 : 2;
+    final childAspectRatio = isTablet ? 0.8 : 0.75;
+    final gridPadding = screenSize.width * 0.05;
+    final gridSpacing = screenSize.width * 0.04;
+    
     return SliverPadding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(gridPadding),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
+          crossAxisSpacing: gridSpacing,
+          mainAxisSpacing: gridSpacing,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
@@ -673,7 +798,7 @@ class _TestsPageState extends State<TestsPage> {
             } else if (isLoadingMore) {
               return Center(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(screenSize.width * 0.03),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
@@ -700,28 +825,29 @@ class _TestsPageState extends State<TestsPage> {
   Widget _buildEmptyTestsView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final screenSize = MediaQuery.of(context).size;
     
     return Container(
       width: double.infinity,
-      height: MediaQuery.of(context).size.height * 0.6,
-      padding: const EdgeInsets.all(40),
+      height: screenSize.height * 0.6,
+      padding: EdgeInsets.all(screenSize.width * 0.1),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: screenSize.width * 0.2,
+            height: screenSize.width * 0.2,
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.quiz_outlined,
-              size: 40,
+              size: screenSize.width * 0.1,
               color: colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: screenSize.height * 0.03),
           Text(
             _languageCubit.getLocalizedText(
               korean: '시험이 없습니다',
@@ -730,9 +856,10 @@ class _TestsPageState extends State<TestsPage> {
             style: theme.textTheme.titleLarge?.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
+              fontSize: screenSize.width * 0.05,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: screenSize.height * 0.015),
           Text(
             _languageCubit.getLocalizedText(
               korean: '새 시험을 만들려면 + 버튼을 누르세요',
@@ -741,9 +868,10 @@ class _TestsPageState extends State<TestsPage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
+              fontSize: screenSize.width * 0.035,
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: screenSize.height * 0.04),
           FilledButton.icon(
             onPressed: () => context.push(Routes.testUpload),
             icon: const Icon(Icons.add),
@@ -754,7 +882,10 @@ class _TestsPageState extends State<TestsPage> {
               ),
             ),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenSize.width * 0.06,
+                vertical: screenSize.height * 0.015,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -764,6 +895,8 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
+  
+  // ... [Rest of the methods remain the same: _startTest, _viewTestDetails, _buildTestDetailsBottomSheet, _buildDetailChip, _editTest, _deleteTest]
   
   void _startTest(TestItem test) async {
     if (test.id.isEmpty) {
@@ -831,9 +964,10 @@ class _TestsPageState extends State<TestsPage> {
   Widget _buildTestDetailsBottomSheet(TestItem test) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final screenSize = MediaQuery.of(context).size;
     
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(screenSize.width * 0.04),
       child: DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.4,
@@ -848,9 +982,12 @@ class _TestsPageState extends State<TestsPage> {
             child: Column(
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
+                  margin: EdgeInsets.only(
+                    top: screenSize.height * 0.015,
+                    bottom: screenSize.height * 0.01,
+                  ),
+                  width: screenSize.width * 0.1,
+                  height: screenSize.height * 0.005,
                   decoration: BoxDecoration(
                     color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(2),
@@ -860,7 +997,7 @@ class _TestsPageState extends State<TestsPage> {
                 Expanded(
                   child: SingleChildScrollView(
                     controller: scrollController,
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(screenSize.width * 0.06),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -869,39 +1006,44 @@ class _TestsPageState extends State<TestsPage> {
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: colorScheme.onSurface,
+                            fontSize: screenSize.width * 0.055,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: screenSize.height * 0.015),
                         Text(
                           test.description,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                             height: 1.5,
+                            fontSize: screenSize.width * 0.04,
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: screenSize.height * 0.03),
                         
                         Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
+                          spacing: screenSize.width * 0.03,
+                          runSpacing: screenSize.height * 0.015,
                           children: [
                             _buildDetailChip(
                               icon: Icons.quiz_rounded,
                               label: '${test.questionCount} Questions',
                               color: colorScheme.primary,
                               theme: theme,
+                              screenSize: screenSize,
                             ),
                             _buildDetailChip(
                               icon: Icons.timer_rounded,
                               label: test.formattedTimeLimit,
                               color: colorScheme.tertiary,
                               theme: theme,
+                              screenSize: screenSize,
                             ),
                             _buildDetailChip(
                               icon: Icons.school_rounded,
                               label: '${test.formattedPassingScore} to pass',
                               color: colorScheme.secondary,
                               theme: theme,
+                              screenSize: screenSize,
                             ),
                             if (test.rating > 0)
                               _buildDetailChip(
@@ -909,17 +1051,19 @@ class _TestsPageState extends State<TestsPage> {
                                 label: '${test.formattedRating} (${test.ratingCount})',
                                 color: Colors.amber[600]!,
                                 theme: theme,
+                                screenSize: screenSize,
                               ),
                             _buildDetailChip(
                               icon: Icons.visibility_rounded,
                               label: '${test.formattedViewCount} views',
                               color: Colors.blue[600]!,
                               theme: theme,
+                              screenSize: screenSize,
                             ),
                           ],
                         ),
                         
-                        const SizedBox(height: 32),
+                        SizedBox(height: screenSize.height * 0.04),
                         
                         SizedBox(
                           width: double.infinity,
@@ -936,7 +1080,9 @@ class _TestsPageState extends State<TestsPage> {
                               ),
                             ),
                             style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenSize.height * 0.02,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -960,9 +1106,13 @@ class _TestsPageState extends State<TestsPage> {
     required String label,
     required Color color,
     required ThemeData theme,
+    required Size screenSize,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.03,
+        vertical: screenSize.height * 0.01,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -971,13 +1121,14 @@ class _TestsPageState extends State<TestsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: screenSize.width * 0.04, color: color),
+          SizedBox(width: screenSize.width * 0.015),
           Text(
             label,
             style: theme.textTheme.labelMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
+              fontSize: screenSize.width * 0.03,
             ),
           ),
         ],

@@ -1,12 +1,14 @@
 import 'dart:developer' as dev;
 import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/tests/data/datasources/local/tests_local_datasource.dart';
 import 'package:korean_language_app/features/tests/data/datasources/remote/tests_remote_datasource.dart';
+import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
@@ -27,8 +29,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }) : super(networkInfo);
 
   @override
-  Future<ApiResult<List<TestItem>>> getTests({int page = 0, int pageSize = 5}) async {
-    dev.log('Getting tests - page: $page, pageSize: $pageSize');
+  Future<ApiResult<List<TestItem>>> getTests({
+    int page = 0, 
+    int pageSize = 5, 
+    TestSortType sortType = TestSortType.recent
+  }) async {
+    dev.log('Getting tests - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
     
     await _manageCacheValidity();
     
@@ -54,7 +60,11 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.failure('No cached data available', FailureType.cache);
       },
       () async {
-        final remoteTests = await remoteDataSource.getTests(page: page, pageSize: pageSize);
+        final remoteTests = await remoteDataSource.getTests(
+          page: page, 
+          pageSize: pageSize, 
+          sortType: sortType
+        );
         return ApiResult.success(remoteTests);
       },
       cacheData: (remoteTests) async {
@@ -77,9 +87,14 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<List<TestItem>>> getTestsByCategory(TestCategory category, {int page = 0, int pageSize = 5}) async {
+  Future<ApiResult<List<TestItem>>> getTestsByCategory(
+    TestCategory category, {
+    int page = 0, 
+    int pageSize = 5, 
+    TestSortType sortType = TestSortType.recent
+  }) async {
     final categoryString = category.toString().split('.').last;
-    dev.log('Getting tests by category: $categoryString - page: $page, pageSize: $pageSize');
+    dev.log('Getting tests by category: $categoryString - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
     
     await _manageCacheValidity();
     
@@ -106,7 +121,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.failure('No cached category data available', FailureType.cache);
       },
       () async {
-        final remoteTests = await remoteDataSource.getTestsByCategory(category, page: page, pageSize: pageSize);
+        final remoteTests = await remoteDataSource.getTestsByCategory(
+          category, 
+          page: page, 
+          pageSize: pageSize, 
+          sortType: sortType
+        );
         return ApiResult.success(remoteTests);
       },
       cacheData: (remoteTests) async {
@@ -124,10 +144,10 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<bool>> hasMoreTests(int currentCount) async {
+  Future<ApiResult<bool>> hasMoreTests(int currentCount, [TestSortType? sortType]) async {
     return handleRepositoryCall(
       () async {
-        final hasMore = await remoteDataSource.hasMoreTests(currentCount);
+        final hasMore = await remoteDataSource.hasMoreTests(currentCount, sortType);
         return ApiResult.success(hasMore);
       },
       cacheCall: () async {
@@ -138,12 +158,16 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<bool>> hasMoreTestsByCategory(TestCategory category, int currentCount) async {
+  Future<ApiResult<bool>> hasMoreTestsByCategory(
+    TestCategory category, 
+    int currentCount, 
+    [TestSortType? sortType]
+  ) async {
     final categoryString = category.toString().split('.').last;
     
     return handleRepositoryCall<bool>(
       () async {
-        final hasMore = await remoteDataSource.hasMoreTestsByCategory(category, currentCount);
+        final hasMore = await remoteDataSource.hasMoreTestsByCategory(category, currentCount, sortType);
         return ApiResult.success(hasMore);
       },
       cacheCall: () async {
@@ -164,14 +188,21 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<List<TestItem>>> hardRefreshTests({int pageSize = 5}) async {
-    dev.log('Hard refresh requested');
+  Future<ApiResult<List<TestItem>>> hardRefreshTests({
+    int pageSize = 5, 
+    TestSortType sortType = TestSortType.recent
+  }) async {
+    dev.log('Hard refresh requested with sortType: ${sortType.name}');
 
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
         await localDataSource.clearAllTests();
         
-        final remoteTests = await remoteDataSource.getTests(page: 0, pageSize: pageSize);
+        final remoteTests = await remoteDataSource.getTests(
+          page: 0, 
+          pageSize: pageSize, 
+          sortType: sortType
+        );
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
@@ -195,14 +226,23 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<List<TestItem>>> hardRefreshTestsByCategory(TestCategory category, {int pageSize = 5}) async {
-    dev.log('Hard refresh category requested');
+  Future<ApiResult<List<TestItem>>> hardRefreshTestsByCategory(
+    TestCategory category, {
+    int pageSize = 5, 
+    TestSortType sortType = TestSortType.recent
+  }) async {
+    dev.log('Hard refresh category requested with sortType: ${sortType.name}');
     
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
         await localDataSource.clearAllTests();
 
-        final remoteTests = await remoteDataSource.getTestsByCategory(category, page: 0, pageSize: pageSize);
+        final remoteTests = await remoteDataSource.getTestsByCategory(
+          category, 
+          page: 0, 
+          pageSize: pageSize, 
+          sortType: sortType
+        );
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
@@ -323,6 +363,48 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     } catch (e) {
       return ExceptionMapper.mapExceptionToApiResult(e as Exception);
     }
+  }
+
+  @override
+  Future<ApiResult<void>> recordTestView(String testId, String userId) async {
+    return handleRepositoryCall<void>(
+      () async {
+        await remoteDataSource.recordTestView(testId, userId);
+        return ApiResult.success(null);
+      },
+      cacheCall: () async {
+        dev.log('Cannot record test view offline');
+        return ApiResult.success(null);
+      },
+    );
+  }
+
+  @override
+  Future<ApiResult<void>> rateTest(String testId, String userId, double rating) async {
+    return handleRepositoryCall<void>(
+      () async {
+        await remoteDataSource.rateTest(testId, userId, rating);
+        return ApiResult.success(null);
+      },
+      cacheCall: () async {
+        dev.log('Cannot rate test offline');
+        return ApiResult.success(null);
+      },
+    );
+  }
+
+  @override
+  Future<ApiResult<UserTestInteraction?>> getUserTestInteraction(String testId, String userId) async {
+    return handleRepositoryCall<UserTestInteraction?>(
+      () async {
+        final interaction = await remoteDataSource.getUserTestInteraction(testId, userId);
+        return ApiResult.success(interaction);
+      },
+      cacheCall: () async {
+        dev.log('Cannot get user test interaction offline');
+        return ApiResult.success(null);
+      },
+    );
   }
 
   Future<bool> _isCacheValid() async {
@@ -487,9 +569,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   Future<void> _cacheTestMedia(List<TestItem> tests) async {
     try {
       for (final test in tests) {
-        // Cover image is cached separately when loading test lists
-        // This method only caches question media (for individual test access)
-        
         for (int i = 0; i < test.questions.length; i++) {
           final question = test.questions[i];
           

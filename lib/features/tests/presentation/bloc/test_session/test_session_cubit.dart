@@ -7,6 +7,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/features/test_results/domain/repositories/test_results_repository.dart';
+import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/shared/models/test_answer.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -15,6 +16,7 @@ part 'test_session_state.dart';
 
 class TestSessionCubit extends Cubit<TestSessionState> {
   final TestResultsRepository testResultsRepository;
+  final TestsRepository testsRepository;
   final AuthService authService;
   
   Timer? _testTimer;
@@ -22,6 +24,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
   
   TestSessionCubit({
     required this.testResultsRepository,
+    required this.testsRepository,
     required this.authService,
   }) : super(const TestSessionInitial());
 
@@ -237,20 +240,23 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           onSuccess: (success) {
             dev.log('Test result saved successfully');
             if (!isClosed) {
-              emit(TestSessionCompleted(testResult));
+              final shouldShowRating = _shouldShowRatingDialog(session);
+              emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
             }
           },
           onFailure: (message, type) {
             dev.log('Failed to save test result: $message');
             if (!isClosed) {
-              emit(TestSessionCompleted(testResult));
+              final shouldShowRating = _shouldShowRatingDialog(session);
+              emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
             }
           },
         );
       } catch (saveError) {
         dev.log('Error saving test result: $saveError, but test is completed');
         if (!isClosed) {
-          emit(TestSessionCompleted(testResult));
+          final shouldShowRating = _shouldShowRatingDialog(session);
+          emit(TestSessionCompleted(testResult, shouldShowRating: shouldShowRating));
         }
       }
       
@@ -260,6 +266,54 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         emit(TestSessionError('Failed to complete test: $e', FailureType.unknown));
       }
     }
+  }
+
+  bool _shouldShowRatingDialog(TestSession session) {
+    final user = _getCurrentUser();
+    if (user == null) return false;
+    
+    final completionCount = session.answers.length;
+    final totalQuestions = session.test.questions.length;
+    
+    if (completionCount < totalQuestions * 0.5) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  Future<void> rateTest(double rating) async {
+    final currentState = state;
+    if (currentState is! TestSessionCompleted) return;
+
+    try {
+      final user = _getCurrentUser();
+      if (user == null) return;
+
+      final testId = currentState.result.testId;
+      final result = await testsRepository.rateTest(testId, user.uid, rating);
+      
+      result.fold(
+        onSuccess: (_) {
+          dev.log('Test rated successfully: $rating stars');
+          emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
+        },
+        onFailure: (message, type) {
+          dev.log('Failed to rate test: $message');
+          emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
+        },
+      );
+    } catch (e) {
+      dev.log('Error rating test: $e');
+      emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
+    }
+  }
+
+  void skipRating() {
+    final currentState = state;
+    if (currentState is! TestSessionCompleted) return;
+    
+    emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
   }
 
   void pauseTest() {

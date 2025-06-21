@@ -25,6 +25,7 @@ void registerTestsDependencies(GetIt sl) {
   ));
   sl.registerFactory(() => TestSearchCubit(repository: sl(), authService: sl(), adminService: sl()));
   sl.registerFactory(() => TestSessionCubit(
+    testsRepository: sl(),
     testResultsRepository: sl(), 
     authService: sl(),
   ));

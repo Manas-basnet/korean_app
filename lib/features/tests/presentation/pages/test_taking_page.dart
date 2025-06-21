@@ -13,6 +13,7 @@ import 'package:korean_language_app/features/tests/presentation/bloc/test_sessio
 import 'package:korean_language_app/features/tests/presentation/bloc/tests_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/test_rating_dialog.dart';
 
 class TestTakingPage extends StatefulWidget {
   final String testId;
@@ -187,17 +188,41 @@ class _TestTakingPageState extends State<TestTakingPage>
     );
   }
 
+  Future<void> _handleTestCompleted(TestSessionCompleted state) async {
+    if (!_isNavigatingToResult) {
+      _isNavigatingToResult = true;
+      
+      if (state.shouldShowRating) {
+        await _showRatingDialog(state.result.testTitle);
+      }
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.pushReplacement(Routes.testResult, extra: state.result);
+        }
+      });
+    }
+  }
+
+  Future<void> _showRatingDialog(String testTitle) async {
+    final rating = await TestRatingDialogHelper.showRatingDialog(
+      context,
+      testTitle: testTitle,
+    );
+    
+    if (rating != null) {
+      _sessionCubit.rateTest(rating);
+    } else {
+      _sessionCubit.skipRating();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<TestSessionCubit, TestSessionState>(
       listener: (context, state) {
-        if (state is TestSessionCompleted && !_isNavigatingToResult) {
-          _isNavigatingToResult = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              context.pushReplacement(Routes.testResult, extra: state.result);
-            }
-          });
+        if (state is TestSessionCompleted) {
+          _handleTestCompleted(state);
         } else if (state is TestSessionError && !_isNavigatingToResult) {
           _snackBarCubit.showErrorLocalized(
             korean: state.error ?? '오류가 발생했습니다',
