@@ -253,17 +253,6 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.refresh_rounded, color: colorScheme.onSurface),
-                            onPressed: _isLoading ? null : _loadResults,
-                            style: IconButton.styleFrom(
-                              foregroundColor: colorScheme.onSurface,
-                            ),
-                            tooltip: _languageCubit.getLocalizedText(
-                              korean: '새로고침',
-                              english: 'Refresh',
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 16),

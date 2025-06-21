@@ -5,8 +5,8 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
-import 'package:korean_language_app/features/tests/data/datasources/tests_local_datasource.dart';
-import 'package:korean_language_app/features/tests/data/datasources/tests_remote_datasource.dart';
+import 'package:korean_language_app/features/tests/data/datasources/local/tests_local_datasource.dart';
+import 'package:korean_language_app/features/tests/data/datasources/remote/tests_remote_datasource.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/enums/question_type.dart';
@@ -141,8 +141,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   Future<ApiResult<bool>> hasMoreTestsByCategory(TestCategory category, int currentCount) async {
     final categoryString = category.toString().split('.').last;
     
-    return handleCacheFirstCall<bool>(
+    return handleRepositoryCall<bool>(
       () async {
+        final hasMore = await remoteDataSource.hasMoreTestsByCategory(category, currentCount);
+        return ApiResult.success(hasMore);
+      },
+      cacheCall: () async {
         try {
           final cachedTotal = await localDataSource.getCategoryTestsCount(categoryString);
           if (cachedTotal != null && await _isCacheValid()) {
@@ -155,10 +159,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         } catch (e) {
           return ApiResult.failure('Cache check failed', FailureType.cache);
         }
-      },
-      () async {
-        final hasMore = await remoteDataSource.hasMoreTestsByCategory(category, currentCount);
-        return ApiResult.success(hasMore);
       },
     );
   }

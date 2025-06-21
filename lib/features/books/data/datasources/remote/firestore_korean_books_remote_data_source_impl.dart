@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
-import 'package:korean_language_app/features/books/data/datasources/korean_books_remote_data_source.dart';
+import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
 
 class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
@@ -11,8 +11,6 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
   final String booksCollection = 'korean_books';
   
   DocumentSnapshot? _lastDocument;
-  int? _totalBooksCount;
-  DateTime? _lastCountFetch;
 
   FirestoreKoreanBooksDataSource({
     required this.firestore,
@@ -41,10 +39,6 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
         _lastDocument = docs.last;
       }
       
-      if (page == 0) {
-        _updateTotalBooksCount(docs.length, isExact: false);
-      }
-      
       return docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id; 
@@ -60,16 +54,8 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
   @override
   Future<bool> hasMoreBooks(int currentCount) async {
     try {
-      if (_totalBooksCount != null && 
-          _lastCountFetch != null &&
-          DateTime.now().difference(_lastCountFetch!).inMinutes < 5) {
-        return currentCount < _totalBooksCount!;
-      }
-      
       final countQuery = await firestore.collection(booksCollection).count().get();
-      _updateTotalBooksCount(countQuery.count!, isExact: true);
-      
-      return currentCount < _totalBooksCount!;
+      return currentCount < countQuery.count!;
     } on FirebaseException catch (e) {
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
@@ -218,13 +204,6 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
       throw Exception('Failed to regenerate URL: $e');
-    }
-  }
-
-  void _updateTotalBooksCount(int count, {required bool isExact}) {
-    if (isExact || _totalBooksCount == null || count > _totalBooksCount!) {
-      _totalBooksCount = count;
-      _lastCountFetch = DateTime.now();
     }
   }
 }

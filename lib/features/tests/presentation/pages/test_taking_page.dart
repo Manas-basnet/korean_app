@@ -694,67 +694,76 @@ class _TestTakingPageState extends State<TestTakingPage>
     );
   }
 
-  Widget _buildHeaderActions(TestSession session, bool isPaused) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ToggleButtons(
-          isSelected: [!_isLandscape, _isLandscape],
-          onPressed: (index) => _toggleOrientation(),
-          borderRadius: BorderRadius.circular(8),
-          selectedColor: colorScheme.onPrimary,
-          fillColor: colorScheme.primary,
-          color: colorScheme.onSurfaceVariant,
-          constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
-          borderColor: Colors.transparent,
-          selectedBorderColor: Colors.transparent,
-          children: const [
-            Icon(Icons.stay_current_portrait_rounded, size: 16),
-            Icon(Icons.stay_current_landscape_rounded, size: 16),
-          ],
+Widget _buildHeaderActions(TestSession session, bool isPaused) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+ 
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      IconButton(
+        onPressed: _toggleOrientation,
+        icon: Icon(
+          _isLandscape
+              ? Icons.stay_current_landscape_rounded
+              : Icons.stay_current_portrait_rounded,
+          size: 16
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: () => _showQuestionNavigation(session),
-          icon: const Icon(Icons.grid_view_rounded, size: 18),
-          style: IconButton.styleFrom(
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            foregroundColor: colorScheme.onSurfaceVariant,
-            minimumSize: const Size(32, 32),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+        style: IconButton.styleFrom(
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          foregroundColor: colorScheme.onSurfaceVariant,
+          minimumSize: const Size(32, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-          tooltip: _languageCubit.getLocalizedText(korean: '문제 목록', english: 'Question List'),
         ),
-        const SizedBox(width: 6),
-        IconButton(
-          onPressed: _toggleExplanation,
-          icon: Icon(_showingExplanation ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded, size: 18),
-          style: IconButton.styleFrom(
-            backgroundColor: _showingExplanation 
-                ? colorScheme.primary.withValues(alpha : 0.1) 
-                : colorScheme.surfaceContainerHighest,
-            foregroundColor: _showingExplanation 
-                ? colorScheme.primary 
-                : colorScheme.onSurfaceVariant,
-            minimumSize: const Size(32, 32),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+        tooltip: _languageCubit.getLocalizedText(
+          korean: _isLandscape ? '세로 모드' : '가로 모드',
+          english: _isLandscape ? 'Portrait Mode' : 'Landscape Mode'
+        ),
+      ),
+      const SizedBox(width: 4),
+      IconButton(
+        onPressed: () => _showQuestionNavigation(session),
+        icon: const Icon(Icons.grid_view_rounded, size: 18),
+        style: IconButton.styleFrom(
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          foregroundColor: colorScheme.onSurfaceVariant,
+          minimumSize: const Size(32, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-          tooltip: _languageCubit.getLocalizedText(korean: '해설', english: 'Explanation'),
         ),
-        if (session.hasTimeLimit) ...[
-          const SizedBox(width: 8),
-          _buildTimeDisplay(session, isPaused),
-        ],
+        tooltip: _languageCubit.getLocalizedText(korean: '문제 목록', english: 'Question List'),
+      ),
+      const SizedBox(width: 4),
+      IconButton(
+        onPressed: _toggleExplanation,
+        icon: Icon(_showingExplanation ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded, size: 18),
+        style: IconButton.styleFrom(
+          backgroundColor: _showingExplanation
+              ? colorScheme.primary.withValues(alpha : 0.1)
+              : colorScheme.surfaceContainerHighest,
+          foregroundColor: _showingExplanation
+              ? colorScheme.primary
+              : colorScheme.onSurfaceVariant,
+          minimumSize: const Size(32, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        tooltip: _languageCubit.getLocalizedText(korean: '해설', english: 'Explanation'),
+      ),
+      if (session.hasTimeLimit) ...[
+        const SizedBox(width: 4),
+        _buildTimeDisplay(session, isPaused),
       ],
-    );
-  }
+    ],
+  );
+}
 
   Widget _buildTimeDisplay(TestSession session, bool isPaused) {
     final theme = Theme.of(context);

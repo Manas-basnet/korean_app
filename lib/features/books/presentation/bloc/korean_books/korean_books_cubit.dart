@@ -145,7 +145,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       final result = await repository.getBooks(
         CourseCategory.korean,
         page: currentPage,
-        pageSize: _pageSize
+        pageSize: _pageSize,
       );
       
       await result.fold(

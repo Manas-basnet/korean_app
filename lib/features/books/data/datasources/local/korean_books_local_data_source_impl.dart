@@ -3,7 +3,7 @@ import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
-import 'package:korean_language_app/features/books/data/datasources/korean_books_local_datasource.dart';
+import 'package:korean_language_app/features/books/data/datasources/local/korean_books_local_datasource.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
 
 class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
