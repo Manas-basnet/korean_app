@@ -120,7 +120,8 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         
         dev.log('Moved to question ${nextIndex + 1}/${session.test.questions.length}');
       } else {
-        _completeTest(null);
+        // Last question reached - don't auto-complete, wait for user to finish
+        dev.log('Reached last question, waiting for user to finish manually');
       }
     } catch (e) {
       emit(TestSessionError('Failed to proceed to next question: $e', FailureType.unknown));
@@ -186,11 +187,15 @@ class TestSessionCubit extends Cubit<TestSessionState> {
     }
   }
 
-  Future<void> completeTest(double? rating) async {
-    await _completeTest(rating);
+  Future<void> completeTestWithRating(double? rating) async {
+    await _completeTest(rating, isManualCompletion: true);
   }
 
-  Future<void> _completeTest(double? rating) async {
+  Future<void> completeTestAutomatically() async {
+    await _completeTest(null, isManualCompletion: false);
+  }
+
+  Future<void> _completeTest(double? rating, {required bool isManualCompletion}) async {
     final currentState = state;
     if (currentState is! TestSessionInProgress) return;
 
@@ -202,7 +207,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       final session = currentState.session;
       
-      dev.log('Completing test session using use case...');
+      dev.log('Completing test session using use case (manual: $isManualCompletion, rating: $rating)...');
       
       final result = await completeTestSessionUseCase.execute(
         CompleteTestSessionParams(session: session, rating: rating)
@@ -214,7 +219,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           if (!isClosed) {
             emit(TestSessionCompleted(
               completionResult.testResult,
-              shouldShowRating: completionResult.shouldShowRating,
+              shouldShowRating: false, // Always false since rating is handled in UI layer
             ));
           }
         },
@@ -248,13 +253,6 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       dev.log('Failed to get existing rating: $e');
       return null;
     }
-  }
-
-  void skipRating() {
-    final currentState = state;
-    if (currentState is! TestSessionCompleted) return;
-    
-    emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
   }
 
   void pauseTest() {
@@ -333,7 +331,8 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       if (newTimeRemaining <= 0) {
         timer.cancel();
-        _completeTest(null);
+        dev.log('Test time expired, completing automatically');
+        completeTestAutomatically();
       } else {
         final updatedSession = session.copyWith(timeRemaining: newTimeRemaining);
         emit(TestSessionInProgress(updatedSession));

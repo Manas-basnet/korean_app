@@ -154,6 +154,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       await _storageService.remove(totalCountKey);
       await _storageService.remove(imageMetadataKey);
       await _storageService.remove(audioMetadataKey);
+      await _storageService.remove(userInteractionKey);
       
       final allKeys = _storageService.getAllKeys();
       for (final key in allKeys) {
@@ -165,7 +166,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       await _clearAllImages();
       await _clearAllAudio();
       
-      dev.log('Cleared all tests cache, images, and audio');
+      dev.log('Cleared all tests cache, images, interaction and audio');
     } catch (e) {
       dev.log('Error clearing all tests from storage: $e');
     }
@@ -436,7 +437,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
   Future<UserTestInteraction?> getUserTestInteraction(String testId, String userId) async {
     try {
       final data = _storageService.getString(userInteractionKey);
-      
+
       if(data == null) {
         return null;
       }

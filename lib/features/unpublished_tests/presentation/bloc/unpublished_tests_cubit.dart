@@ -539,6 +539,7 @@ class UnpublishedTestsCubit extends Cubit<UnpublishedTestsState> {
 
   void _clearOperationAfterDelay() {
     Timer(const Duration(seconds: 3), () {
+      if(isClosed) return;
       if (state.currentOperation.status != UnpublishedTestsOperationStatus.none) {
         emit(state.copyWithOperation(
           const UnpublishedTestsOperation(status: UnpublishedTestsOperationStatus.none)

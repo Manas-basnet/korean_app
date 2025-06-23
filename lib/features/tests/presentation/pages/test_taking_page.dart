@@ -191,10 +191,6 @@ class _TestTakingPageState extends State<TestTakingPage>
     if (!_isNavigatingToResult) {
       _isNavigatingToResult = true;
       
-      if (state.shouldShowRating) {
-        await _showRatingDialog(state.result.testTitle, state.result.testId);
-      }
-      
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           context.pushReplacement('/test-result', extra: state.result);
@@ -203,7 +199,7 @@ class _TestTakingPageState extends State<TestTakingPage>
     }
   }
 
-  Future<void> _showRatingDialog(String testTitle, String testId) async {
+  Future<void> _showRatingDialogAndCompleteTest(String testTitle, String testId) async {
     double? existingRating;
     try {
       existingRating = await _sessionCubit.getExistingRating(testId);
@@ -219,7 +215,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       existingRating: existingRating,
     );
     
-    _sessionCubit.completeTest(rating);
+    _sessionCubit.completeTestWithRating(rating);
   }
 
   @override
@@ -1285,45 +1281,28 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
         if (!isFirstQuestion) const SizedBox(width: 8),
         
         Expanded(
-          child: isLastQuestion && _selectedAnswerIndex != null && !_showingExplanation
-              ? FilledButton.icon(
-                  onPressed: () => _showFinishConfirmation(session),
-                  icon: const Icon(Icons.flag_rounded, size: 16),
-                  label: Text(
-                    _languageCubit.getLocalizedText(korean: '완료', english: 'Finish'),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                )
-              : FilledButton.icon(
-                  onPressed: isLastQuestion ? () => _showFinishConfirmation(session) : _nextQuestion,
-                  icon: Icon(isLastQuestion ? Icons.flag_rounded : Icons.arrow_forward_rounded, size: 16),
-                  label: Text(
-                    isLastQuestion
-                        ? _languageCubit.getLocalizedText(korean: '완료', english: 'Finish')
-                        : _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isLastQuestion ? Colors.green : colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
+          child: FilledButton.icon(
+            onPressed: () => isLastQuestion 
+                ? _showFinishConfirmation(session) 
+                : _nextQuestion(),
+            icon: Icon(isLastQuestion ? Icons.flag_rounded : Icons.arrow_forward_rounded, size: 16),
+            label: Text(
+              isLastQuestion
+                  ? _languageCubit.getLocalizedText(korean: '완료', english: 'Finish')
+                  : _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: isLastQuestion ? Colors.green : colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -1364,7 +1343,9 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
           
           Expanded(
             child: FilledButton.icon(
-              onPressed: () => isLastQuestion ? _showFinishConfirmation(session) : _nextQuestion(),
+              onPressed: () => isLastQuestion 
+                  ? _showFinishConfirmation(session) 
+                  : _nextQuestion(),
               icon: Icon(isLastQuestion ? Icons.flag_rounded : Icons.arrow_forward_rounded, size: 18),
               label: Text(
                 isLastQuestion
@@ -1529,7 +1510,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              _showRatingDialog(session.test.title, session.test.id);
+              _showRatingDialogAndCompleteTest(session.test.title, session.test.id);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             child: Text(_languageCubit.getLocalizedText(korean: '완료', english: 'Finish')),
