@@ -8,7 +8,6 @@ import 'package:korean_language_app/features/tests/domain/repositories/tests_rep
 import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/get_test_by_id_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/load_tests_usecase.dart';
-import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/search_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/start_test_session_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/complete_test_session_usecase.dart';
@@ -28,7 +27,6 @@ void registerTestsDependencies(GetIt sl) {
   sl.registerFactory(() => TestsCubit(
     loadTestsUseCase: sl(),
     checkEditPermissionUseCase: sl(),
-    rateTestUseCase: sl(),
     getTestByIdUseCase: sl(),
     startTestSessionUseCase: sl(),
     networkInfo: sl(),
@@ -36,8 +34,8 @@ void registerTestsDependencies(GetIt sl) {
 
   sl.registerFactory(() => TestSessionCubit(
     completeTestSessionUseCase: sl(),
-    rateTestUseCase: sl(),
     authService: sl(),
+    testsRepository: sl(),
   ));
 
   sl.registerFactory(() => TestSearchCubit(
@@ -47,11 +45,6 @@ void registerTestsDependencies(GetIt sl) {
 
   // Use Cases
   sl.registerLazySingleton(() => LoadTestsUseCase(
-    repository: sl(),
-    authService: sl(),
-  ));
-
-  sl.registerLazySingleton(() => RateTestUseCase(
     repository: sl(),
     authService: sl(),
   ));
@@ -80,6 +73,7 @@ void registerTestsDependencies(GetIt sl) {
   sl.registerLazySingleton(() => CompleteTestSessionUseCase(
     saveTestResultUseCase: sl(),
     authService: sl(),
+    testsRepository: sl(),
   ));
 
   // Repository
@@ -98,6 +92,11 @@ void registerTestsDependencies(GetIt sl) {
       firestore: sl(),
     ),
   );
+  // sl.registerLazySingleton<TestsRemoteDataSource>(
+  //   () => OptimizedFirestoreTestsDataSource(
+  //     firestore: sl(),
+  //   ),
+  // );
 
   sl.registerLazySingleton<TestsLocalDataSource>(
     () => TestsLocalDataSourceImpl(

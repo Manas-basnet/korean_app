@@ -1,14 +1,72 @@
 // lib/features/tests/domain/usecases/load_tests_usecase.dart
 
 import 'dart:developer' as dev;
+import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_results.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
+class LoadTestsParams extends Equatable {
+  final int page;
+  final int pageSize;
+  final TestSortType sortType;
+  final TestCategory? category;
+  final bool forceRefresh;
+  final bool loadMore;
+
+  const LoadTestsParams({
+    this.page = 0,
+    this.pageSize = 5,
+    this.sortType = TestSortType.recent,
+    this.category,
+    this.forceRefresh = false,
+    this.loadMore = false,
+  });
+
+  LoadTestsParams copyWith({
+    int? page,
+    int? pageSize,
+    TestSortType? sortType,
+    TestCategory? category,
+    bool? forceRefresh,
+    bool? loadMore,
+  }) {
+    return LoadTestsParams(
+      page: page ?? this.page,
+      pageSize: pageSize ?? this.pageSize,
+      sortType: sortType ?? this.sortType,
+      category: category ?? this.category,
+      forceRefresh: forceRefresh ?? this.forceRefresh,
+      loadMore: loadMore ?? this.loadMore,
+    );
+  }
+
+  @override
+  List<Object?> get props => [page, pageSize, sortType, category, forceRefresh, loadMore];
+}
+
+class TestsLoadResult extends Equatable {
+  final List<TestItem> tests;
+  final bool hasMore;
+  final int currentPage;
+  final bool isFromCache;
+  final int totalCount;
+
+  const TestsLoadResult({
+    required this.tests,
+    required this.hasMore,
+    required this.currentPage,
+    required this.isFromCache,
+    this.totalCount = 0,
+  });
+
+  @override
+  List<Object?> get props => [tests, hasMore, currentPage, isFromCache, totalCount];
+}
 
 class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
   final TestsRepository repository;

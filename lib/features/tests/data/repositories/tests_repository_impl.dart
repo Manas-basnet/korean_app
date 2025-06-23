@@ -394,15 +394,43 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   }
 
   @override
-  Future<ApiResult<UserTestInteraction?>> getUserTestInteraction(String testId, String userId) async {
+  Future<ApiResult<UserTestInteraction?>> completeTestWithViewAndRating(String testId, String userId, double? rating, UserTestInteraction? userInteraction) async {
     return handleRepositoryCall<UserTestInteraction?>(
+      () async {
+        final updatedInteractionData = await remoteDataSource.completeTestWithViewAndRating(testId, userId, rating, userInteraction);
+        return ApiResult.success(updatedInteractionData);
+      },
+      cacheCall: () async {
+        dev.log('Cannot complete test with view and rating offline');
+        return ApiResult.success(null);
+      },
+      cacheData: (interaction) async {
+        if (interaction != null) {
+          localDataSource.saveUserTestInteraction(interaction);
+        }
+      },
+    );
+  }
+
+  @override
+  Future<ApiResult<UserTestInteraction?>> getUserTestInteraction(String testId, String userId) async {
+    return handleCacheFirstCall<UserTestInteraction?>(
+      () async {
+        final interaction = await localDataSource.getUserTestInteraction(testId, userId);
+        if(interaction == null) {
+          return ApiResult.failure('No cached interaction found', FailureType.cache);
+        } else {
+          return ApiResult.success(interaction);
+        }
+      },
       () async {
         final interaction = await remoteDataSource.getUserTestInteraction(testId, userId);
         return ApiResult.success(interaction);
       },
-      cacheCall: () async {
-        dev.log('Cannot get user test interaction offline');
-        return ApiResult.success(null);
+      cacheData: (interaction) async {
+        if (interaction != null) {
+          await localDataSource.saveUserTestInteraction(interaction);
+        }
       },
     );
   }

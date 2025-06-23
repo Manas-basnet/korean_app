@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
-import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
@@ -193,28 +192,34 @@ class _TestTakingPageState extends State<TestTakingPage>
       _isNavigatingToResult = true;
       
       if (state.shouldShowRating) {
-        await _showRatingDialog(state.result.testTitle);
+        await _showRatingDialog(state.result.testTitle, state.result.testId);
       }
       
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          context.pushReplacement(Routes.testResult, extra: state.result);
+          context.pushReplacement('/test-result', extra: state.result);
         }
       });
     }
   }
 
-  Future<void> _showRatingDialog(String testTitle) async {
+  Future<void> _showRatingDialog(String testTitle, String testId) async {
+    double? existingRating;
+    try {
+      existingRating = await _sessionCubit.getExistingRating(testId);
+    } catch (e) {
+      existingRating = null;
+    }
+
+    if (!mounted) return;
+
     final rating = await TestRatingDialogHelper.showRatingDialog(
       context,
       testTitle: testTitle,
+      existingRating: existingRating,
     );
     
-    if (rating != null) {
-      _sessionCubit.rateTest(rating);
-    } else {
-      _sessionCubit.skipRating();
-    }
+    _sessionCubit.completeTest(rating);
   }
 
   @override
@@ -269,7 +274,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha : 0.1),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -310,7 +315,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha : 0.1),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -352,7 +357,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: colorScheme.errorContainer.withValues(alpha : 0.1),
+                  color: colorScheme.errorContainer.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -446,7 +451,7 @@ class _TestTakingPageState extends State<TestTakingPage>
               Container(
                 width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 16),
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha : 0.3),
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
               
               Expanded(
@@ -531,7 +536,7 @@ class _TestTakingPageState extends State<TestTakingPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withValues(alpha : 0.4),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -591,7 +596,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
       ),
       child: Row(
@@ -663,7 +668,7 @@ class _TestTakingPageState extends State<TestTakingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
       ),
       child: Column(
@@ -769,7 +774,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
         icon: Icon(_showingExplanation ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded, size: 18),
         style: IconButton.styleFrom(
           backgroundColor: _showingExplanation
-              ? colorScheme.primary.withValues(alpha : 0.1)
+              ? colorScheme.primary.withValues(alpha: 0.1)
               : colorScheme.surfaceContainerHighest,
           foregroundColor: _showingExplanation
               ? colorScheme.primary
@@ -800,15 +805,15 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
     IconData icon;
     
     if (isPaused) {
-      backgroundColor = colorScheme.tertiary.withValues(alpha : 0.1);
+      backgroundColor = colorScheme.tertiary.withValues(alpha: 0.1);
       textColor = colorScheme.tertiary;
       icon = Icons.pause_rounded;
     } else if (isLowTime) {
-      backgroundColor = colorScheme.errorContainer.withValues(alpha : 0.3);
+      backgroundColor = colorScheme.errorContainer.withValues(alpha: 0.3);
       textColor = colorScheme.error;
       icon = Icons.timer_outlined;
     } else {
-      backgroundColor = colorScheme.primaryContainer.withValues(alpha : 0.3);
+      backgroundColor = colorScheme.primaryContainer.withValues(alpha: 0.3);
       textColor = colorScheme.primary;
       icon = Icons.timer_outlined;
     }
@@ -908,7 +913,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,7 +929,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withValues(alpha : 0.4),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -966,7 +971,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
 
   Widget _buildQuestionImage(String? imageUrl, String? imagePath, {bool isLandscape = false, bool isFixed = false}) {
     return GestureDetector(
-      onTap: () => DialogUtils.showFullScreenImage(context ,imageUrl, imagePath),
+      onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
       child: Container(
         width: double.infinity,
         constraints: isFixed ? const BoxConstraints.expand() : BoxConstraints(
@@ -993,7 +998,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha : 0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1049,16 +1054,16 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
     if (showResult) {
       if (isCorrectAnswer) {
         borderColor = Colors.green;
-        backgroundColor = Colors.green.withValues(alpha : 0.1);
+        backgroundColor = Colors.green.withValues(alpha: 0.1);
         statusIcon = const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20);
       } else if (wasSelectedAnswer) {
         borderColor = Colors.red;
-        backgroundColor = Colors.red.withValues(alpha : 0.1);
+        backgroundColor = Colors.red.withValues(alpha: 0.1);
         statusIcon = const Icon(Icons.cancel_rounded, color: Colors.red, size: 20);
       }
     } else if (isSelected || wasSelectedAnswer) {
       borderColor = colorScheme.primary;
-      backgroundColor = colorScheme.primaryContainer.withValues(alpha : 0.2);
+      backgroundColor = colorScheme.primaryContainer.withValues(alpha: 0.2);
     }
     
     return Material(
@@ -1198,9 +1203,9 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
       width: double.infinity,
       padding: EdgeInsets.all(isCompact ? 12 : 20),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withValues(alpha : 0.3),
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.secondary.withValues(alpha : 0.3)),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1211,7 +1216,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: colorScheme.secondary.withValues(alpha : 0.1),
+                  color: colorScheme.secondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(Icons.lightbulb_rounded, color: colorScheme.secondary, size: 16),
@@ -1335,7 +1340,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.3)),
+          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
       ),
       child: Row(
@@ -1397,7 +1402,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha : 0.5))),
+              border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
             ),
             child: Row(
               children: [
@@ -1447,7 +1452,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
                 } else if (isAnswered) {
                   backgroundColor = colorScheme.primaryContainer;
                   textColor = colorScheme.onPrimaryContainer;
-                  borderColor = colorScheme.primary.withValues(alpha : 0.5);
+                  borderColor = colorScheme.primary.withValues(alpha: 0.5);
                 } else {
                   backgroundColor = colorScheme.surfaceContainerHighest;
                   textColor = colorScheme.onSurfaceVariant;
@@ -1524,7 +1529,7 @@ Widget _buildHeaderActions(TestSession session, bool isPaused) {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              _sessionCubit.completeTest();
+              _showRatingDialog(session.test.title, session.test.id);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             child: Text(_languageCubit.getLocalizedText(korean: '완료', english: 'Finish')),

@@ -7,15 +7,14 @@ import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 
 class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
-  final FirebaseFirestore firestore;
-  final String testsCollection = 'tests';
-  final String interactionsCollection = 'user_test_interactions';
   
-  final Map<String, DocumentSnapshot?> _lastDocuments = {};
-
   FirestoreTestsDataSourceImpl({
     required this.firestore,
   });
+
+  final FirebaseFirestore firestore;
+  final String testsCollection = 'tests';
+  final Map<String, DocumentSnapshot?> _lastDocuments = {};
 
   @override
   Future<List<TestItem>> getTests({
@@ -205,56 +204,32 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
 
   @override
   Future<void> recordTestView(String testId, String userId) async {
-    try {
-      final batch = firestore.batch();
-      
-      final interactionRef = firestore
-          .collection(interactionsCollection)
-          .doc('${userId}_$testId');
-      
-      final testRef = firestore.collection(testsCollection).doc(testId);
-      
-      final interactionDoc = await interactionRef.get();
-      
-      if (!interactionDoc.exists || !(interactionDoc.data()?['hasViewed'] ?? false)) {
-        batch.set(interactionRef, {
-          'userId': userId,
-          'testId': testId,
-          'hasViewed': true,
-          'viewedAt': FieldValue.serverTimestamp(),
-          'hasRated': interactionDoc.data()?['hasRated'] ?? false,
-          'rating': interactionDoc.data()?['rating'],
-          'ratedAt': interactionDoc.data()?['ratedAt'],
-          'completionCount': interactionDoc.data()?['completionCount'] ?? 0,
-        }, SetOptions(merge: true));
-        
-        batch.update(testRef, {
-          'viewCount': FieldValue.increment(1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        
-        await batch.commit();
-        await _updateTestPopularity(testId);
-      }
-    } on FirebaseException catch (e) {
-      throw ExceptionMapper.mapFirebaseException(e);
-    } catch (e) {
-      throw Exception('Failed to record test view: $e');
-    }
+    return;
   }
 
   @override
   Future<void> rateTest(String testId, String userId, double rating) async {
+    return;
+  }
+
+  @override
+  Future<UserTestInteraction?> completeTestWithViewAndRating(
+    String testId, 
+    String userId, 
+    double? rating,
+    UserTestInteraction? userInteration
+  ) async {
     try {
       final batch = firestore.batch();
       
-      final interactionRef = firestore
-          .collection(interactionsCollection)
-          .doc('${userId}_$testId');
       
       final testRef = firestore.collection(testsCollection).doc(testId);
+      final interactionRef = firestore
+          .collection(testsCollection)
+          .doc(testId)
+          .collection('user_interactions')
+          .doc(userId);
       
-      final interactionDoc = await interactionRef.get();
       final testDoc = await testRef.get();
       
       if (!testDoc.exists) {
@@ -262,49 +237,108 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
       }
       
       final testData = testDoc.data() as Map<String, dynamic>;
-      final currentRating = (testData['rating'] as num?)?.toDouble() ?? 0.0;
-      final currentRatingCount = testData['ratingCount'] as int? ?? 0;
+      final testItem = TestItem.fromJson(testData);
+      final existingInteraction = userInteration;
       
-      final previousRating = interactionDoc.data()?['rating'] as double?;
-      final hasRated = interactionDoc.data()?['hasRated'] as bool? ?? false;
-      
-      double newRating;
-      int newRatingCount;
-      
-      if (hasRated && previousRating != null) {
-        final totalRating = currentRating * currentRatingCount;
-        final adjustedTotal = totalRating - previousRating + rating;
-        newRating = adjustedTotal / currentRatingCount;
-        newRatingCount = currentRatingCount;
-      } else {
-        final totalRating = currentRating * currentRatingCount;
-        newRating = (totalRating + rating) / (currentRatingCount + 1);
-        newRatingCount = currentRatingCount + 1;
+      // Check if we should update view count (5-minute cooldown)
+      bool shouldUpdateViewCount = true;
+      if (existingInteraction != null && userInteration?.viewedAt != null) {
+        final lastViewed = existingInteraction.viewedAt;
+        final now = DateTime.now();
+        final timeDifference = now.difference(lastViewed!).inMinutes;
+        shouldUpdateViewCount = timeDifference >= 5;
       }
       
-      batch.set(interactionRef, {
-        'userId': userId,
-        'testId': testId,
-        'hasRated': true,
-        'rating': rating,
-        'ratedAt': FieldValue.serverTimestamp(),
-        'hasViewed': interactionDoc.data()?['hasViewed'] ?? true,
-        'viewedAt': interactionDoc.data()?['viewedAt'] ?? FieldValue.serverTimestamp(),
-        'completionCount': (interactionDoc.data()?['completionCount'] ?? 0) + 1,
-      }, SetOptions(merge: true));
+      // Prepare interaction data
+      var interactionData = UserTestInteraction(
+        userId: userId, 
+        testId: testId,
+        completionCount: (existingInteraction?.completionCount ?? 0) + 1
+      );
       
-      batch.update(testRef, {
-        'rating': newRating,
-        'ratingCount': newRatingCount,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // Handle view count update
+      if (shouldUpdateViewCount) {
+        interactionData = interactionData.copyWith(hasViewed: true);
+        interactionData = interactionData.copyWith(viewedAt: DateTime.now());
+        
+        // Only increment view count if we're updating the view
+        batch.update(testRef, {
+          'viewCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Keep existing view data
+        interactionData = interactionData.copyWith(hasViewed: existingInteraction?.hasViewed ?? false);
+        interactionData = interactionData.copyWith(viewedAt: existingInteraction?.viewedAt ?? DateTime.now());
+      }
+      
+      // Handle rating update if provided
+      if (rating != null) {
+        final currentRating = testItem.rating;
+        final currentRatingCount = testItem.ratingCount;
+        final previousRating = existingInteraction?.rating;
+        final hasRated = existingInteraction?.hasRated ?? false;
+        
+        double newRating;
+        int newRatingCount;
+        
+        if (hasRated && previousRating != null) {
+          // Update existing rating
+          final totalRating = currentRating * currentRatingCount;
+          final adjustedTotal = totalRating - previousRating + rating;
+          newRating = adjustedTotal / currentRatingCount;
+          newRatingCount = currentRatingCount;
+        } else {
+          // Add new rating
+          final totalRating = currentRating * currentRatingCount;
+          newRating = (totalRating + rating) / (currentRatingCount + 1);
+          newRatingCount = currentRatingCount + 1;
+        }
+        
+        // Update interaction with rating
+        interactionData = interactionData.copyWith(hasRated: true);
+        interactionData = interactionData.copyWith(rating: rating);
+        interactionData = interactionData.copyWith(ratedAt: DateTime.now());
+        
+        // Update test document with new rating (combine with view count update if needed)
+        final testUpdateData = <String, dynamic>{
+          'rating': newRating,
+          'ratingCount': newRatingCount,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        
+        if (shouldUpdateViewCount) {
+          // Already added viewCount increment above, just merge the rating data
+          batch.update(testRef, {
+            ...testUpdateData,
+            'viewCount': FieldValue.increment(1),
+          });
+        } else {
+          // Only update rating data
+          batch.update(testRef, testUpdateData);
+        }
+      } else {
+        // Keep existing rating data
+        interactionData = interactionData.copyWith(hasRated: existingInteraction?.hasRated ?? false);
+        interactionData = interactionData.copyWith(rating: existingInteraction?.rating);
+        interactionData = interactionData.copyWith(ratedAt: existingInteraction?.ratedAt);
+      }
+
+      final interationMap = interactionData.toJson();
+      
+      // Update user interaction
+      batch.set(interactionRef, interationMap, SetOptions(merge: true));
       
       await batch.commit();
+      
       await _updateTestPopularity(testId);
+
+      return interactionData;
+      
     } on FirebaseException catch (e) {
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
-      throw Exception('Failed to rate test: $e');
+      throw Exception('Failed to complete test with view and rating: $e');
     }
   }
 
@@ -312,8 +346,10 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
   Future<UserTestInteraction?> getUserTestInteraction(String testId, String userId) async {
     try {
       final doc = await firestore
-          .collection(interactionsCollection)
-          .doc('${userId}_$testId')
+          .collection(testsCollection)
+          .doc(testId)
+          .collection('user_interactions')
+          .doc(userId)
           .get();
       
       if (!doc.exists) {
@@ -328,7 +364,6 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
       throw Exception('Failed to get user test interaction: $e');
     }
   }
-
 
   Query _applySorting(Query query, TestSortType sortType) {
     switch (sortType) {
@@ -345,7 +380,8 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
 
   Future<void> _updateTestPopularity(String testId) async {
     try {
-      final testDoc = await firestore.collection(testsCollection).doc(testId).get();
+      final testRef = firestore.collection(testsCollection).doc(testId);
+      final testDoc = await testRef.get();
       
       if (!testDoc.exists) return;
       
@@ -366,7 +402,7 @@ class FirestoreTestsDataSourceImpl implements TestsRemoteDataSource {
                         (ratingCount * 0.2) + 
                         recencyBonus;
       
-      await firestore.collection(testsCollection).doc(testId).update({
+      await testRef.update({
         'popularity': popularity,
         'updatedAt': FieldValue.serverTimestamp(),
       });

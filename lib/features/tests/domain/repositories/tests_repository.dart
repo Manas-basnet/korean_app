@@ -37,5 +37,6 @@ abstract class TestsRepository {
   
   Future<ApiResult<void>> recordTestView(String testId, String userId);
   Future<ApiResult<void>> rateTest(String testId, String userId, double rating);
+  Future<ApiResult<UserTestInteraction?>> completeTestWithViewAndRating(String testId, String userId, double? rating, UserTestInteraction? userInteraction);
   Future<ApiResult<UserTestInteraction?>> getUserTestInteraction(String testId, String userId);
 }

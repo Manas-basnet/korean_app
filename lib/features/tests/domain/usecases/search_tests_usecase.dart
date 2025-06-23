@@ -1,10 +1,40 @@
 import 'dart:developer' as dev;
+import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_results.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
+import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
+
+class SearchTestsParams extends Equatable {
+  final String query;
+  final int limit;
+
+  const SearchTestsParams({
+    required this.query,
+    this.limit = 20,
+  });
+
+  @override
+  List<Object?> get props => [query, limit];
+}
+
+class TestSearchResult extends Equatable {
+  final List<TestItem> tests;
+  final String query;
+  final int resultCount;
+  final bool isFromCache;
+
+  const TestSearchResult({
+    required this.tests,
+    required this.query,
+    required this.resultCount,
+    required this.isFromCache,
+  });
+
+  @override
+  List<Object?> get props => [tests, query, resultCount, isFromCache];
+}
 
 class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams> {
   final TestsRepository repository;

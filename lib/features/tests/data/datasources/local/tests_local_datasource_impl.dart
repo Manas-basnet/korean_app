@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as dev;
 import 'package:dio/dio.dart';
+import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
@@ -15,6 +16,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
   final StorageService _storageService;
   
   static const String testsKey = 'CACHED_TESTS';
+  static const String userInteractionKey = 'USER_INTERACTION';
   static const String lastSyncKey = 'LAST_TESTS_SYNC_TIME';
   static const String testHashesKey = 'TEST_HASHES';
   static const String totalCountKey = 'TOTAL_TESTS_COUNT';
@@ -427,6 +429,41 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       dev.log('Error getting cached audio path: $e');
     }
     return null;
+  }
+
+
+  @override
+  Future<UserTestInteraction?> getUserTestInteraction(String testId, String userId) async {
+    try {
+      final data = _storageService.getString(userInteractionKey);
+      
+      if(data == null) {
+        return null;
+      }
+      if(data.isEmpty) {
+        return null;
+      }
+
+      final jsonData = json.decode(data);
+      final userInteraction = UserTestInteraction.fromJson(jsonData);
+
+      return userInteraction;
+
+    } catch (e) {
+      dev.log('Error getting user interaction: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> saveUserTestInteraction(UserTestInteraction userInteraction) async{
+    try {
+      await _storageService.setString(userInteractionKey, json.encode(userInteraction.toJson()));
+      return true;
+    } catch (e) {
+      dev.log('Error saving user interaction: $e');
+      return false;
+    }
   }
 
   String _generateImageFileName(String imageUrl, String testId, String imageType) {

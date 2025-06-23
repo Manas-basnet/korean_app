@@ -24,5 +24,13 @@ abstract class TestsRemoteDataSource {
   
   Future<void> recordTestView(String testId, String userId);
   Future<void> rateTest(String testId, String userId, double rating);
+
+  Future<UserTestInteraction?> completeTestWithViewAndRating(
+    String testId, 
+    String userId, 
+    double? rating,
+    UserTestInteraction? userInteration
+  );
+
   Future<UserTestInteraction?> getUserTestInteraction(String testId, String userId);
 }

@@ -1,3 +1,4 @@
+import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 
@@ -29,4 +30,7 @@ abstract class TestsLocalDataSource {
   
   Future<String?> getCachedImagePath(String imageUrl, String testId, String imageType);
   Future<String?> getCachedAudioPath(String audioUrl, String testId, String audioType);
+
+  Future<bool> saveUserTestInteraction(UserTestInteraction userInteraction);
+  Future<UserTestInteraction?> getUserTestInteraction(String testId, String userId);
 }

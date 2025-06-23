@@ -10,7 +10,6 @@ import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/load_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
-import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/get_test_by_id_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/start_test_session_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
@@ -20,7 +19,6 @@ part 'tests_state.dart';
 class TestsCubit extends Cubit<TestsState> {
   final LoadTestsUseCase loadTestsUseCase;
   final CheckTestEditPermissionUseCase checkEditPermissionUseCase;
-  final RateTestUseCase rateTestUseCase;
   final GetTestByIdUseCase getTestByIdUseCase;
   final StartTestSessionUseCase startTestSessionUseCase;
   final NetworkInfo networkInfo;
@@ -38,7 +36,6 @@ class TestsCubit extends Cubit<TestsState> {
   TestsCubit({
     required this.loadTestsUseCase,
     required this.checkEditPermissionUseCase,
-    required this.rateTestUseCase,
     required this.getTestByIdUseCase,
     required this.startTestSessionUseCase,
     required this.networkInfo,
@@ -422,42 +419,6 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _handleError('Failed to load test: $e', TestsOperationType.loadTestById, testId);
-    }
-  }
-
-  Future<void> rateTest(String testId, double rating) async {
-    try {
-      final result = await rateTestUseCase.execute(RateTestParams(
-        testId: testId,
-        rating: rating,
-      ));
-      
-      result.fold(
-        onSuccess: (_) {
-          if (state.selectedTest?.id == testId) {
-            final updatedTest = state.selectedTest!.copyWith(
-              rating: rating,
-              ratingCount: state.selectedTest!.ratingCount + 1,
-            );
-            emit(state.copyWith(selectedTest: updatedTest));
-          }
-          
-          final testIndex = state.tests.indexWhere((test) => test.id == testId);
-          if (testIndex != -1) {
-            final updatedTests = List<TestItem>.from(state.tests);
-            updatedTests[testIndex] = updatedTests[testIndex].copyWith(
-              rating: rating,
-              ratingCount: updatedTests[testIndex].ratingCount + 1,
-            );
-            emit(state.copyWith(tests: updatedTests));
-          }
-        },
-        onFailure: (message, type) {
-          dev.log('Error rating test: $message');
-        },
-      );
-    } catch (e) {
-      dev.log('Error rating test: $e');
     }
   }
   

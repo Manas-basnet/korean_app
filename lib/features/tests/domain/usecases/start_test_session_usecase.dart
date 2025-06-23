@@ -1,12 +1,38 @@
 import 'dart:developer' as dev;
+import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_results.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
+
+
+class StartTestSessionParams extends Equatable {
+  final String testId;
+
+  const StartTestSessionParams({
+    required this.testId,
+  });
+
+  @override
+  List<Object?> get props => [testId];
+}
+
+class TestSessionStartResult extends Equatable {
+  final TestSession session;
+  final TestItem test;
+  final bool wasViewed;
+
+  const TestSessionStartResult({
+    required this.session,
+    required this.test,
+    required this.wasViewed,
+  });
+
+  @override
+  List<Object?> get props => [session, test, wasViewed];
+}
 
 class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTestSessionParams> {
   final TestsRepository repository;

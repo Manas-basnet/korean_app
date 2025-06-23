@@ -6,12 +6,14 @@ class TestRatingDialog extends StatefulWidget {
   final String testTitle;
   final Function(double rating) onRating;
   final VoidCallback onSkip;
+  final double? existingRating;
 
   const TestRatingDialog({
     super.key,
     required this.testTitle,
     required this.onRating,
     required this.onSkip,
+    this.existingRating,
   });
 
   @override
@@ -20,13 +22,17 @@ class TestRatingDialog extends StatefulWidget {
 
 class _TestRatingDialogState extends State<TestRatingDialog>
     with TickerProviderStateMixin {
-  double _rating = 0;
+  late double _rating;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+  late AnimationController _starAnimationController;
+  late Animation<double> _starAnimation;
 
   @override
   void initState() {
     super.initState();
+    _rating = widget.existingRating ?? 0;
+    
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -38,13 +44,36 @@ class _TestRatingDialogState extends State<TestRatingDialog>
       parent: _animationController,
       curve: Curves.easeOutBack,
     ));
+    
+    _starAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _starAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _starAnimationController,
+      curve: Curves.elasticOut,
+    ));
+    
     _animationController.forward();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _starAnimationController.dispose();
     super.dispose();
+  }
+
+  void _onStarTap(double newRating) {
+    setState(() {
+      _rating = newRating;
+    });
+    _starAnimationController.forward().then((_) {
+      _starAnimationController.reverse();
+    });
   }
 
   @override
@@ -52,6 +81,7 @@ class _TestRatingDialogState extends State<TestRatingDialog>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final languageCubit = context.read<LanguagePreferenceCubit>();
+    final isUpdating = widget.existingRating != null;
 
     return AnimatedBuilder(
       animation: _scaleAnimation,
@@ -72,13 +102,15 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      color: isUpdating 
+                          ? colorScheme.tertiaryContainer.withValues(alpha: 0.3)
+                          : colorScheme.primaryContainer.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.star_rounded,
+                      isUpdating ? Icons.edit_rounded : Icons.star_rounded,
                       size: 40,
-                      color: colorScheme.primary,
+                      color: isUpdating ? colorScheme.tertiary : colorScheme.primary,
                     ),
                   ),
                   
@@ -86,8 +118,8 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                   
                   Text(
                     languageCubit.getLocalizedText(
-                      korean: '시험은 어떠셨나요?',
-                      english: 'How was the test?',
+                      korean: isUpdating ? '평점을 수정하시겠어요?' : '시험은 어떠셨나요?',
+                      english: isUpdating ? 'Update your rating?' : 'How was the test?',
                     ),
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w600,
@@ -109,12 +141,44 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                     overflow: TextOverflow.ellipsis,
                   ),
                   
+                  if (isUpdating) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 16,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            languageCubit.getLocalizedText(
+                              korean: '현재 평점: ${widget.existingRating!.toStringAsFixed(1)}',
+                              english: 'Current rating: ${widget.existingRating!.toStringAsFixed(1)}',
+                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  
                   const SizedBox(height: 24),
                   
                   Text(
                     languageCubit.getLocalizedText(
-                      korean: '별점을 선택해주세요',
-                      english: 'Please rate this test',
+                      korean: isUpdating ? '새로운 별점을 선택해주세요' : '별점을 선택해주세요',
+                      english: isUpdating ? 'Select your new rating' : 'Please rate this test',
                     ),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -123,7 +187,10 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                   
                   const SizedBox(height: 16),
                   
-                  _buildStarRating(colorScheme),
+                  AnimatedBuilder(
+                    animation: _starAnimation,
+                    builder: (context, child) => _buildStarRating(colorScheme),
+                  ),
                   
                   const SizedBox(height: 8),
                   
@@ -131,7 +198,7 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                     Text(
                       _getRatingText(_rating, languageCubit),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
+                        color: isUpdating ? colorScheme.tertiary : colorScheme.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -145,8 +212,8 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                           onPressed: widget.onSkip,
                           child: Text(
                             languageCubit.getLocalizedText(
-                              korean: '나중에',
-                              english: 'Skip',
+                              korean: isUpdating ? '취소' : '나중에',
+                              english: isUpdating ? 'Cancel' : 'Skip',
                             ),
                           ),
                         ),
@@ -157,15 +224,27 @@ class _TestRatingDialogState extends State<TestRatingDialog>
                         child: FilledButton(
                           onPressed: _rating > 0 ? () => widget.onRating(_rating) : null,
                           style: FilledButton.styleFrom(
+                            backgroundColor: isUpdating ? colorScheme.tertiary : colorScheme.primary,
+                            foregroundColor: isUpdating ? colorScheme.onTertiary : colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: Text(
-                            languageCubit.getLocalizedText(
-                              korean: '평가하기',
-                              english: 'Submit Rating',
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isUpdating ? Icons.update_rounded : Icons.send_rounded,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                languageCubit.getLocalizedText(
+                                  korean: isUpdating ? '수정하기' : '평가하기',
+                                  english: isUpdating ? 'Update Rating' : 'Submit Rating',
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -189,25 +268,24 @@ class _TestRatingDialogState extends State<TestRatingDialog>
         final isHalfFilled = _rating >= starValue - 0.5 && _rating < starValue;
         
         return GestureDetector(
-          onTap: () {
-            setState(() {
-              _rating = starValue;
-            });
-          },
+          onTap: () => _onStarTap(starValue),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isFilled
-                    ? Icons.star_rounded
-                    : isHalfFilled
-                        ? Icons.star_half_rounded
-                        : Icons.star_outline_rounded,
-                size: 40,
-                color: isFilled || isHalfFilled
-                    ? Colors.amber[600]
-                    : colorScheme.outlineVariant,
+            child: Transform.scale(
+              scale: _rating == starValue ? _starAnimation.value : 1.0,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  isFilled
+                      ? Icons.star_rounded
+                      : isHalfFilled
+                          ? Icons.star_half_rounded
+                          : Icons.star_outline_rounded,
+                  size: 40,
+                  color: isFilled || isHalfFilled
+                      ? Colors.amber[600]
+                      : colorScheme.outlineVariant,
+                ),
               ),
             ),
           ),
@@ -250,12 +328,14 @@ class TestRatingDialogHelper {
   static Future<double?> showRatingDialog(
     BuildContext context, {
     required String testTitle,
+    double? existingRating,
   }) async {
     return showDialog<double>(
       context: context,
       barrierDismissible: false,
       builder: (context) => TestRatingDialog(
         testTitle: testTitle,
+        existingRating: existingRating,
         onRating: (rating) => Navigator.of(context).pop(rating),
         onSkip: () => Navigator.of(context).pop(null),
       ),

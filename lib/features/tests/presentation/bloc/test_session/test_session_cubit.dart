@@ -8,16 +8,14 @@ import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/shared/models/test_answer.dart';
 import 'package:korean_language_app/shared/models/test_item.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
-
+import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/complete_test_session_usecase.dart';
-import 'package:korean_language_app/features/tests/domain/usecases/rate_test_usecase.dart';
-import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
 
 part 'test_session_state.dart';
 
 class TestSessionCubit extends Cubit<TestSessionState> {
   final CompleteTestSessionUseCase completeTestSessionUseCase;
-  final RateTestUseCase rateTestUseCase;
+  final TestsRepository testsRepository;
   final AuthService authService;
   
   Timer? _testTimer;
@@ -25,7 +23,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
   
   TestSessionCubit({
     required this.completeTestSessionUseCase, 
-    required this.rateTestUseCase,
+    required this.testsRepository,
     required this.authService,
   }) : super(const TestSessionInitial());
 
@@ -43,6 +41,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         answers: {},
         currentQuestionIndex: 0,
         startTime: DateTime.now(),
+        questionStartTime: DateTime.now(),
         timeRemaining: test.timeLimit > 0 ? test.timeLimit * 60 : null,
       );
 
@@ -121,7 +120,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         
         dev.log('Moved to question ${nextIndex + 1}/${session.test.questions.length}');
       } else {
-        _completeTest();
+        _completeTest(null);
       }
     } catch (e) {
       emit(TestSessionError('Failed to proceed to next question: $e', FailureType.unknown));
@@ -187,11 +186,11 @@ class TestSessionCubit extends Cubit<TestSessionState> {
     }
   }
 
-  Future<void> completeTest() async {
-    await _completeTest();
+  Future<void> completeTest(double? rating) async {
+    await _completeTest(rating);
   }
 
-  Future<void> _completeTest() async {
+  Future<void> _completeTest(double? rating) async {
     final currentState = state;
     if (currentState is! TestSessionInProgress) return;
 
@@ -206,7 +205,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       dev.log('Completing test session using use case...');
       
       final result = await completeTestSessionUseCase.execute(
-        CompleteTestSessionParams(session: session)
+        CompleteTestSessionParams(session: session, rating: rating)
       );
       
       result.fold(
@@ -235,30 +234,19 @@ class TestSessionCubit extends Cubit<TestSessionState> {
     }
   }
 
-  Future<void> rateTest(double rating) async {
-    final currentState = state;
-    if (currentState is! TestSessionCompleted) return;
+  Future<double?> getExistingRating(String testId) async {
+    final user = _getCurrentUser();
+    if (user == null) return null;
 
     try {
-      final testId = currentState.result.testId;
-      
-      final result = await rateTestUseCase.execute(
-        RateTestParams(testId: testId, rating: rating)
-      );
-      
-      result.fold(
-        onSuccess: (_) {
-          dev.log('Test rated successfully: $rating stars');
-          emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
-        },
-        onFailure: (message, type) {
-          dev.log('Failed to rate test: $message');
-          emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
-        },
+      final result = await testsRepository.getUserTestInteraction(testId, user.uid);
+      return result.fold(
+        onSuccess: (interaction) => interaction?.rating,
+        onFailure: (_, __) => null,
       );
     } catch (e) {
-      dev.log('Error rating test: $e');
-      emit(TestSessionCompleted(currentState.result, shouldShowRating: false));
+      dev.log('Failed to get existing rating: $e');
+      return null;
     }
   }
 
@@ -345,7 +333,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       if (newTimeRemaining <= 0) {
         timer.cancel();
-        _completeTest();
+        _completeTest(null);
       } else {
         final updatedSession = session.copyWith(timeRemaining: newTimeRemaining);
         emit(TestSessionInProgress(updatedSession));
