@@ -28,7 +28,6 @@ class _TestTakingPageState extends State<TestTakingPage>
   bool _isLandscape = false;
   late AnimationController _slideAnimationController;
   late Animation<double> _slideAnimation;
-  Timer? _autoAdvanceTimer;
   bool _isNavigatingToResult = false;
 
   TestSessionCubit get _sessionCubit => context.read<TestSessionCubit>();
@@ -64,7 +63,6 @@ class _TestTakingPageState extends State<TestTakingPage>
   @override
   void dispose() {
     _slideAnimationController.dispose();
-    _autoAdvanceTimer?.cancel();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -118,23 +116,9 @@ class _TestTakingPageState extends State<TestTakingPage>
     });
 
     _sessionCubit.answerQuestion(index);
-
-    final currentState = _sessionCubit.state;
-    if (currentState is TestSessionInProgress) {
-      final session = currentState.session;
-      final isLastQuestion = session.currentQuestionIndex == session.totalQuestions - 1;
-      
-      if (!isLastQuestion) {
-        _autoAdvanceTimer?.cancel();
-        _autoAdvanceTimer = Timer(const Duration(milliseconds: 800), () {
-          if (mounted) _nextQuestion();
-        });
-      }
-    }
   }
 
   void _nextQuestion() {
-    _autoAdvanceTimer?.cancel();
     setState(() {
       _selectedAnswerIndex = null;
       _showingExplanation = false;
@@ -146,7 +130,6 @@ class _TestTakingPageState extends State<TestTakingPage>
   }
 
   void _previousQuestion() {
-    _autoAdvanceTimer?.cancel();
     setState(() {
       _selectedAnswerIndex = null;
       _showingExplanation = false;
@@ -158,7 +141,6 @@ class _TestTakingPageState extends State<TestTakingPage>
   }
 
   void _jumpToQuestion(int questionIndex) {
-    _autoAdvanceTimer?.cancel();
     setState(() {
       _selectedAnswerIndex = null;
       _showingExplanation = false;

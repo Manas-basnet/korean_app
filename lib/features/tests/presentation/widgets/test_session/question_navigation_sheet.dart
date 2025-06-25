@@ -21,9 +21,11 @@ class QuestionNavigationSheet extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     
-    final maxHeight = isLandscape 
-        ? screenHeight * 0.7  // 70% of screen height in landscape
-        : screenHeight * 0.6; // 60% of screen height in portrait
+    // Account for header height and padding when calculating max height
+    const headerHeight = 80.0; // Approximate header height including padding
+    final availableHeight = isLandscape 
+        ? (screenHeight * 0.8) - headerHeight  // 80% minus header in landscape
+        : (screenHeight * 0.6) - headerHeight; // 60% minus header in portrait
     
     return Container(
       margin: const EdgeInsets.all(16),
@@ -34,6 +36,7 @@ class QuestionNavigationSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Fixed Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -60,85 +63,90 @@ class QuestionNavigationSheet extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(20),
-            constraints: BoxConstraints(
-              maxHeight: maxHeight,
-              minHeight: 200,
-            ),
-            child: GridView.builder(
-              physics: const BouncingScrollPhysics(),
-              shrinkWrap: true,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isLandscape ? 6 : 5, // More columns in landscape
-                childAspectRatio: 1,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+          
+          // Flexible Grid Container
+          Flexible(
+            child: Container(
+              width: double.infinity,
+              constraints: BoxConstraints(
+                maxHeight: availableHeight,
+                minHeight: isLandscape ? 120 : 200,
               ),
-              itemCount: session.totalQuestions,
-              itemBuilder: (context, index) {
-                final isCurrentQuestion = index == session.currentQuestionIndex;
-                final isAnswered = session.isQuestionAnswered(index);
-                
-                Color backgroundColor;
-                Color textColor;
-                Color borderColor;
-                
-                if (isCurrentQuestion) {
-                  backgroundColor = colorScheme.primary;
-                  textColor = colorScheme.onPrimary;
-                  borderColor = colorScheme.primary;
-                } else if (isAnswered) {
-                  backgroundColor = colorScheme.primaryContainer;
-                  textColor = colorScheme.onPrimaryContainer;
-                  borderColor = colorScheme.primary.withValues(alpha: 0.5);
-                } else {
-                  backgroundColor = colorScheme.surfaceContainerHighest;
-                  textColor = colorScheme.onSurfaceVariant;
-                  borderColor = colorScheme.outlineVariant;
-                }
-                
-                return Material(
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
+              padding: const EdgeInsets.all(20),
+              child: GridView.builder(
+                physics: const BouncingScrollPhysics(),
+                shrinkWrap: true,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: isLandscape ? 8 : 5, // More columns in landscape for better fit
+                  childAspectRatio: 1,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: session.totalQuestions,
+                itemBuilder: (context, index) {
+                  final isCurrentQuestion = index == session.currentQuestionIndex;
+                  final isAnswered = session.isQuestionAnswered(index);
+                  
+                  Color backgroundColor;
+                  Color textColor;
+                  Color borderColor;
+                  
+                  if (isCurrentQuestion) {
+                    backgroundColor = colorScheme.primary;
+                    textColor = colorScheme.onPrimary;
+                    borderColor = colorScheme.primary;
+                  } else if (isAnswered) {
+                    backgroundColor = colorScheme.primaryContainer;
+                    textColor = colorScheme.onPrimaryContainer;
+                    borderColor = colorScheme.primary.withValues(alpha: 0.5);
+                  } else {
+                    backgroundColor = colorScheme.surfaceContainerHighest;
+                    textColor = colorScheme.onSurfaceVariant;
+                    borderColor = colorScheme.outlineVariant;
+                  }
+                  
+                  return Material(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () => onQuestionSelected(index),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
-                              ),
-                            ),
-                          ),
-                          if (isAnswered && !isCurrentQuestion)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => onQuestionSelected(index),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: backgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
                                 ),
                               ),
                             ),
-                        ],
+                            if (isAnswered && !isCurrentQuestion)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -152,12 +160,14 @@ class QuestionNavigationSheet extends StatelessWidget {
     LanguagePreferenceCubit languageCubit,
     Function(int) onQuestionSelected,
   ) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
+        maxHeight: MediaQuery.of(context).size.height * (isLandscape ? 0.9 : 0.8),
       ),
       builder: (context) => QuestionNavigationSheet(
         session: session,

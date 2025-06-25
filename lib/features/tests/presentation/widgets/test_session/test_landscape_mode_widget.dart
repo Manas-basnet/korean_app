@@ -11,8 +11,6 @@ import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
 
-
-
 class TestLandscapeModeWidget extends StatelessWidget {
   final TestSession session;
   final TestQuestion question;
@@ -96,21 +94,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
                     flex: answerFlex,
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            languageCubit.getLocalizedText(korean: '답안 선택', english: 'Choose Answer'),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: _buildLandscapeAnswerOptions(context, savedAnswer),
-                          ),
-                        ],
-                      ),
+                      child: _buildAnswerOptionsWithNavigation(context, savedAnswer),
                     ),
                   ),
                 ],
@@ -119,8 +103,235 @@ class TestLandscapeModeWidget extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: _buildLandscapeFloatingActions(context),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildAnswerOptionsWithNavigation(BuildContext context, TestAnswer? savedAnswer) {
+    return Column(
+      children: [
+        Expanded(
+          child: _buildResponsiveAnswerOptions(context, savedAnswer),
+        ),
+        const SizedBox(height: 8),
+        _buildNavigationButtons(context),
+      ],
+    );
+  }
+
+  Widget _buildNavigationButtons(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isFirstQuestion = session.currentQuestionIndex == 0;
+    final isLastQuestion = session.currentQuestionIndex == session.totalQuestions - 1;
+
+    return SizedBox(
+      height: 38,
+      child: Row(
+        children: [
+          if (!isFirstQuestion) ...[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onPreviousQuestion,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(
+                  languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colorScheme.onSurfaceVariant,
+                  side: BorderSide(color: colorScheme.outlineVariant),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            flex: 2,
+            child: FilledButton.icon(
+              onPressed: () => isLastQuestion 
+                  ? TestDialogs.showFinishConfirmation(
+                      context,
+                      languageCubit,
+                      session,
+                      () => onShowRatingDialog(session.test.title, session.test.id),
+                    )
+                  : onNextQuestion(),
+              icon: Icon(
+                isLastQuestion ? Icons.flag_rounded : Icons.arrow_forward_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isLastQuestion 
+                    ? languageCubit.getLocalizedText(korean: '완료', english: 'Finish')
+                    : languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: isLastQuestion ? Colors.green : colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponsiveAnswerOptions(BuildContext context, TestAnswer? savedAnswer) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenHeight = MediaQuery.of(context).size.height;
+        final availableHeight = constraints.maxHeight;
+        
+        final isSmallScreen = screenHeight < 350;
+        
+        if (question.hasImageAnswers) {
+          return _buildResponsiveImageAnswers(context, savedAnswer, availableHeight, isSmallScreen);
+        } else {
+          return _buildResponsiveTextAnswers(context, savedAnswer, availableHeight, isSmallScreen);
+        }
+      },
+    );
+  }
+
+  Widget _buildResponsiveImageAnswers(BuildContext context, TestAnswer? savedAnswer, double availableHeight, bool isSmallScreen) {
+    final optionCount = question.options.length;
+    
+    if (isSmallScreen) {
+      return _buildScrollableImageGrid(context, savedAnswer);
+    }
+    
+    int crossAxisCount;
+    if (optionCount <= 2) {
+      crossAxisCount = 1;
+    } else if (optionCount <= 4) {
+      crossAxisCount = 2;
+    } else {
+      crossAxisCount = 2;
+    }
+    
+    final itemsPerRow = crossAxisCount;
+    final rowCount = (optionCount / itemsPerRow).ceil();
+    final spacingCount = (rowCount - 1) * 8;
+    final availableItemHeight = (availableHeight - spacingCount) / rowCount;
+    
+    if (availableItemHeight < 80) {
+      return _buildScrollableImageGrid(context, savedAnswer);
+    }
+    
+    return Column(
+      children: [
+        for (int row = 0; row < rowCount; row++) ...[
+          if (row > 0) const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              children: [
+                for (int col = 0; col < itemsPerRow; col++) ...[
+                  if (col > 0) const SizedBox(width: 8),
+                  () {
+                    final index = row * itemsPerRow + col;
+                    if (index < optionCount) {
+                      return Expanded(
+                        child: _buildCompactAnswerOption(
+                          context, 
+                          index, 
+                          question.options[index], 
+                          savedAnswer, 
+                          isGrid: true
+                        ),
+                      );
+                    } else {
+                      return const Expanded(child: SizedBox());
+                    }
+                  }(),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildResponsiveTextAnswers(BuildContext context, TestAnswer? savedAnswer, double availableHeight, bool isSmallScreen) {
+    final optionCount = question.options.length;
+    final spacingCount = (optionCount - 1) * 6;
+    final availableItemHeight = (availableHeight - spacingCount) / optionCount;
+    
+    if (isSmallScreen || availableItemHeight < 40) {
+      return _buildScrollableTextList(context, savedAnswer);
+    }
+    
+    return Column(
+      children: [
+        for (int index = 0; index < optionCount; index++) ...[
+          if (index > 0) const SizedBox(height: 6),
+          Expanded(
+            child: _buildCompactAnswerOption(
+              context, 
+              index, 
+              question.options[index], 
+              savedAnswer, 
+              isCompact: false
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildScrollableImageGrid(BuildContext context, TestAnswer? savedAnswer) {
+    final optionCount = question.options.length;
+    
+    int crossAxisCount;
+    double childAspectRatio;
+    
+    if (optionCount <= 2) {
+      crossAxisCount = 1;
+      childAspectRatio = 2.0;
+    } else if (optionCount <= 4) {
+      crossAxisCount = 2;
+      childAspectRatio = 1.2;
+    } else {
+      crossAxisCount = 2;
+      childAspectRatio = 1.0;
+    }
+    
+    return GridView.builder(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics()
+      ),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: optionCount,
+      itemBuilder: (context, index) {
+        final option = question.options[index];
+        return _buildCompactAnswerOption(context, index, option, savedAnswer, isGrid: true);
+      },
+    );
+  }
+
+  Widget _buildScrollableTextList(BuildContext context, TestAnswer? savedAnswer) {
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics()
+      ),
+      itemCount: question.options.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        final option = question.options[index];
+        return _buildCompactAnswerOption(context, index, option, savedAnswer, isCompact: true);
+      },
     );
   }
 
@@ -312,65 +523,6 @@ class TestLandscapeModeWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildLandscapeAnswerOptions(BuildContext context, TestAnswer? savedAnswer) {
-    final hasImageAnswers = question.hasImageAnswers;
-    
-    if (hasImageAnswers) {
-      return _buildLandscapeImageAnswerGrid(context, savedAnswer);
-    } else {
-      return _buildLandscapeTextAnswerList(context, savedAnswer);
-    }
-  }
-
-  Widget _buildLandscapeImageAnswerGrid(BuildContext context, TestAnswer? savedAnswer) {
-    final optionCount = question.options.length;
-    
-    int crossAxisCount;
-    double childAspectRatio;
-    
-    if (optionCount <= 2) {
-      crossAxisCount = 1;
-      childAspectRatio = 2.0;
-    } else if (optionCount <= 4) {
-      crossAxisCount = 2;
-      childAspectRatio = 1.2;
-    } else {
-      crossAxisCount = 2;
-      childAspectRatio = 1.0;
-    }
-    
-    return GridView.builder(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics()
-      ),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: optionCount,
-      itemBuilder: (context, index) {
-        final option = question.options[index];
-        return _buildCompactAnswerOption(context, index, option, savedAnswer, isGrid: true);
-      },
-    );
-  }
-
-  Widget _buildLandscapeTextAnswerList(BuildContext context, TestAnswer? savedAnswer) {
-    return ListView.separated(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics()
-      ),
-      itemCount: question.options.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        final option = question.options[index];
-        return _buildCompactAnswerOption(context, index, option, savedAnswer, isCompact: true);
-      },
-    );
-  }
-
   Widget _buildCompactAnswerOption(BuildContext context, int index, AnswerOption option, TestAnswer? savedAnswer, {bool isCompact = false, bool isGrid = false}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -397,6 +549,10 @@ class TestLandscapeModeWidget extends StatelessWidget {
       borderColor = colorScheme.primary;
       backgroundColor = colorScheme.primaryContainer.withValues(alpha: 0.2);
     }
+
+    if (isGrid && option.isImage && (option.imageUrl?.isNotEmpty == true || option.imagePath?.isNotEmpty == true)) {
+      return _buildImageGridOption(context, index, option, isSelected || wasSelectedAnswer, borderColor, statusIcon);
+    }
     
     return Material(
       borderRadius: BorderRadius.circular(8),
@@ -412,14 +568,14 @@ class TestLandscapeModeWidget extends StatelessWidget {
             color: backgroundColor,
           ),
           child: isGrid
-            ? _buildGridOptionContent(context, index, option, isSelected || wasSelectedAnswer, borderColor, statusIcon, isCompact: true)
+            ? _buildGridOptionContent(context, index, option, isSelected || wasSelectedAnswer, borderColor, statusIcon)
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildCompactOptionSelector(context, index, isSelected || wasSelectedAnswer, borderColor),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _buildCompactOptionContent(context, index, option, isCompact: true),
+                    child: _buildCompactOptionContent(context, index, option),
                   ),
                   if (statusIcon != null) ...[
                     const SizedBox(width: 8),
@@ -438,8 +594,8 @@ class TestLandscapeModeWidget extends StatelessWidget {
     
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      width: 20,
-      height: 20,
+      width: 24,
+      height: 24,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: color, width: 1.2),
@@ -447,25 +603,25 @@ class TestLandscapeModeWidget extends StatelessWidget {
       ),
       child: Center(
         child: isSelected
-            ? Icon(Icons.check_rounded, color: colorScheme.onPrimary, size: 12)
+            ? Icon(Icons.check_rounded, color: colorScheme.onPrimary, size: 14)
             : Text(
                 String.fromCharCode(65 + index),
-                style: theme.textTheme.labelSmall?.copyWith(
+                style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: color,
-                  fontSize: 10,
                 ),
               ),
       ),
     );
   }
 
-  Widget _buildCompactOptionContent(BuildContext context, int index, AnswerOption option, {bool isCompact = false}) {
+  Widget _buildCompactOptionContent(BuildContext context, int index, AnswerOption option) {
     final theme = Theme.of(context);
     
     if (option.isAudio) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CustomCachedAudio(
             audioUrl: option.audioUrl,
@@ -474,13 +630,13 @@ class TestLandscapeModeWidget extends StatelessWidget {
               korean: '선택지 ${String.fromCharCode(65 + index)} 듣기',
               english: 'Listen to Option ${String.fromCharCode(65 + index)}',
             ),
-            height: 56,
+            height: 40,
           ),
           if (option.text.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               option.text,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.2,
                 fontWeight: FontWeight.w500,
               ),
@@ -550,11 +706,11 @@ class TestLandscapeModeWidget extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               option.text,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.2,
                 fontWeight: FontWeight.w500,
               ),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),
@@ -562,11 +718,14 @@ class TestLandscapeModeWidget extends StatelessWidget {
         ],
       );
     } else {
-      return Text(
-        option.text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          height: 1.2,
-          fontWeight: FontWeight.w600,
+      return Center(
+        child: Text(
+          option.text,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            height: 1.3,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.center,
         ),
       );
     }
@@ -726,7 +885,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
             CustomCachedImage(
               imageUrl: imageUrl,
               imagePath: imagePath,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               width: double.infinity,
               height: double.infinity,
               borderRadius: isLandscape
@@ -754,49 +913,169 @@ class TestLandscapeModeWidget extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildLandscapeFloatingActions(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isFirstQuestion = session.currentQuestionIndex == 0;
-    final isLastQuestion = session.currentQuestionIndex == session.totalQuestions - 1;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!isFirstQuestion) ...[
-          FloatingActionButton.small(
-            heroTag: "previous",
-            onPressed: onPreviousQuestion,
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            foregroundColor: colorScheme.onSurfaceVariant,
-            child: const Icon(Icons.arrow_back_rounded, size: 18),
+  Widget _buildImageGridOption(BuildContext context, int index, AnswerOption option, bool isSelected, Color borderColor, Widget? statusIcon) {
+    final theme = Theme.of(context);
+    
+    return Material(
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => onAnswerSelected(index),
+        onLongPress: () {
+          HapticFeedback.mediumImpact();
+          DialogUtils.showFullScreenImage(
+            context, 
+            option.imageUrl, 
+            option.imagePath,
+            heroTag: 'option_${index}_${option.imageUrl ?? option.imagePath}',
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: borderColor, 
+              width: isSelected ? 2.5 : 1.2
+            ),
           ),
-          const SizedBox(height: 8),
-        ],
-        FloatingActionButton(
-          heroTag: "next",
-          onPressed: () => isLastQuestion 
-              ? TestDialogs.showFinishConfirmation(
-                  context,
-                  languageCubit,
-                  session,
-                  () => onShowRatingDialog(session.test.title, session.test.id),
-                )
-              : onNextQuestion(),
-          backgroundColor: isLastQuestion ? Colors.green : colorScheme.primary,
-          foregroundColor: Colors.white,
-          child: Icon(
-            isLastQuestion ? Icons.flag_rounded : Icons.arrow_forward_rounded,
-            size: 24,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                CustomCachedImage(
+                  imageUrl: option.imageUrl,
+                  imagePath: option.imagePath,
+                  fit: BoxFit.contain,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+                
+                if (isSelected)
+                  Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: borderColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _buildImageOptionChip(context, index, isSelected, borderColor),
+                ),
+                
+                if (statusIcon != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: statusIcon,
+                    ),
+                  ),
+                
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(
+                      Icons.zoom_out_map_rounded,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
+                ),
+                
+                if (option.text.isNotEmpty)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.8),
+                            Colors.transparent,
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        option.text,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 
+  Widget _buildImageOptionChip(BuildContext context, int index, bool isSelected, Color color) {
+    final theme = Theme.of(context);
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? color : Colors.black.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? Colors.white : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: Text(
+        String.fromCharCode(65 + index),
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: isSelected ? Colors.white : Colors.white,
+          shadows: isSelected ? null : [
+            Shadow(
+              color: Colors.black.withValues(alpha: 0.8),
+              blurRadius: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-
-  Widget _buildGridOptionContent(BuildContext context, int index, AnswerOption option, bool isSelected, Color color, Widget? statusIcon, {bool isCompact = false}) {
+  Widget _buildGridOptionContent(BuildContext context, int index, AnswerOption option, bool isSelected, Color color, Widget? statusIcon) {
     return Column(
       children: [
         Row(
@@ -808,7 +1087,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: _buildCompactOptionContent(context, index, option, isCompact: true),
+          child: _buildCompactOptionContent(context, index, option),
         ),
       ],
     );
