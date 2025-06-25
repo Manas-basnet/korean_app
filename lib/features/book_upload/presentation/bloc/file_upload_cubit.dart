@@ -243,7 +243,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
   Future<bool> _isPdfValid(File pdfFile) async {
     try {
       final fileSize = await pdfFile.length();
-      if (fileSize > 20 * 1024 * 1024 || fileSize < 100) {
+      if (fileSize > 50 * 1024 * 1024 || fileSize < 100) {
         return false;
       }
       

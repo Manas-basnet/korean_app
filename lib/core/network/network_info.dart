@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 
 abstract class NetworkInfo {
   Future<bool> get isConnected;
@@ -21,6 +22,10 @@ class NetworkInfoImpl implements NetworkInfo {
       if (connectivityResult == ConnectivityResult.none) {
         return false;
       }
+
+      if (kIsWeb) {
+        return true; // Assume connected on web if connectivity is available
+      }
       
       // Additional check for actual internet connectivity
       try {
@@ -33,7 +38,9 @@ class NetworkInfoImpl implements NetworkInfo {
         return false;
       }
     } catch (e) {
-      // If there's any error checking connectivity, assume not connected
+      if(kIsWeb) {
+        return true;
+      }
       return false;
     }
   }

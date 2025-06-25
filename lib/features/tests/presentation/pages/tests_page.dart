@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -485,6 +486,20 @@ class _TestsPageState extends State<TestsPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if(kIsWeb)...[
+          _buildMinimalActionButton(
+            icon: Icons.refresh,
+            onPressed: () {
+              context.read<TestsCubit>().hardRefresh();
+            },
+            tooltip: _languageCubit.getLocalizedText(
+              korean: '검색',
+              english: 'Refresh',
+            ),
+            colorScheme: colorScheme,
+            iconSize: iconSize,
+          ),
+        ],
         _buildMinimalActionButton(
           icon: Icons.search_rounded,
           onPressed: _showSearchDelegate,
@@ -725,7 +740,7 @@ class _TestsPageState extends State<TestsPage> {
     
     final isTablet = screenSize.width > 600;
     final crossAxisCount = isTablet ? 3 : 2;
-    final childAspectRatio = isTablet ? 0.8 : 0.75;
+    final childAspectRatio = isTablet ? 0.7 : 0.82;
     final gridPadding = screenSize.width * 0.05;
     final gridSpacing = screenSize.width * 0.04;
     
@@ -755,6 +770,7 @@ class _TestsPageState extends State<TestsPage> {
                     onEdit: canEdit ? () => _editTest(test) : null,
                     onDelete: canEdit ? () => _deleteTest(test) : null,
                     onViewDetails: () => _viewTestDetails(test),
+                    onLongPress: () => _viewTestDetails(test),
                   );
                 },
               );

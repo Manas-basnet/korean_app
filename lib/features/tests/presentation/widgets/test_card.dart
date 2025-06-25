@@ -7,6 +7,7 @@ class TestCard extends StatelessWidget {
   final TestItem test;
   final bool canEdit;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onViewDetails;
@@ -16,6 +17,7 @@ class TestCard extends StatelessWidget {
     required this.test,
     required this.canEdit,
     required this.onTap,
+    this.onLongPress,
     this.onEdit,
     this.onDelete,
     this.onViewDetails,
@@ -28,30 +30,24 @@ class TestCard extends StatelessWidget {
     final screenSize = MediaQuery.of(context).size;
     
     return Card(
-      elevation: 3,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.15),
+      elevation: 2,
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outline.withValues(alpha: 0.08), 
-          width: 0.5
-        ),
+        borderRadius: BorderRadius.circular(screenSize.width * 0.03),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress ?? null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header with image - reduced size
             Expanded(
-              flex: 2,
+              flex: 45,
               child: _buildHeader(context, screenSize),
             ),
-            
-            // Content section - increased space
             Expanded(
-              flex: 3,
+              flex: 55,
               child: _buildContent(context, theme, screenSize),
             ),
           ],
@@ -66,62 +62,54 @@ class TestCard extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Background image or gradient
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty)
           CachedNetworkImage(
             imageUrl: test.imageUrl!,
             fit: BoxFit.cover,
-            placeholder: (context, url) => _buildHeaderPlaceholder(theme),
-            errorWidget: (context, url, error) => _buildHeaderPlaceholder(theme),
+            placeholder: (context, url) => _buildHeaderPlaceholder(theme, screenSize),
+            errorWidget: (context, url, error) => _buildHeaderPlaceholder(theme, screenSize),
           )
         else
-          _buildHeaderPlaceholder(theme),
+          _buildHeaderPlaceholder(theme, screenSize),
         
-        // Menu button only (no prominent level badge)
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: PopupMenuButton<String>(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
+        if (canEdit)
+          Positioned(
+            top: screenSize.height * 0.01,
+            right: screenSize.width * 0.02,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+              child: PopupMenuButton<String>(
+                icon: Container(
+                  padding: EdgeInsets.all(screenSize.width * 0.015),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.more_vert_rounded,
+                    color: Colors.white,
+                    size: screenSize.width * 0.04,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.more_vert_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                onSelected: (value) => _handleMenuAction(context, value),
+                itemBuilder: (context) => _buildMenuItems(context),
               ),
-              onSelected: (value) => _handleMenuAction(context, value),
-              itemBuilder: (context) => _buildMenuItems(context),
             ),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildHeaderPlaceholder(ThemeData theme) {
+  Widget _buildHeaderPlaceholder(ThemeData theme, Size screenSize) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.8),
-            theme.colorScheme.secondary.withValues(alpha: 0.6),
-          ],
-        ),
+        color: theme.colorScheme.primary.withValues(alpha: 0.8),
       ),
       child: Center(
         child: Icon(
           test.icon,
-          size: 28,
+          size: screenSize.width * 0.08,
           color: Colors.white.withValues(alpha: 0.9),
         ),
       ),
@@ -129,162 +117,118 @@ class TestCard extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, ThemeData theme, Size screenSize) {
+    final contentPadding = screenSize.width * 0.025;
+    final spacingUnit = screenSize.height * 0.008;
+    final iconSize = screenSize.width * 0.035;
+    final titleFontSize = screenSize.width * 0.035;
+    final bodyFontSize = screenSize.width * 0.03;
+    final chipFontSize = screenSize.width * 0.027;
+    
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(contentPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title only
-          Text(
-            test.title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              height: 1.2,
-              color: theme.colorScheme.onSurface,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Key stats in a more compact layout
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              _buildStatChip(
-                icon: Icons.quiz_rounded,
-                text: '${test.questionCount}Q',
-                color: theme.colorScheme.primary,
-              ),
-              _buildStatChip(
-                icon: Icons.timer_rounded,
-                text: _formatTimeLimit(test.formattedTimeLimit),
-                color: theme.colorScheme.tertiary,
-              ),
-              _buildStatChip(
-                icon: Icons.school_rounded,
-                text: '${test.passingScore}%',
-                color: theme.colorScheme.secondary,
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Description with more space
-          Expanded(
+          // Title takes the space it needs (up to 2 lines)
+          Flexible(
             child: Text(
-              test.description,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-                height: 1.3,
-                color: theme.colorScheme.onSurfaceVariant,
+              test.title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: titleFontSize,
+                color: theme.colorScheme.onSurface,
+                height: 1.2,
               ),
-              maxLines: 3,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           
-          const SizedBox(height: 8),
+          SizedBox(height: spacingUnit),
           
-          // Bottom row with category and metrics
-          Row(
-            children: [
-              // Category - flexible to prevent overflow
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    test.category.displayName,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+          // Middle section adapts to remaining space
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Flexible(
+                              child: _buildInfoRow(
+                                Icons.schedule_rounded,
+                                _formatTimeLimit(test.formattedTimeLimit),
+                                theme.colorScheme.onSurfaceVariant,
+                                iconSize,
+                                bodyFontSize,
+                                theme,
+                              ),
+                            ),
+                            
+                            if (test.rating > 0)
+                              Flexible(
+                                child: _buildInfoRow(
+                                  Icons.star_rounded,
+                                  test.formattedRating,
+                                  Colors.amber[600]!,
+                                  iconSize,
+                                  bodyFontSize,
+                                  theme,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      
+                      Expanded(
+                        flex: 3,
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: _buildInfoRow(
+                            Icons.visibility_rounded,
+                            test.formattedViewCount,
+                            theme.colorScheme.onSurfaceVariant,
+                            iconSize,
+                            bodyFontSize,
+                            theme,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              
-              const SizedBox(width: 8),
-              
-              // Rating and views
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (test.rating > 0) ...[
-                    Icon(
-                      Icons.star_rounded,
-                      size: 12,
-                      color: Colors.amber[600],
+                
+                // Category chip at bottom
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenSize.width * 0.02,
+                      vertical: screenSize.height * 0.004,
                     ),
-                    const SizedBox(width: 2),
-                    Text(
-                      test.formattedRating,
-                      style: TextStyle(
-                        color: Colors.amber[600],
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                    ),
+                    child: Text(
+                      test.category.displayName,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                        fontSize: chipFontSize,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Icon(
-                    Icons.visibility_rounded,
-                    size: 12,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    test.formattedViewCount,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatChip({
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 0.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 10, color: color),
-          const SizedBox(width: 2),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+                ),
+              ],
             ),
           ),
         ],
@@ -292,13 +236,47 @@ class TestCard extends StatelessWidget {
     );
   }
 
+  Widget _buildInfoRow(
+    IconData icon,
+    String text,
+    Color color,
+    double iconSize,
+    double fontSize,
+    ThemeData theme,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          size: iconSize,
+          color: color,
+        ),
+        SizedBox(width: iconSize * 0.3),
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w500,
+              fontSize: fontSize,
+              height: 1.1,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
+
   String _formatTimeLimit(String timeLimit) {
-    // Convert "30 min" to "30m" for more compact display
     return timeLimit
-        .replaceAll(' min', 'm')
-        .replaceAll(' hour', 'h')
-        .replaceAll(' hours', 'h')
-        .replaceAll(' minutes', 'm');
+        .replaceAll(' min', '분')
+        .replaceAll(' hour', '시간')
+        .replaceAll(' hours', '시간')
+        .replaceAll(' minutes', '분');
   }
 
   List<PopupMenuItem<String>> _buildMenuItems(BuildContext context) {

@@ -683,15 +683,18 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     return Stack(
       children: [
         GestureDetector(
-          onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
+          onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath, heroTag: imagePath ?? imageUrl ?? ''),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: CustomCachedImage(
-              imageUrl: imageUrl,
-              imagePath: imagePath,
-              height: height ?? 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
+            child: Hero(
+              tag: imagePath ?? imageUrl ?? '',
+              child: CustomCachedImage(
+                imageUrl: imageUrl,
+                imagePath: imagePath,
+                height: height ?? 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),

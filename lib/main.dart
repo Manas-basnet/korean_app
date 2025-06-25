@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/di/di.dart' as di;
@@ -12,9 +13,17 @@ import 'package:korean_language_app/features/book_upload/presentation/bloc/file_
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/presentation/theme/bloc/theme_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/widgets/snackbar_widget.dart';
+import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
+import 'package:korean_language_app/shared/presentation/update/update_manager.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart' as shorebird;
+import 'package:url_strategy/url_strategy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    setPathUrlStrategy();
+  }
 
   await initializeFirebase();
 
@@ -48,8 +57,10 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<LanguagePreferenceCubit>(
           create: (context) => di.sl<LanguagePreferenceCubit>(),
-        )
-        // Add other BLoC providers here
+        ),
+        BlocProvider<UpdateCubit>(
+          create: (context) => UpdateCubit(shorebird.ShorebirdUpdater()),
+        ),
       ],
       child: BlocListener<AuthCubit, AuthState>(
         listenWhen: (previous, current) {
@@ -72,8 +83,10 @@ class MyApp extends StatelessWidget {
               routerConfig: AppRouter.router,
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                return SnackBarWidget(
-                  child: child ?? const SizedBox(),
+                return UpdateManager(
+                  child: SnackBarWidget(
+                    child: child ?? const SizedBox(),
+                  ),
                 );
               },
             );
@@ -87,4 +100,11 @@ class MyApp extends StatelessWidget {
 Future<void> initializeFirebase() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   //Appchecks or storage checks
+
+  // FirebaseFirestore.instance.settings = const Settings(
+  //   persistenceEnabled: true,
+  //   cacheSizeBytes: 50 * 1024 * 1024,
+  // );
+
+  // FirebaseFirestore.instance.settings.persistenceEnabled;
 }
