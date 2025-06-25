@@ -31,6 +31,7 @@ class QuestionEditorPage extends StatefulWidget {
 
 class _QuestionEditorPageState extends State<QuestionEditorPage> {
   final _questionController = TextEditingController();
+  final _subQuestionController = TextEditingController();
   final _explanationController = TextEditingController();
   final _optionControllers = List.generate(4, (i) => TextEditingController());
   
@@ -65,6 +66,7 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
 
   void _populateFields(TestQuestion question) {
     _questionController.text = question.question;
+    _subQuestionController.text = question.subQuestion ?? '';
     _explanationController.text = question.explanation ?? '';
     _correctAnswer = question.correctAnswerIndex;
     _questionType = question.questionType;
@@ -99,6 +101,7 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
   @override
   void dispose() {
     _questionController.dispose();
+    _subQuestionController.dispose();
     _explanationController.dispose();
     for (final controller in _optionControllers) {
       controller.dispose();
@@ -273,13 +276,28 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
           decoration: InputDecoration(
             labelText: _questionType != QuestionType.text
                 ? widget.languageCubit.getLocalizedText(korean: '문제 설명 (선택사항)', english: 'Question Description (Optional)')
-                : widget.languageCubit.getLocalizedText(korean: '문제 내용', english: 'Question Content'),
+                : widget.languageCubit.getLocalizedText(korean: '메인 문제', english: 'Main Question'),
             hintText: _questionType != QuestionType.text
-                ? widget.languageCubit.getLocalizedText(korean: '추가 설명', english: 'Additional description')
-                : widget.languageCubit.getLocalizedText(korean: '문제를 입력하세요', english: 'Enter your question'),
-            alignLabelWithHint: true,
+                ? widget.languageCubit.getLocalizedText(korean: '이미지나 오디오에 대한 설명을 입력하세요', english: 'Enter description for the image or audio')
+                : widget.languageCubit.getLocalizedText(korean: '예: 이 문구가 뭐라고 하나요?', english: 'e.g: What does this phrase say?'),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.all(16),
           ),
-          maxLines: 3,
+          maxLines: 5,
+          minLines: 1,
+        ),
+        
+        const SizedBox(height: 16),
+        TextField(
+          controller: _subQuestionController,
+          decoration: InputDecoration(
+            labelText: widget.languageCubit.getLocalizedText(korean: '보조 문제 (선택사항)', english: 'Sub Question (Optional)'),
+            hintText: widget.languageCubit.getLocalizedText(korean: '예: "I am a good boy"', english: 'e.g: "I am a good boy"'),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+          maxLines: 4,
+          minLines: 1,
         ),
       ],
     );
@@ -683,15 +701,18 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     return Stack(
       children: [
         GestureDetector(
-          onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
+          onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath, heroTag: imagePath ?? imageUrl ?? ''),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: CustomCachedImage(
-              imageUrl: imageUrl,
-              imagePath: imagePath,
-              height: height ?? 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
+            child: Hero(
+              tag: imagePath ?? imageUrl ?? '',
+              child: CustomCachedImage(
+                imageUrl: imageUrl,
+                imagePath: imagePath,
+                height: height ?? 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
@@ -978,6 +999,7 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
     final newQuestion = TestQuestion(
       id: widget.question?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       question: _questionController.text.trim(),
+      subQuestion: _subQuestionController.text.trim().isEmpty ? null : _subQuestionController.text.trim(),
       questionType: _questionType,
       questionImagePath: _questionImage?.path ?? _existingQuestionImagePath,
       questionImageUrl: _questionImage != null ? null : _existingQuestionImageUrl,

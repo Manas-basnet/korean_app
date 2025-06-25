@@ -173,33 +173,6 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
               ),
             ),
             
-            // Subtle hint for gestures
-            if (!_isDragging)
-              Positioned(
-                bottom: MediaQuery.of(context).padding.bottom + 20,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      widget.languageCubit.getLocalizedText(
-                        korean: '핀치로 확대 • 드래그하여 닫기',
-                        english: 'Pinch to zoom • Drag to close',
-                      ),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
             // Reset zoom button when zoomed
             if (_isDragging)
               Positioned(

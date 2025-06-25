@@ -4,6 +4,7 @@ import 'package:korean_language_app/shared/enums/question_type.dart';
 class TestQuestion extends Equatable {
   final String id;
   final String question;
+  final String? subQuestion;
   final String? questionImageUrl;
   final String? questionImagePath;
   final String? questionAudioUrl;
@@ -18,6 +19,7 @@ class TestQuestion extends Equatable {
   const TestQuestion({
     required this.id,
     required this.question,
+    this.subQuestion,
     this.questionImageUrl,
     this.questionImagePath,
     this.questionAudioUrl,
@@ -33,6 +35,7 @@ class TestQuestion extends Equatable {
   TestQuestion copyWith({
     String? id,
     String? question,
+    String? subQuestion,
     String? questionImageUrl,
     String? questionImagePath,
     String? questionAudioUrl,
@@ -47,6 +50,7 @@ class TestQuestion extends Equatable {
     return TestQuestion(
       id: id ?? this.id,
       question: question ?? this.question,
+      subQuestion: subQuestion ?? this.subQuestion,
       questionImageUrl: questionImageUrl ?? this.questionImageUrl,
       questionImagePath: questionImagePath ?? this.questionImagePath,
       questionAudioUrl: questionAudioUrl ?? this.questionAudioUrl,
@@ -64,6 +68,7 @@ class TestQuestion extends Equatable {
   bool get hasQuestionAudio => questionAudioUrl != null && questionAudioUrl!.isNotEmpty;
   bool get hasImageAnswers => options.any((option) => option.isImage);
   bool get hasAudioAnswers => options.any((option) => option.isAudio);
+  bool get hasSubQuestion => subQuestion != null && subQuestion!.trim().isNotEmpty;
   
   List<String> get textOptions => options.map((option) => option.text).toList();
 
@@ -97,6 +102,7 @@ class TestQuestion extends Equatable {
     return TestQuestion(
       id: json['id'] as String,
       question: json['question'] as String,
+      subQuestion: json['subQuestion'] as String?,
       questionImageUrl: json['questionImageUrl'] as String?,
       questionImagePath: json['questionImagePath'] as String?,
       questionAudioUrl: json['questionAudioUrl'] as String?,
@@ -114,6 +120,7 @@ class TestQuestion extends Equatable {
     return {
       'id': id,
       'question': question,
+      'subQuestion': subQuestion,
       'questionImageUrl': questionImageUrl,
       'questionImagePath': questionImagePath,
       'questionAudioUrl': questionAudioUrl,
@@ -131,6 +138,7 @@ class TestQuestion extends Equatable {
   List<Object?> get props => [
         id,
         question,
+        subQuestion,
         questionImageUrl,
         questionImagePath,
         questionAudioUrl,
