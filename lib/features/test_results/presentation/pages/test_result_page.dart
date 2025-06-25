@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/shared/extensions/test_result_extensions.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -302,7 +303,7 @@ class TestResultPage extends StatelessWidget {
           Expanded(
             child: _buildStatCard(
               languageCubit.getLocalizedText(korean: '시간', english: 'Time'),
-              result.formattedDuration,
+              result.getFormattedDuration(languageCubit),
               Icons.timer_rounded,
               Colors.blue[600]!,
               theme,

@@ -75,12 +75,6 @@ class TestResult extends Equatable {
   }
 
   Duration get totalDuration => completedAt.difference(startedAt);
-  String get formattedDuration {
-    final duration = totalDuration;
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes분 $seconds초';
-  }
 
   String get formattedScore => '$score%';
   String get resultSummary => '$correctAnswers/$totalQuestions ($formattedScore)';

@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,6 +32,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late ConnectivityCubit _connectivityCubit;
   bool _isInitialized = false;
+  bool _isLandscape = false;
   
   @override
   void initState() {
@@ -43,6 +45,35 @@ class _ProfilePageState extends State<ProfilePage> {
         _isInitialized = true;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
+  }
+
+  void _toggleOrientation() {
+    setState(() {
+      _isLandscape = !_isLandscape;
+    });
+
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
   }
 
   @override
@@ -78,6 +109,24 @@ class _ProfilePageState extends State<ProfilePage> {
         elevation: 0,
         backgroundColor: colorScheme.surface,
         actions: [
+          IconButton(
+            icon: Icon(
+              _isLandscape ? Icons.stay_current_portrait : Icons.stay_current_landscape,
+              color: colorScheme.primary,
+            ),
+            tooltip: _isLandscape 
+              ? languageCubit.getLocalizedText(
+                  korean: '세로 모드로 전환',
+                  english: 'Switch to Portrait Mode',
+                  hardWords: ['전환'],
+                )
+              : languageCubit.getLocalizedText(
+                  korean: '가로 모드로 전환',
+                  english: 'Switch to Landscape Mode',
+                  hardWords: ['전환'],
+                ),
+            onPressed: _toggleOrientation,
+          ),
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, themeMode) {
               return IconButton(
@@ -111,7 +160,6 @@ class _ProfilePageState extends State<ProfilePage> {
           
           return Column(
             children: [
-              // Connectivity status banner
               if (isOffline)
                 ErrorView(
                   message: '',
@@ -165,19 +213,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     
-                    // If offline and loading with no cached data, show default profile with offline indicators
                     if (isOffline && state.isLoading && context.read<ProfileCubit>().cachedProfile == null) {
                       return _buildOfflineProfileView(context);
                     }
                     
-                    // If loading and no cached data
                     if (state.isLoading && context.read<ProfileCubit>().cachedProfile == null) {
                       return Center(
                         child: CircularProgressIndicator(color: colorScheme.primary),
                       );
                     } 
                     
-                    // If profile loaded successfully
                     else if (state is ProfileLoaded) {
                       return ProfileContent(
                         profileData: state,
@@ -186,7 +231,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     } 
                     
-                    // If error but cached data available
                     else if (state.hasError && context.read<ProfileCubit>().cachedProfile != null) {
                       return Column(
                         children: [
@@ -209,7 +253,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     } 
                     
-                    // If error and no cached data
                     else if (state.hasError) {
                       log('Error: ${state.error}, Type: ${state.errorType}');
                       return ErrorView(
@@ -221,7 +264,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     } 
                     
-                    // Default case
                     else {
                       return Center(
                         child: Text(
@@ -274,7 +316,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final languageCubit = context.watch<LanguagePreferenceCubit>();
     final currentUser = context.read<AuthCubit>().state;
     
-    // Create a basic offline profile using current user data
     String userName = 'User';
     String userEmail = '';
     

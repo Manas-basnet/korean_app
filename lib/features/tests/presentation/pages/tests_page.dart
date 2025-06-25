@@ -390,12 +390,8 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
-    final screenSize = MediaQuery.of(context).size;
-    final expandedHeight = screenSize.height * 0.18;
-    final minHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
-    
     return SliverAppBar(
-      expandedHeight: expandedHeight,
+      expandedHeight: 150,
       pinned: false,
       floating: true,
       snap: true,
@@ -406,23 +402,109 @@ class _TestsPageState extends State<TestsPage> {
       automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          final availableHeight = constraints.maxHeight - minHeight;
-          final totalExpandableHeight = expandedHeight - minHeight;
-          final expandRatio = totalExpandableHeight > 0 
-              ? (availableHeight / totalExpandableHeight).clamp(0.0, 1.0)
-              : 0.0;
+          final expandRatio =
+              (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
           final isExpanded = expandRatio > 0.1;
 
           return FlexibleSpaceBar(
             background: Container(
               decoration: BoxDecoration(
                 color: colorScheme.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
               ),
               child: SafeArea(
-                child: AnimatedOpacity(
-                  opacity: isExpanded ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: _buildAppBarContent(theme, colorScheme, screenSize),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: AnimatedOpacity(
+                    opacity: isExpanded ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _languageCubit.getLocalizedText(
+                                korean: '시험',
+                                english: 'Tests',
+                              ),
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if(kIsWeb)
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh),
+                                    onPressed: () {
+                                      context.read<TestsCubit>().hardRefresh();
+                                    },
+                                    tooltip: _languageCubit.getLocalizedText(
+                                      korean: '새로고침',
+                                      english: 'Refresh',
+                                    ),
+                                    style: IconButton.styleFrom(
+                                      foregroundColor: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.search),
+                                  onPressed: _showSearchDelegate,
+                                  tooltip: _languageCubit.getLocalizedText(
+                                    korean: '검색',
+                                    english: 'Search',
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: colorScheme.onSurface,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.drafts_outlined),
+                                  onPressed: () => context.push(Routes.unpublishedTests),
+                                  tooltip: _languageCubit.getLocalizedText(
+                                    korean: '비공개 시험',
+                                    english: 'Unpublished Tests',
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: colorScheme.onSurface,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.analytics_outlined),
+                                  onPressed: () => context.push(Routes.testResults),
+                                  tooltip: _languageCubit.getLocalizedText(
+                                    korean: '내 결과',
+                                    english: 'My Results',
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCategoryTabsSliver(theme),
+                            ),
+                            const SizedBox(width: 12),
+                            _buildSortButtonSliver(theme, colorScheme),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -432,137 +514,14 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
-  Widget _buildAppBarContent(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
-    final horizontalPadding = screenSize.width * 0.04;
-    
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding, 
-        screenSize.height * 0.015, 
-        horizontalPadding, 
-        screenSize.height * 0.01
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _languageCubit.getLocalizedText(
-                    korean: '시험',
-                    english: 'Tests',
-                  ),
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.onSurface,
-                    fontSize: screenSize.width * 0.07,
-                  ),
-                ),
-              ),
-              _buildCompactHeaderActions(colorScheme, screenSize),
-            ],
-          ),
-          
-          SizedBox(height: screenSize.height * 0.02),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildMinimalCategoryTabs(theme, screenSize),
-              ),
-              SizedBox(width: screenSize.width * 0.03),
-              _buildMinimalSortButton(theme, colorScheme, screenSize),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactHeaderActions(ColorScheme colorScheme, Size screenSize) {
-    final iconSize = screenSize.width * 0.055;
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if(kIsWeb)...[
-          _buildMinimalActionButton(
-            icon: Icons.refresh,
-            onPressed: () {
-              context.read<TestsCubit>().hardRefresh();
-            },
-            tooltip: _languageCubit.getLocalizedText(
-              korean: '검색',
-              english: 'Refresh',
-            ),
-            colorScheme: colorScheme,
-            iconSize: iconSize,
-          ),
-        ],
-        _buildMinimalActionButton(
-          icon: Icons.search_rounded,
-          onPressed: _showSearchDelegate,
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '검색',
-            english: 'Search',
-          ),
-          colorScheme: colorScheme,
-          iconSize: iconSize,
-        ),
-        _buildMinimalActionButton(
-          icon: Icons.drafts_outlined,
-          onPressed: () => context.push(Routes.unpublishedTests),
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '비공개 시험',
-            english: 'Unpublished Tests',
-          ),
-          colorScheme: colorScheme,
-          iconSize: iconSize,
-        ),
-        _buildMinimalActionButton(
-          icon: Icons.analytics_outlined,
-          onPressed: () => context.push(Routes.testResults),
-          tooltip: _languageCubit.getLocalizedText(
-            korean: '내 결과',
-            english: 'My Results',
-          ),
-          colorScheme: colorScheme,
-          iconSize: iconSize,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMinimalActionButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required String tooltip,
-    required ColorScheme colorScheme,
-    required double iconSize,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(left: MediaQuery.of(context).size.width * 0.01),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: iconSize),
-        tooltip: tooltip,
-        style: IconButton.styleFrom(
-          foregroundColor: colorScheme.onSurfaceVariant,
-          backgroundColor: Colors.transparent,
-          padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.025),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalCategoryTabs(ThemeData theme, Size screenSize) {
+  Widget _buildCategoryTabsSliver(ThemeData theme) {
     return SizedBox(
-      height: screenSize.height * 0.04,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         itemCount: TestCategory.values.length,
-        separatorBuilder: (context, index) => SizedBox(width: screenSize.width * 0.02),
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final category = TestCategory.values[index];
           final isSelected = _selectedCategory == category;
@@ -570,24 +529,27 @@ class _TestsPageState extends State<TestsPage> {
           return GestureDetector(
             onTap: () => _onCategoryChanged(category),
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenSize.width * 0.035,
-                vertical: screenSize.height * 0.008,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(16),
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               child: Text(
                 category.getDisplayName(_languageCubit.getLocalizedText),
                 style: TextStyle(
                   color: isSelected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: screenSize.width * 0.032,
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -597,20 +559,18 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
 
-  Widget _buildMinimalSortButton(ThemeData theme, ColorScheme colorScheme, Size screenSize) {
+  Widget _buildSortButtonSliver(ThemeData theme, ColorScheme colorScheme) {
     return GestureDetector(
       onTap: _showSortBottomSheet,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: screenSize.width * 0.03,
-          vertical: screenSize.height * 0.008,
-        ),
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.2),
-            width: 0.5,
+            color: colorScheme.outline.withValues(alpha: 0.3),
+            width: 1,
           ),
         ),
         child: Row(
@@ -618,23 +578,20 @@ class _TestsPageState extends State<TestsPage> {
           children: [
             Icon(
               _getSortTypeIcon(_selectedSortType),
-              size: screenSize.width * 0.035,
-              color: colorScheme.onSurfaceVariant,
+              size: 16,
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
-            SizedBox(width: screenSize.width * 0.015),
+            const SizedBox(width: 8),
             Icon(
               Icons.sort_rounded,
-              size: screenSize.width * 0.035,
-              color: colorScheme.onSurfaceVariant,
+              size: 16,
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ],
         ),
       ),
     );
   }
-
-
-
   Widget _buildSliverContent(bool isOffline) {
     return BlocConsumer<TestsCubit, TestsState>(
       listener: (context, state) {

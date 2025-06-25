@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/shared/extensions/test_result_extensions.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -815,7 +816,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
                       Expanded(
                         child: _buildResultInfo(
                           Icons.timer_rounded,
-                          result.formattedDuration,
+                          result.getFormattedDuration(_languageCubit),
                           _languageCubit.getLocalizedText(korean: '시간', english: 'Time'),
                           Colors.orange[600]!,
                           theme,
