@@ -6,11 +6,15 @@ part 'update_state.dart';
 
 class UpdateCubit extends Cubit<UpdateState> {
   final shorebird.ShorebirdUpdater _updater;
+  bool _isCheckingForUpdates = false;
 
   UpdateCubit(this._updater) : super(const UpdateState.initial());
 
   Future<void> checkForUpdates() async {
+    if (_isCheckingForUpdates) return;
+    
     try {
+      _isCheckingForUpdates = true;
       emit(const UpdateState.checking());
       
       final status = await _updater.checkForUpdate();
@@ -22,6 +26,8 @@ class UpdateCubit extends Cubit<UpdateState> {
       }
     } catch (error) {
       emit(UpdateState.error(error.toString()));
+    } finally {
+      _isCheckingForUpdates = false;
     }
   }
 

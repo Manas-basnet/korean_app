@@ -14,7 +14,6 @@ import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_c
 import 'package:korean_language_app/shared/presentation/theme/bloc/theme_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/widgets/snackbar_widget.dart';
 import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
-import 'package:korean_language_app/shared/presentation/update/update_manager.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart' as shorebird;
 import 'package:url_strategy/url_strategy.dart';
 
@@ -27,7 +26,6 @@ void main() async {
 
   await initializeFirebase();
 
-  // debugRepaintRainbowEnabled = true; // Good for checking repaints caused by rendering
   await di.init();
 
   runApp(const MyApp());
@@ -59,14 +57,15 @@ class MyApp extends StatelessWidget {
           create: (context) => di.sl<LanguagePreferenceCubit>(),
         ),
         BlocProvider<UpdateCubit>(
-          create: (context) => UpdateCubit(shorebird.ShorebirdUpdater()),
+          create: (context) =>
+              UpdateCubit(shorebird.ShorebirdUpdater())..checkForUpdates(),
         ),
       ],
       child: BlocListener<AuthCubit, AuthState>(
         listenWhen: (previous, current) {
           return (previous.runtimeType != current.runtimeType) &&
-                (current is Authenticated || 
-                  current is Unauthenticated || 
+              (current is Authenticated ||
+                  current is Unauthenticated ||
                   current is AuthAnonymousSignIn ||
                   current is AuthLoading);
         },
@@ -83,10 +82,8 @@ class MyApp extends StatelessWidget {
               routerConfig: AppRouter.router,
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                return UpdateManager(
-                  child: SnackBarWidget(
-                    child: child ?? const SizedBox(),
-                  ),
+                return SnackBarWidget(
+                  child: child ?? const SizedBox(),
                 );
               },
             );
@@ -99,12 +96,4 @@ class MyApp extends StatelessWidget {
 
 Future<void> initializeFirebase() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  //Appchecks or storage checks
-
-  // FirebaseFirestore.instance.settings = const Settings(
-  //   persistenceEnabled: true,
-  //   cacheSizeBytes: 50 * 1024 * 1024,
-  // );
-
-  // FirebaseFirestore.instance.settings.persistenceEnabled;
 }

@@ -40,6 +40,8 @@ import 'package:korean_language_app/features/unpublished_tests/presentation/bloc
 import 'package:korean_language_app/features/unpublished_tests/presentation/pages/unpublished_tests_page.dart';
 import 'package:korean_language_app/features/user_management/presentation/bloc/user_management_cubit.dart';
 import 'package:korean_language_app/features/user_management/presentation/pages/user_management_page.dart';
+import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
+import 'package:korean_language_app/shared/presentation/update/widgets/update_bottomsheet.dart';
 import 'package:korean_language_app/shared/presentation/widgets/splash/splash_screen.dart';
 
 class AppRouter {
@@ -398,37 +400,44 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
 
     final shouldHideBottomNav = location.startsWith(Routes.testTakingBase);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: shouldHideBottomNav
-          ? null
-          : BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: colorScheme.surface,
-              selectedItemColor: colorScheme.primary,
-              unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
-              showUnselectedLabels: true,
-              currentIndex: _calculateSelectedIndex(context),
-              onTap: (index) => _onItemTapped(index, context),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.quiz_rounded),
-                  label: 'Tests',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.menu_book_rounded),
-                  label: 'Books',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: 'Profile',
-                ),
-              ],
-            ),
+    return BlocListener<UpdateCubit, UpdateState>(
+      listener: (context, state) {
+        if (state.status == AppUpdateStatus.available) {
+          showUpdateBottomSheet(context);
+        }
+      },
+      child: Scaffold(
+        body: child,
+        bottomNavigationBar: shouldHideBottomNav
+            ? null
+            : BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: colorScheme.surface,
+                selectedItemColor: colorScheme.primary,
+                unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
+                showUnselectedLabels: true,
+                currentIndex: _calculateSelectedIndex(context),
+                onTap: (index) => _onItemTapped(index, context),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_rounded),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.quiz_rounded),
+                    label: 'Tests',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.menu_book_rounded),
+                    label: 'Books',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_rounded),
+                    label: 'Profile',
+                  ),
+                ],
+              ),
+      ),
     );
   }
 

@@ -740,7 +740,7 @@ class _TestsPageState extends State<TestsPage> {
     
     final isTablet = screenSize.width > 600;
     final crossAxisCount = isTablet ? 3 : 2;
-    final childAspectRatio = isTablet ? 0.7 : 0.82;
+    final childAspectRatio = isTablet ? 0.7 : 0.85;
     final gridPadding = screenSize.width * 0.05;
     final gridSpacing = screenSize.width * 0.04;
     
