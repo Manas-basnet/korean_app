@@ -3,9 +3,25 @@ import 'package:korean_language_app/features/book_upload/data/datasources/book_u
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource_impl.dart';
 import 'package:korean_language_app/features/book_upload/data/repositories/book_upload_repository_impl.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/create_book_usecase.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/create_book_with_chapters_usecase.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/delete_book_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/image_picker_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/pdf_picker_usecase.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_usecase.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_with_chapters_usecase.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
+import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_book_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_chapter_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_favorite_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_more_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/refresh_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/regenerate_book_image_url_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/search_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/search_favorite_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/toggle_favorite_book_usecase.dart';
 import 'package:korean_language_app/shared/services/image_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source_impl.dart';
@@ -27,31 +43,113 @@ void registerBooksDependencies(GetIt sl) {
     () => ImageCacheService(storageService: sl())
   );
   
-  // Cubits
-  sl.registerFactory(() => KoreanBooksCubit(
-    repository: sl(),
-    authService: sl(),
-    adminService: sl(),
-  ));
-
-  sl.registerFactory(() => BookSearchCubit(
-    repository: sl(),
-    authService: sl(),
-    adminService: sl(),
-  ));
-
-  sl.registerFactory(() => FavoriteBooksCubit(sl()));
-
-  //Use cases
+  // Book Upload Use Cases
   sl.registerLazySingleton(() => PickImageUseCase());
   sl.registerLazySingleton(() => PickPDFUseCase());
   
+  sl.registerLazySingleton(() => CreateBookUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => CreateBookWithChaptersUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => UpdateBookUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => UpdateBookWithChaptersUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => DeleteBookUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  // Books Feature Use Cases
+  sl.registerLazySingleton(() => LoadBooksUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => LoadMoreBooksUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => RefreshBooksUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => GetBookPdfUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => GetChapterPdfUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => CheckBookEditPermissionUseCase(
+    authService: sl(),
+    adminService: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => RegenerateBookImageUrlUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => SearchBooksUseCase(
+    repository: sl(),
+  ));
+
+  // Favorite Books Use Cases
+  sl.registerLazySingleton(() => LoadFavoriteBooksUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => SearchFavoriteBooksUseCase(
+    repository: sl(),
+  ));
+  
+  sl.registerLazySingleton(() => ToggleFavoriteBookUseCase(
+    repository: sl(),
+  ));
+  
+  // Cubits with use case dependencies
+  sl.registerFactory(() => KoreanBooksCubit(
+    loadBooksUseCase: sl(),
+    loadMoreBooksUseCase: sl(),
+    refreshBooksUseCase: sl(),
+    getBookPdfUseCase: sl(),
+    getChapterPdfUseCase: sl(),
+    checkBookEditPermissionUseCase: sl(),
+    regenerateBookImageUrlUseCase: sl(),
+  ));
+
+  sl.registerFactory(() => BookSearchCubit(
+    searchBooksUseCase: sl(),
+    checkBookEditPermissionUseCase: sl(),
+  ));
+
+  sl.registerFactory(() => FavoriteBooksCubit(
+    loadFavoriteBooksUseCase: sl(),
+    searchFavoriteBooksUseCase: sl(),
+    toggleFavoriteBookUseCase: sl(),
+  ));
+  
   // Upload related
   sl.registerFactory(() => FileUploadCubit(
-    uploadRepository: sl(),
-    authService: sl(),
     pickImageUseCase: sl(),
-    pickPDFUseCase: sl()
+    pickPDFUseCase: sl(),
+    createBookUseCase: sl(),
+    createBookWithChaptersUseCase: sl(),
+    updateBookUseCase: sl(),
+    updateBookWithChaptersUseCase: sl(),
+    deleteBookUseCase: sl(),
   ));
   
   sl.registerLazySingleton<BookUploadRepository>(

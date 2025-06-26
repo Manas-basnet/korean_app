@@ -3,18 +3,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/features/books/domain/repositories/favorite_book_repository.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_favorite_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/search_favorite_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/toggle_favorite_book_usecase.dart';
 import 'package:korean_language_app/shared/models/book_item.dart';
 
 part 'favorite_books_state.dart';
 
 class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
-  final FavoriteBookRepository repository;
+  final LoadFavoriteBooksUseCase loadFavoriteBooksUseCase;
+  final SearchFavoriteBooksUseCase searchFavoriteBooksUseCase;
+  final ToggleFavoriteBookUseCase toggleFavoriteBookUseCase;
   
-  // Performance monitoring
   final Stopwatch _operationStopwatch = Stopwatch();
   
-  FavoriteBooksCubit(this.repository) : super(const FavoriteBooksInitial());
+  FavoriteBooksCubit({
+    required this.loadFavoriteBooksUseCase,
+    required this.searchFavoriteBooksUseCase,
+    required this.toggleFavoriteBookUseCase,
+  }) : super(const FavoriteBooksInitial());
   
   Future<void> loadInitialBooks() async {
     if (state.currentOperation.isInProgress) {
@@ -36,23 +43,22 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final result = await repository.getBooksFromCache();
+      final params = LoadFavoriteBooksParams(
+        category: CourseCategory.favorite,
+        page: 0,
+        pageSize: 50, // Load all favorites since it's local
+      );
+      
+      final result = await loadFavoriteBooksUseCase.execute(params);
       
       result.fold(
-        onSuccess: (books) async {
-          final uniqueBooks = _removeDuplicates(books);
-          
-          final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, uniqueBooks.length);
-          
+        onSuccess: (loadResult) {
           _operationStopwatch.stop();
-          debugPrint('loadFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('loadFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.books.length} books');
           
           emit(FavoriteBooksState(
-            books: uniqueBooks,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            books: loadResult.books,
+            hasMore: loadResult.hasMore,
             currentOperation: const FavoriteBooksOperation(
               type: FavoriteBooksOperationType.loadBooks,
               status: FavoriteBooksOperationStatus.completed,
@@ -103,23 +109,22 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final result = await repository.getBooksFromCache();
+      final params = LoadFavoriteBooksParams(
+        category: CourseCategory.favorite,
+        page: 0,
+        pageSize: 50, // Load all favorites since it's local
+      );
+      
+      final result = await loadFavoriteBooksUseCase.execute(params);
       
       result.fold(
-        onSuccess: (books) async {
-          final uniqueBooks = _removeDuplicates(books);
-          
-          final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, uniqueBooks.length);
-          
+        onSuccess: (loadResult) {
           _operationStopwatch.stop();
-          debugPrint('refreshFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('refreshFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.books.length} books');
           
           emit(FavoriteBooksState(
-            books: uniqueBooks,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            books: loadResult.books,
+            hasMore: loadResult.hasMore,
             currentOperation: const FavoriteBooksOperation(
               type: FavoriteBooksOperationType.refreshBooks,
               status: FavoriteBooksOperationStatus.completed,
@@ -168,17 +173,20 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final result = await repository.searchBooks(CourseCategory.favorite, query);
+      final params = SearchFavoriteBooksParams(
+        category: CourseCategory.favorite,
+        query: query,
+      );
+      
+      final result = await searchFavoriteBooksUseCase.execute(params);
       
       result.fold(
         onSuccess: (searchResults) {
-          final uniqueSearchResults = _removeDuplicates(searchResults);
-          
           _operationStopwatch.stop();
-          debugPrint('searchFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
+          debugPrint('searchFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${searchResults.length} results for query: "$query"');
           
           emit(state.copyWith(
-            books: uniqueSearchResults,
+            books: searchResults,
             hasMore: false, // No pagination for search results
             isLoading: false,
             error: null,
@@ -230,26 +238,21 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final currentBooks = state.books;
-      final isAlreadyFavorite = currentBooks.any((book) => book.id == bookItem.id);
+      final params = ToggleFavoriteBookParams(
+        book: bookItem,
+        currentFavorites: state.books,
+      );
       
-      final result = isAlreadyFavorite
-          ? await repository.removeBookFromFavorite(bookItem)
-          : await repository.addFavoritedBook(bookItem);
+      final result = await toggleFavoriteBookUseCase.execute(params);
       
       result.fold(
-        onSuccess: (updatedBooks) async {
-          final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, updatedBooks.length);
-          
+        onSuccess: (toggleResult) {
           _operationStopwatch.stop();
-          debugPrint('toggleFavorite completed in ${_operationStopwatch.elapsedMilliseconds}ms for book: ${bookItem.title} (${isAlreadyFavorite ? 'removed' : 'added'})');
+          debugPrint('toggleFavorite completed in ${_operationStopwatch.elapsedMilliseconds}ms for book: ${bookItem.title} (${toggleResult.wasAdded ? 'added' : 'removed'})');
           
           emit(state.copyWith(
-            books: updatedBooks,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            books: toggleResult.updatedFavorites,
+            hasMore: toggleResult.hasMore,
             currentOperation: const FavoriteBooksOperation(
               type: FavoriteBooksOperationType.toggleFavorite,
               status: FavoriteBooksOperationStatus.completed,
@@ -279,19 +282,6 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
       // Reload the original favorites to recover from error
       loadInitialBooks();
     }
-  }
-  
-  List<BookItem> _removeDuplicates(List<BookItem> books) {
-    final uniqueIds = <String>{};
-    final uniqueBooks = <BookItem>[];
-    
-    for (final book in books) {
-      if (uniqueIds.add(book.id)) {
-        uniqueBooks.add(book);
-      }
-    }
-    
-    return uniqueBooks;
   }
 
   void _handleError(String message, FavoriteBooksOperationType operationType) {
