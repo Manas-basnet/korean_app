@@ -78,39 +78,41 @@ class _CustomCachedImageState extends State<CustomCachedImage> {
     borderRadius = widget.borderRadius;
   }
 
-  Future<void> _resolveImageSource() async {
-    if (_isResolving) return;
+Future<void> _resolveImageSource() async {
+  if (_isResolving) {
+    return;
+  }
+  
+  if (imagePath == _lastImagePath && imageUrl == _lastImageUrl && _cachedImageSource != null) {
+    return;
+  }
+  
+  setState(() {
+    _isResolving = true;
+  });
+  
+  try {
+    final imageSource = await _determineImageSource();
     
-    if (imagePath == _lastImagePath && imageUrl == _lastImageUrl && _cachedImageSource != null) {
-      return;
+    if (mounted) {      
+      setState(() {
+        _cachedImageSource = imageSource;
+        _lastImagePath = imagePath;
+        _lastImageUrl = imageUrl;
+        _isResolving = false;
+      });
     }
-    
-    setState(() {
-      _isResolving = true;
-    });
-    
-    try {
-      final imageSource = await _determineImageSource();
-      
-      if (mounted) {
-        setState(() {
-          _cachedImageSource = imageSource;
-          _lastImagePath = imagePath;
-          _lastImageUrl = imageUrl;
-          _isResolving = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _cachedImageSource = ImageDisplaySource(type: ImageDisplayType.none);
-          _lastImagePath = imagePath;
-          _lastImageUrl = imageUrl;
-          _isResolving = false;
-        });
-      }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _cachedImageSource = ImageDisplaySource(type: ImageDisplayType.none);
+        _lastImagePath = imagePath;
+        _lastImageUrl = imageUrl;
+        _isResolving = false;
+      });
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -162,8 +164,13 @@ class _CustomCachedImageState extends State<CustomCachedImage> {
 
   Future<String?> _resolveImagePath(String path) async {
     try {
+      
       if (path.startsWith('/')) {
-        return path;
+        if (await File(path).exists()) {
+          return path;
+        } else {
+          return null;
+        }
       }
       
       final documentsDir = await getApplicationDocumentsDirectory();
@@ -180,18 +187,8 @@ class _CustomCachedImageState extends State<CustomCachedImage> {
         return cachePath;
       }
       
-      if (path.contains('/')) {
-        final fileName = path.split('/').last;
-        final files = await cacheDir.list().toList();
-        
-        for (final fileEntity in files) {
-          if (fileEntity is File && fileEntity.path.endsWith(fileName)) {
-            return fileEntity.path;
-          }
-        }
-      }
-      
       return null;
+      
     } catch (e) {
       return null;
     }

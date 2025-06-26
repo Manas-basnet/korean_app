@@ -1,6 +1,6 @@
 // lib/features/tests/domain/usecases/load_tests_usecase.dart
 
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -80,7 +80,7 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
   @override
   Future<ApiResult<TestsLoadResult>> execute(LoadTestsParams params) async {
     try {
-      dev.log('LoadTestsUseCase: Loading tests with params - page: ${params.page}, '
+      debugPrint('LoadTestsUseCase: Loading tests with params - page: ${params.page}, '
           'pageSize: ${params.pageSize}, sortType: ${params.sortType.name}, '
           'category: ${params.category?.name}, forceRefresh: ${params.forceRefresh}');
 
@@ -105,7 +105,7 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
           final hasMoreResult = await _calculateHasMore(tests, params);
           final currentPage = _calculateCurrentPage(tests, params);
           
-          dev.log('LoadTestsUseCase: Successfully loaded ${tests.length} tests, hasMore: $hasMoreResult, currentPage: $currentPage');
+          debugPrint('LoadTestsUseCase: Successfully loaded ${tests.length} tests, hasMore: $hasMoreResult, currentPage: $currentPage');
 
           return ApiResult.success(TestsLoadResult(
             tests: tests,
@@ -116,12 +116,12 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
           ));
         },
         onFailure: (message, type) {
-          dev.log('LoadTestsUseCase: Failed to load tests - $message');
+          debugPrint('LoadTestsUseCase: Failed to load tests - $message');
           return ApiResult.failure(message, type);
         },
       );
     } catch (e) {
-      dev.log('LoadTestsUseCase: Unexpected error - $e');
+      debugPrint('LoadTestsUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to load tests: $e', FailureType.unknown);
     }
   }
@@ -154,7 +154,7 @@ class LoadTestsUseCase implements UseCase<TestsLoadResult, LoadTestsParams> {
         );
       }
     } catch (e) {
-      dev.log('LoadTestsUseCase: Error calculating hasMore - $e');
+      debugPrint('LoadTestsUseCase: Error calculating hasMore - $e');
       return false;
     }
   }

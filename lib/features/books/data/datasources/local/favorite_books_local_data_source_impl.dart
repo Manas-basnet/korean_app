@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
 import 'package:korean_language_app/features/books/data/models/book_item.dart';
@@ -20,7 +20,7 @@ class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
       final List<dynamic> decodedJson = json.decode(jsonString);
       return decodedJson.map((item) => BookItem.fromJson(item)).toList();
     } catch (e) {
-      dev.log('Error reading favorite books from storage: $e');
+      debugPrint('Error reading favorite books from storage: $e');
       return [];
     }
   }
@@ -32,7 +32,7 @@ class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
       final jsonString = json.encode(jsonList);
       await _storageService.setString(cacheKey, jsonString);
     } catch (e) {
-      dev.log('Error saving favorite books: $e');
+      debugPrint('Error saving favorite books: $e');
       throw Exception('Failed to save favorite books: $e');
     }
   }
@@ -48,7 +48,7 @@ class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
         await saveBooks(books);
       }
     } catch (e) {
-      dev.log('Error adding book to favorites: $e');
+      debugPrint('Error adding book to favorites: $e');
       throw Exception('Failed to add book to favorites: $e');
     }
   }
@@ -60,7 +60,7 @@ class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
     } catch (e) {
-      dev.log('Error removing book from favorites: $e');
+      debugPrint('Error removing book from favorites: $e');
       throw Exception('Failed to remove book from favorites: $e');
     }
   }
@@ -70,7 +70,7 @@ class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
     try {
       await _storageService.remove(cacheKey);
     } catch (e) {
-      dev.log('Error clearing favorite books: $e');
+      debugPrint('Error clearing favorite books: $e');
     }
   }
 

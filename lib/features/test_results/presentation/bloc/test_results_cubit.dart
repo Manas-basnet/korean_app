@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -25,7 +25,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
 
   Future<void> saveTestResult(TestResult testResult) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Save result operation already in progress, skipping...');
+      debugPrint('Save result operation already in progress, skipping...');
       return;
     }
 
@@ -48,7 +48,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       result.fold(
         onSuccess: (_) {
           _operationStopwatch.stop();
-          dev.log('Test result saved successfully in ${_operationStopwatch.elapsedMilliseconds}ms');
+          debugPrint('Test result saved successfully in ${_operationStopwatch.elapsedMilliseconds}ms');
           
           emit(state.copyWith(
             isLoading: false,
@@ -63,7 +63,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Save result failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Save result failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -79,14 +79,14 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error saving test result after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error saving test result after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to save test result: $e', TestResultsOperationType.saveResult);
     }
   }
 
   Future<void> loadUserResults({int limit = 20}) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Load results operation already in progress, skipping...');
+      debugPrint('Load results operation already in progress, skipping...');
       return;
     }
 
@@ -111,7 +111,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       result.fold(
         onSuccess: (results) {
           _operationStopwatch.stop();
-          dev.log('Loaded ${results.length} user results in ${_operationStopwatch.elapsedMilliseconds}ms');
+          debugPrint('Loaded ${results.length} user results in ${_operationStopwatch.elapsedMilliseconds}ms');
           
           emit(state.copyWith(
             isLoading: false,
@@ -127,7 +127,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Load results failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Load results failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -143,7 +143,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading user results after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading user results after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load user results: $e', TestResultsOperationType.loadResults);
     }
   }
@@ -159,11 +159,11 @@ class TestResultsCubit extends Cubit<TestResultsState> {
           emit(state.copyWith(latestResult: latestResult));
         },
         onFailure: (message, type) {
-          dev.log('Failed to load latest result: $message');
+          debugPrint('Failed to load latest result: $message');
         },
       );
     } catch (e) {
-      dev.log('Error loading latest result: $e');
+      debugPrint('Error loading latest result: $e');
     }
   }
 
@@ -176,16 +176,16 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       
       return result.fold(
         onSuccess: (results) {
-          dev.log('Retrieved ${results.length} test results');
+          debugPrint('Retrieved ${results.length} test results');
           return results;
         },
         onFailure: (message, type) {
-          dev.log('Failed to get user test results: $message');
+          debugPrint('Failed to get user test results: $message');
           return [];
         },
       );
     } catch (e) {
-      dev.log('Error getting user test results: $e');
+      debugPrint('Error getting user test results: $e');
       return [];
     }
   }
@@ -198,16 +198,16 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       
       return result.fold(
         onSuccess: (results) {
-          dev.log('Retrieved ${results.length} cached test results');
+          debugPrint('Retrieved ${results.length} cached test results');
           return results;
         },
         onFailure: (message, type) {
-          dev.log('Failed to get cached user test results: $message');
+          debugPrint('Failed to get cached user test results: $message');
           return [];
         },
       );
     } catch (e) {
-      dev.log('Error getting cached user test results: $e');
+      debugPrint('Error getting cached user test results: $e');
       return [];
     }
   }
@@ -221,7 +221,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
       
       return await getCachedUserResults();
     } catch (e) {
-      dev.log('Error getting test results: $e');
+      debugPrint('Error getting test results: $e');
       return [];
     }
   }
@@ -252,7 +252,7 @@ class TestResultsCubit extends Cubit<TestResultsState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing TestResultsCubit...');
+    debugPrint('Closing TestResultsCubit...');
     return super.close();
   }
 }

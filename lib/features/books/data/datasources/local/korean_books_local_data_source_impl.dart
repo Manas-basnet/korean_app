@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/korean_books_local_datasource.dart';
@@ -41,7 +41,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final List<dynamic> decodedJson = json.decode(jsonString);
       return decodedJson.map((item) => BookItem.fromJson(item)).toList();
     } catch (e) {
-      dev.log('Error reading books from storage: $e');
+      debugPrint('Error reading books from storage: $e');
       return [];
     }
   }
@@ -52,9 +52,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final jsonList = books.map((book) => book.toJson()).toList();
       final jsonString = json.encode(jsonList);
       await _storageService.setString(booksKey, jsonString);
-      dev.log('Saved ${books.length} books to cache');
+      debugPrint('Saved ${books.length} books to cache');
     } catch (e) {
-      dev.log('Error saving books to storage: $e');
+      debugPrint('Error saving books to storage: $e');
       throw Exception('Failed to save books: $e');
     }
   }
@@ -73,7 +73,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       await saveBooks(books);
     } catch (e) {
-      dev.log('Error adding book to storage: $e');
+      debugPrint('Error adding book to storage: $e');
       throw Exception('Failed to add book: $e');
     }
   }
@@ -91,7 +91,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
         throw Exception('Book not found for update: ${book.id}');
       }
     } catch (e) {
-      dev.log('Error updating book in storage: $e');
+      debugPrint('Error updating book in storage: $e');
       throw Exception('Failed to update book: $e');
     }
   }
@@ -103,7 +103,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
     } catch (e) {
-      dev.log('Error removing book from storage: $e');
+      debugPrint('Error removing book from storage: $e');
       throw Exception('Failed to remove book: $e');
     }
   }
@@ -118,9 +118,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       await _clearAllPdfs();
       
-      dev.log('Cleared all books cache and PDFs');
+      debugPrint('Cleared all books cache and PDFs');
     } catch (e) {
-      dev.log('Error clearing all books from storage: $e');
+      debugPrint('Error clearing all books from storage: $e');
     }
   }
 
@@ -155,7 +155,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       return allBooks.sublist(startIndex, endIndex);
     } catch (e) {
-      dev.log('Error getting books page: $e');
+      debugPrint('Error getting books page: $e');
       return [];
     }
   }
@@ -185,7 +185,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final Map<String, dynamic> decoded = json.decode(hashesJson);
       return decoded.cast<String, String>();
     } catch (e) {
-      dev.log('Error reading book hashes: $e');
+      debugPrint('Error reading book hashes: $e');
       return {};
     }
   }
@@ -202,12 +202,12 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
 
   @override
   Future<void> cacheImage(String imageUrl, String bookId) async {
-    dev.log('Image caching should be handled by repository layer, not datasource');
+    debugPrint('Image caching should be handled by repository layer, not datasource');
   }
 
   @override
   Future<String?> getCachedImagePath(String imageUrl, String bookId) async {
-    dev.log('Image path retrieval should be handled by repository layer, not datasource');
+    debugPrint('Image path retrieval should be handled by repository layer, not datasource');
     return null;
   }
 
@@ -222,7 +222,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       }
       return null;
     } catch (e) {
-      dev.log('Error getting PDF file: $e');
+      debugPrint('Error getting PDF file: $e');
       return null;
     }
   }
@@ -238,9 +238,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
         throw Exception('Failed to save PDF file properly');
       }
       
-      dev.log('Cached PDF: ${cacheFile.path}');
+      debugPrint('Cached PDF: ${cacheFile.path}');
     } catch (e) {
-      dev.log('Error saving PDF file: $e');
+      debugPrint('Error saving PDF file: $e');
       throw Exception('Failed to save PDF file: $e');
     }
   }
@@ -263,10 +263,10 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       if (await file.exists()) {
         await file.delete();
-        dev.log('Deleted PDF cache: ${file.path}');
+        debugPrint('Deleted PDF cache: ${file.path}');
       }
     } catch (e) {
-      dev.log('Error deleting PDF file: $e');
+      debugPrint('Error deleting PDF file: $e');
     }
   }
 
@@ -277,9 +277,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
         await cacheDir.delete(recursive: true);
         await cacheDir.create(recursive: true);
       }
-      dev.log('Cleared all cached PDFs');
+      debugPrint('Cleared all cached PDFs');
     } catch (e) {
-      dev.log('Error clearing all PDFs: $e');
+      debugPrint('Error clearing all PDFs: $e');
     }
   }
 

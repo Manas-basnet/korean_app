@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
@@ -64,7 +64,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       return tests;
     } catch (e) {
-      dev.log('Error reading unpublished tests from storage: $e');
+      debugPrint('Error reading unpublished tests from storage: $e');
       return [];
     }
   }
@@ -76,9 +76,9 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       final jsonString = json.encode(jsonList);
       await _storageService.setString('$unpublishedTestsPrefix$userId', jsonString);
       
-      dev.log('Saved ${tests.length} unpublished tests to cache for user: $userId');
+      debugPrint('Saved ${tests.length} unpublished tests to cache for user: $userId');
     } catch (e) {
-      dev.log('Error saving unpublished tests to storage: $e');
+      debugPrint('Error saving unpublished tests to storage: $e');
       throw Exception('Failed to save unpublished tests: $e');
     }
   }
@@ -97,7 +97,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       await saveUnpublishedTests(userId, tests);
     } catch (e) {
-      dev.log('Error adding unpublished test to storage: $e');
+      debugPrint('Error adding unpublished test to storage: $e');
       throw Exception('Failed to add unpublished test: $e');
     }
   }
@@ -115,7 +115,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         throw Exception('Unpublished test not found for update: ${test.id}');
       }
     } catch (e) {
-      dev.log('Error updating unpublished test in storage: $e');
+      debugPrint('Error updating unpublished test in storage: $e');
       throw Exception('Failed to update unpublished test: $e');
     }
   }
@@ -137,7 +137,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       final updatedTests = tests.where((test) => test.id != testId).toList();
       await saveUnpublishedTests(userId, updatedTests);
     } catch (e) {
-      dev.log('Error removing unpublished test from storage: $e');
+      debugPrint('Error removing unpublished test from storage: $e');
       throw Exception('Failed to remove unpublished test: $e');
     }
   }
@@ -162,9 +162,9 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       await _clearAllImages();
       await _clearAllAudio();
       
-      dev.log('Cleared all unpublished tests cache, images, and audio for user: $userId');
+      debugPrint('Cleared all unpublished tests cache, images, and audio for user: $userId');
     } catch (e) {
-      dev.log('Error clearing unpublished tests from storage: $e');
+      debugPrint('Error clearing unpublished tests from storage: $e');
     }
   }
 
@@ -213,7 +213,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       final Map<String, dynamic> decoded = json.decode(hashesJson);
       return decoded.cast<String, String>();
     } catch (e) {
-      dev.log('Error reading unpublished test hashes: $e');
+      debugPrint('Error reading unpublished test hashes: $e');
       return {};
     }
   }
@@ -229,7 +229,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       return allTests.sublist(startIndex, endIndex);
     } catch (e) {
-      dev.log('Error getting unpublished tests page: $e');
+      debugPrint('Error getting unpublished tests page: $e');
       return [];
     }
   }
@@ -249,7 +249,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       return categoryTests.sublist(startIndex, endIndex);
     } catch (e) {
-      dev.log('Error getting unpublished category tests page: $e');
+      debugPrint('Error getting unpublished category tests page: $e');
       return [];
     }
   }
@@ -282,7 +282,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        dev.log('Image already cached: $fileName');
+        debugPrint('Image already cached: $fileName');
         return;
       }
       
@@ -298,14 +298,14 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       if (response.statusCode == 200 && response.data != null) {
         await file.writeAsBytes(response.data);
-        dev.log('Cached image: $fileName (${response.data.length} bytes)');
+        debugPrint('Cached image: $fileName (${response.data.length} bytes)');
         
         await _updateImageMetadata(testId, imageType, imageUrl);
       } else {
-        dev.log('Failed to download image: $imageUrl (${response.statusCode})');
+        debugPrint('Failed to download image: $imageUrl (${response.statusCode})');
       }
     } catch (e) {
-      dev.log('Error caching image $imageUrl: $e');
+      debugPrint('Error caching image $imageUrl: $e');
     }
   }
 
@@ -317,7 +317,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        dev.log('Audio already cached: $fileName');
+        debugPrint('Audio already cached: $fileName');
         return;
       }
       
@@ -333,14 +333,14 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       if (response.statusCode == 200 && response.data != null) {
         await file.writeAsBytes(response.data);
-        dev.log('Cached audio: $fileName (${response.data.length} bytes)');
+        debugPrint('Cached audio: $fileName (${response.data.length} bytes)');
         
         await _updateAudioMetadata(testId, audioType, audioUrl);
       } else {
-        dev.log('Failed to download audio: $audioUrl (${response.statusCode})');
+        debugPrint('Failed to download audio: $audioUrl (${response.statusCode})');
       }
     } catch (e) {
-      dev.log('Error caching audio $audioUrl: $e');
+      debugPrint('Error caching audio $audioUrl: $e');
     }
   }
 
@@ -355,7 +355,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         return file.path;
       }
     } catch (e) {
-      dev.log('Error getting cached image path: $e');
+      debugPrint('Error getting cached image path: $e');
     }
     return null;
   }
@@ -371,7 +371,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         return file.path;
       }
     } catch (e) {
-      dev.log('Error getting cached audio path: $e');
+      debugPrint('Error getting cached audio path: $e');
     }
     return null;
   }
@@ -408,7 +408,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       };
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error updating image metadata: $e');
+      debugPrint('Error updating image metadata: $e');
     }
   }
 
@@ -421,7 +421,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       };
       await _saveAudioMetadata(audioMetadata);
     } catch (e) {
-      dev.log('Error updating audio metadata: $e');
+      debugPrint('Error updating audio metadata: $e');
     }
   }
 
@@ -444,7 +444,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error removing test images: $e');
+      debugPrint('Error removing test images: $e');
     }
   }
 
@@ -467,7 +467,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       await _saveAudioMetadata(audioMetadata);
     } catch (e) {
-      dev.log('Error removing test audio: $e');
+      debugPrint('Error removing test audio: $e');
     }
   }
 
@@ -478,9 +478,9 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         await cacheDir.delete(recursive: true);
         await cacheDir.create(recursive: true);
       }
-      dev.log('Cleared all cached images');
+      debugPrint('Cleared all cached images');
     } catch (e) {
-      dev.log('Error clearing all images: $e');
+      debugPrint('Error clearing all images: $e');
     }
   }
 
@@ -491,9 +491,9 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
         await cacheDir.delete(recursive: true);
         await cacheDir.create(recursive: true);
       }
-      dev.log('Cleared all cached audio');
+      debugPrint('Cleared all cached audio');
     } catch (e) {
-      dev.log('Error clearing all audio: $e');
+      debugPrint('Error clearing all audio: $e');
     }
   }
 
@@ -504,7 +504,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       return json.decode(metadataJson);
     } catch (e) {
-      dev.log('Error reading image metadata: $e');
+      debugPrint('Error reading image metadata: $e');
       return {};
     }
   }
@@ -513,7 +513,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     try {
       await _storageService.setString(imageMetadataKey, json.encode(metadata));
     } catch (e) {
-      dev.log('Error saving image metadata: $e');
+      debugPrint('Error saving image metadata: $e');
     }
   }
 
@@ -524,7 +524,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
       
       return json.decode(metadataJson);
     } catch (e) {
-      dev.log('Error reading audio metadata: $e');
+      debugPrint('Error reading audio metadata: $e');
       return {};
     }
   }
@@ -533,7 +533,7 @@ class UnpublishedTestsLocalDataSourceImpl implements UnpublishedTestsLocalDataSo
     try {
       await _storageService.setString(audioMetadataKey, json.encode(metadata));
     } catch (e) {
-      dev.log('Error saving audio metadata: $e');
+      debugPrint('Error saving audio metadata: $e');
     }
   }
 }

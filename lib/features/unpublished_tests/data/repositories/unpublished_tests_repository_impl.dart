@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -33,7 +33,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       return ApiResult.failure('User not authenticated', FailureType.auth);
     }
 
-    dev.log('Getting unpublished tests for user: $userId - page: $page, pageSize: $pageSize');
+    debugPrint('Getting unpublished tests for user: $userId - page: $page, pageSize: $pageSize');
     
     await _manageUnpublishedCacheValidity(userId);
     
@@ -41,7 +41,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       () async {
         final cachedTests = await localDataSource.getUnpublishedTestsPage(userId, page, pageSize);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} unpublished tests from cache (page $page)');
+          debugPrint('Returning ${cachedTests.length} unpublished tests from cache (page $page)');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -51,7 +51,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
           final requestedEndIndex = (page + 1) * pageSize;
           
           if (requestedEndIndex <= totalCached) {
-            dev.log('Requested unpublished page $page is within cached range but no data found');
+            debugPrint('Requested unpublished page $page is within cached range but no data found');
             return ApiResult.success(<TestItem>[]);
           }
         }
@@ -92,7 +92,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
     }
 
     final categoryString = category.toString().split('.').last;
-    dev.log('Getting unpublished tests by category: $categoryString for user: $userId - page: $page, pageSize: $pageSize');
+    debugPrint('Getting unpublished tests by category: $categoryString for user: $userId - page: $page, pageSize: $pageSize');
     
     await _manageUnpublishedCacheValidity(userId);
     
@@ -100,7 +100,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       () async {
         final cachedTests = await localDataSource.getUnpublishedTestsByCategoryPage(userId, categoryString, page, pageSize);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} unpublished category tests from cache (page $page)');
+          debugPrint('Returning ${cachedTests.length} unpublished category tests from cache (page $page)');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -111,7 +111,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
           final requestedEndIndex = (page + 1) * pageSize;
           
           if (requestedEndIndex <= categoryTests.length) {
-            dev.log('Requested unpublished category page $page is within cached range but no data found');
+            debugPrint('Requested unpublished category page $page is within cached range but no data found');
             return ApiResult.success(<TestItem>[]);
           }
         }
@@ -205,7 +205,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       return ApiResult.failure('User not authenticated', FailureType.auth);
     }
 
-    dev.log('Hard refresh unpublished tests requested for user: $userId');
+    debugPrint('Hard refresh unpublished tests requested for user: $userId');
 
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
@@ -215,7 +215,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh unpublished tests requested but offline - returning cached data');
+        debugPrint('Hard refresh unpublished tests requested but offline - returning cached data');
         final cachedTests = await localDataSource.getUnpublishedTestsPage(userId, 0, pageSize);
         final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
@@ -241,7 +241,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       return ApiResult.failure('User not authenticated', FailureType.auth);
     }
 
-    dev.log('Hard refresh unpublished tests by category requested for user: $userId');
+    debugPrint('Hard refresh unpublished tests by category requested for user: $userId');
     
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
@@ -251,7 +251,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh unpublished category requested but offline - returning cached data');
+        debugPrint('Hard refresh unpublished category requested but offline - returning cached data');
         final categoryString = category.toString().split('.').last;
         final cachedTests = await localDataSource.getUnpublishedTestsByCategoryPage(userId, categoryString, 0, pageSize);
         final processedTests = await _processTestsWithMedia(cachedTests);
@@ -296,13 +296,13 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
-          dev.log('Unpublished search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
+          debugPrint('Unpublished search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
           
           final processedResults = await _processTestsWithMedia(combinedResults);
           return ApiResult.success(processedResults);
           
         } catch (e) {
-          dev.log('Remote unpublished search failed, returning ${cachedResults.length} cached results: $e');
+          debugPrint('Remote unpublished search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
             final processedResults = await _processTestsWithMedia(cachedResults);
             return ApiResult.success(processedResults);
@@ -310,7 +310,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
           rethrow;
         }
       } else {
-        dev.log('Offline unpublished search returned ${cachedResults.length} cached results');
+        debugPrint('Offline unpublished search returned ${cachedResults.length} cached results');
         final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       }
@@ -340,12 +340,12 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       final isValid = cacheAge < cacheValidityDuration;
       
       if (!isValid) {
-        dev.log('Unpublished cache expired: age=${cacheAge.inMinutes}min, limit=${cacheValidityDuration.inMinutes}min');
+        debugPrint('Unpublished cache expired: age=${cacheAge.inMinutes}min, limit=${cacheValidityDuration.inMinutes}min');
       }
       
       return isValid;
     } catch (e) {
-      dev.log('Error checking unpublished cache validity: $e');
+      debugPrint('Error checking unpublished cache validity: $e');
       return false;
     }
   }
@@ -355,14 +355,14 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       final isValid = await _isUnpublishedCacheValid(userId);
       if (!isValid) {
         if (await networkInfo.isConnected) {
-          dev.log('Unpublished cache expired and online, clearing cache');
+          debugPrint('Unpublished cache expired and online, clearing cache');
           await localDataSource.clearAllUnpublishedTests(userId);
         } else {
-          dev.log('Unpublished cache expired but offline, keeping expired cache for offline access');
+          debugPrint('Unpublished cache expired but offline, keeping expired cache for offline access');
         }
       }
     } catch (e) {
-      dev.log('Error managing unpublished cache validity: $e');
+      debugPrint('Error managing unpublished cache validity: $e');
     }
   }
 
@@ -372,9 +372,9 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       await localDataSource.setLastUnpublishedSyncTime(userId, DateTime.now());
       await _updateUnpublishedTestsHashes(userId, tests);
       
-      dev.log('Cached ${tests.length} unpublished tests data only for user: $userId (media will be cached in background)');
+      debugPrint('Cached ${tests.length} unpublished tests data only for user: $userId (media will be cached in background)');
     } catch (e) {
-      dev.log('Failed to cache unpublished tests data: $e');
+      debugPrint('Failed to cache unpublished tests data: $e');
     }
   }
 
@@ -385,20 +385,20 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         await _updateUnpublishedTestHash(userId, test);
       }
       
-      dev.log('Added ${newTests.length} new unpublished tests data to cache for user: $userId (media will be cached in background)');
+      debugPrint('Added ${newTests.length} new unpublished tests data to cache for user: $userId (media will be cached in background)');
     } catch (e) {
-      dev.log('Failed to update unpublished cache with new tests data: $e');
+      debugPrint('Failed to update unpublished cache with new tests data: $e');
     }
   }
 
   void _cacheTestMediaInBackground(List<TestItem> tests) {
     Future.microtask(() async {
       try {
-        dev.log('Starting background media caching for ${tests.length} unpublished tests...');
+        debugPrint('Starting background media caching for ${tests.length} unpublished tests...');
         await _cacheTestMedia(tests);
-        dev.log('Completed background media caching for ${tests.length} unpublished tests');
+        debugPrint('Completed background media caching for ${tests.length} unpublished tests');
       } catch (e) {
-        dev.log('Background media caching failed: $e');
+        debugPrint('Background media caching failed: $e');
       }
     });
   }
@@ -435,7 +435,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
         }
       }
     } catch (e) {
-      dev.log('Error caching test media: $e');
+      debugPrint('Error caching test media: $e');
     }
   }
 
@@ -531,7 +531,7 @@ class UnpublishedTestsRepositoryImpl extends BaseRepository implements Unpublish
       
       return processedTests;
     } catch (e) {
-      dev.log('Error processing tests with media: $e');
+      debugPrint('Error processing tests with media: $e');
       return tests;
     }
   }

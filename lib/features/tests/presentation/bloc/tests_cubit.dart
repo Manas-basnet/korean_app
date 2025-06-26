@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
@@ -48,7 +48,7 @@ class TestsCubit extends Cubit<TestsState> {
       final isConnected = result != ConnectivityResult.none;
       
       if (isConnected && (state.tests.isEmpty || state.hasError)) {
-        dev.log('Connection restored, reloading tests...');
+        debugPrint('Connection restored, reloading tests...');
         if (_currentCategory == TestCategory.all) {
           loadInitialTests(sortType: _currentSortType);
         } else {
@@ -60,7 +60,7 @@ class TestsCubit extends Cubit<TestsState> {
   
   Future<void> loadInitialTests({TestSortType sortType = TestSortType.recent}) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Load operation already in progress, skipping...');
+      debugPrint('Load operation already in progress, skipping...');
       return;
     }
     
@@ -90,7 +90,7 @@ class TestsCubit extends Cubit<TestsState> {
         onSuccess: (loadResult) {
           _currentPage = loadResult.currentPage;
           _operationStopwatch.stop();
-          dev.log('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
+          debugPrint('loadInitialTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
             tests: loadResult.tests,
@@ -106,7 +106,7 @@ class TestsCubit extends Cubit<TestsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadInitialTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadInitialTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -121,14 +121,14 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading initial tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading initial tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load tests: $e', TestsOperationType.loadTests);
     }
   }
 
   Future<void> loadTestsByCategory(TestCategory category, {TestSortType sortType = TestSortType.recent}) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Load operation already in progress, skipping...');
+      debugPrint('Load operation already in progress, skipping...');
       return;
     }
     
@@ -160,7 +160,7 @@ class TestsCubit extends Cubit<TestsState> {
         onSuccess: (loadResult) {
           _currentPage = loadResult.currentPage;
           _operationStopwatch.stop();
-          dev.log('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
+          debugPrint('loadTestsByCategory completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
             tests: loadResult.tests,
@@ -176,7 +176,7 @@ class TestsCubit extends Cubit<TestsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadTestsByCategory failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadTestsByCategory failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -191,7 +191,7 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading tests by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading tests by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load tests: $e', TestsOperationType.loadTests);
     }
   }
@@ -224,7 +224,7 @@ class TestsCubit extends Cubit<TestsState> {
     
     final isConnected = await networkInfo.isConnected;
     if (!isConnected) {
-      dev.log('loadMoreTests skipped - not connected');
+      debugPrint('loadMoreTests skipped - not connected');
       return;
     }
     
@@ -256,7 +256,7 @@ class TestsCubit extends Cubit<TestsState> {
             _currentPage = nextPage;
             
             _operationStopwatch.stop();
-            dev.log('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} new tests');
+            debugPrint('loadMoreTests completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} new tests');
             
             emit(state.copyWith(
               tests: allTests,
@@ -279,7 +279,7 @@ class TestsCubit extends Cubit<TestsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadMoreTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadMoreTests failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message, 
@@ -293,14 +293,14 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading more tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading more tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load more tests: $e', TestsOperationType.loadMoreTests);
     }
   }
   
   Future<void> hardRefresh() async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Refresh operation already in progress, skipping...');
+      debugPrint('Refresh operation already in progress, skipping...');
       return;
     }
     
@@ -333,7 +333,7 @@ class TestsCubit extends Cubit<TestsState> {
           _currentPage = loadResult.currentPage;
           
           _operationStopwatch.stop();
-          dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
+          debugPrint('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.tests.length} tests');
           
           emit(TestsState(
             tests: loadResult.tests,
@@ -348,7 +348,7 @@ class TestsCubit extends Cubit<TestsState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('hardRefresh failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('hardRefresh failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -363,7 +363,7 @@ class TestsCubit extends Cubit<TestsState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error refreshing tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error refreshing tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to refresh tests: $e', TestsOperationType.refreshTests);
     }
   }
@@ -373,7 +373,7 @@ class TestsCubit extends Cubit<TestsState> {
 
   Future<void> loadTestById(String testId) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Load test operation already in progress, skipping...');
+      debugPrint('Load test operation already in progress, skipping...');
       return;
     }
 
@@ -431,12 +431,12 @@ class TestsCubit extends Cubit<TestsState> {
       return result.fold(
         onSuccess: (permissionResult) => permissionResult.canEdit,
         onFailure: (message, type) {
-          dev.log('Failed to check edit permission: $message');
+          debugPrint('Failed to check edit permission: $message');
           return false;
         },
       );
     } catch (e) {
-      dev.log('Error checking edit permission: $e');
+      debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
@@ -471,7 +471,7 @@ class TestsCubit extends Cubit<TestsState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing TestsCubit...');
+    debugPrint('Closing TestsCubit...');
     _connectivitySubscription?.cancel();
     _loadMoreDebounceTimer?.cancel();
     return super.close();

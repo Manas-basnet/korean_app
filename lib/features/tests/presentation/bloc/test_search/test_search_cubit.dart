@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -30,7 +30,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
     final trimmedQuery = query.trim();
     
     if (trimmedQuery.length < 2) {
-      dev.log('Search query too short, clearing search results');
+      debugPrint('Search query too short, clearing search results');
       _lastSearchQuery = '';
       
       emit(state.copyWith(
@@ -50,7 +50,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
     }
     
     if (trimmedQuery == _lastSearchQuery && state.searchResults.isNotEmpty) {
-      dev.log('Duplicate search query, skipping');
+      debugPrint('Duplicate search query, skipping');
       return;
     }
     
@@ -61,7 +61,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
   
   Future<void> _performSearch(String query) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Search operation already in progress, skipping...');
+      debugPrint('Search operation already in progress, skipping...');
       return;
     }
     
@@ -92,7 +92,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
           final uniqueSearchResults = _removeDuplicates(searchResult.tests);
           
           _operationStopwatch.stop();
-          dev.log('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
+          debugPrint('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
           
           emit(state.copyWith(
             searchResults: uniqueSearchResults,
@@ -111,7 +111,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -128,13 +128,13 @@ class TestSearchCubit extends Cubit<TestSearchState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error searching tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error searching tests after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to search tests: $e', TestSearchOperationType.search, query);
     }
   }
 
   void clearSearch() {
-    dev.log('Clearing search results');
+    debugPrint('Clearing search results');
     _searchDebounceTimer?.cancel();
     _lastSearchQuery = '';
     
@@ -161,12 +161,12 @@ class TestSearchCubit extends Cubit<TestSearchState> {
       return result.fold(
         onSuccess: (permissionResult) => permissionResult.canEdit,
         onFailure: (message, type) {
-          dev.log('Failed to check edit permission: $message');
+          debugPrint('Failed to check edit permission: $message');
           return false;
         },
       );
     } catch (e) {
-      dev.log('Error checking edit permission: $e');
+      debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
@@ -202,7 +202,7 @@ class TestSearchCubit extends Cubit<TestSearchState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing TestSearchCubit...');
+    debugPrint('Closing TestSearchCubit...');
     _searchDebounceTimer?.cancel();
     return super.close();
   }

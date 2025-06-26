@@ -1,6 +1,6 @@
 // lib/features/books/data/services/image_cache_service.dart
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -36,7 +36,7 @@ class ImageCacheService {
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        dev.log('Image already cached: $fileName');
+        debugPrint('Image already cached: $fileName');
         return;
       }
       
@@ -52,14 +52,14 @@ class ImageCacheService {
       
       if (response.statusCode == 200 && response.data != null) {
         await file.writeAsBytes(response.data);
-        dev.log('Cached book image: $fileName (${response.data.length} bytes)');
+        debugPrint('Cached book image: $fileName (${response.data.length} bytes)');
         
         await _updateImageMetadata(bookId, imageUrl);
       } else {
-        dev.log('Failed to download book image: $imageUrl (${response.statusCode})');
+        debugPrint('Failed to download book image: $imageUrl (${response.statusCode})');
       }
     } catch (e) {
-      dev.log('Error caching book image $imageUrl: $e');
+      debugPrint('Error caching book image $imageUrl: $e');
     }
   }
 
@@ -73,7 +73,7 @@ class ImageCacheService {
         return file.path;
       }
     } catch (e) {
-      dev.log('Error getting cached image path: $e');
+      debugPrint('Error getting cached image path: $e');
     }
     return null;
   }
@@ -87,14 +87,14 @@ class ImageCacheService {
       for (final fileEntity in files) {
         if (fileEntity is File && fileEntity.path.contains(bookId)) {
           await fileEntity.delete();
-          dev.log('Deleted cached image: ${fileEntity.path}');
+          debugPrint('Deleted cached image: ${fileEntity.path}');
         }
       }
       
       imageMetadata.remove(bookId);
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error removing book images: $e');
+      debugPrint('Error removing book images: $e');
     }
   }
 
@@ -108,9 +108,9 @@ class ImageCacheService {
       
       await _storageService.remove(imageMetadataKey);
       
-      dev.log('Cleared all cached book images');
+      debugPrint('Cleared all cached book images');
     } catch (e) {
-      dev.log('Error clearing all images: $e');
+      debugPrint('Error clearing all images: $e');
     }
   }
 
@@ -128,7 +128,7 @@ class ImageCacheService {
       };
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error updating image metadata: $e');
+      debugPrint('Error updating image metadata: $e');
     }
   }
 
@@ -139,7 +139,7 @@ class ImageCacheService {
       
       return json.decode(metadataJson);
     } catch (e) {
-      dev.log('Error reading image metadata: $e');
+      debugPrint('Error reading image metadata: $e');
       return {};
     }
   }
@@ -148,7 +148,7 @@ class ImageCacheService {
     try {
       await _storageService.setString(imageMetadataKey, json.encode(metadata));
     } catch (e) {
-      dev.log('Error saving image metadata: $e');
+      debugPrint('Error saving image metadata: $e');
     }
   }
 }

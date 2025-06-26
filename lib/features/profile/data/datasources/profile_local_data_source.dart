@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/features/profile/data/models/profile_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -41,10 +41,10 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
         mobileNumber: profileData['mobileNumber'],
       );
       
-      dev.log('Retrieved cached profile for user: $userId');
+      debugPrint('Retrieved cached profile for user: $userId');
       return profile;
     } catch (e) {
-      dev.log('Error reading cached profile: $e');
+      debugPrint('Error reading cached profile: $e');
       await clearCachedProfile(userId);
       return null;
     }
@@ -72,9 +72,9 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
       await sharedPreferences.setString(cacheKey, jsonString);
       await sharedPreferences.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
       
-      dev.log('Cached profile for user: ${profile.id}');
+      debugPrint('Cached profile for user: ${profile.id}');
     } catch (e) {
-      dev.log('Error caching profile: $e');
+      debugPrint('Error caching profile: $e');
       throw Exception('Failed to cache profile: $e');
     }
   }
@@ -88,9 +88,9 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
       await sharedPreferences.remove(cacheKey);
       await sharedPreferences.remove(timestampKey);
       
-      dev.log('Cleared cached profile for user: $userId');
+      debugPrint('Cleared cached profile for user: $userId');
     } catch (e) {
-      dev.log('Error clearing cached profile: $e');
+      debugPrint('Error clearing cached profile: $e');
     }
   }
 
@@ -125,6 +125,6 @@ class ProfileLocalDataSourceImpl implements ProfileLocalDataSource {
   Future<void> invalidateCache(String userId) async {
     final timestampKey = '$_timestampPrefix$userId';
     await sharedPreferences.remove(timestampKey);
-    dev.log('Invalidated cache for user: $userId');
+    debugPrint('Invalidated cache for user: $userId');
   }
 }

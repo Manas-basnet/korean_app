@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/test_results/data/datasources/test_results_local_datasources.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -22,7 +22,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
       final List<dynamic> decodedJson = json.decode(jsonString);
       return decodedJson.map((item) => TestResult.fromJson(item)).toList();
     } catch (e) {
-      dev.log('Error reading user results from storage: $e');
+      debugPrint('Error reading user results from storage: $e');
       return [];
     }
   }
@@ -35,7 +35,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
       final jsonString = json.encode(jsonList);
       await _storageService.setString(key, jsonString);
     } catch (e) {
-      dev.log('Error saving user results: $e');
+      debugPrint('Error saving user results: $e');
       throw Exception('Failed to save user results: $e');
     }
   }
@@ -50,7 +50,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
       final Map<String, dynamic> data = json.decode(jsonString);
       return TestResult.fromJson(data);
     } catch (e) {
-      dev.log('Error reading latest result from storage: $e');
+      debugPrint('Error reading latest result from storage: $e');
       return null;
     }
   }
@@ -74,7 +74,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
       
       await saveUserResults(result.userId, limitedResults);
     } catch (e) {
-      dev.log('Error saving test result: $e');
+      debugPrint('Error saving test result: $e');
       throw Exception('Failed to save test result: $e');
     }
   }
@@ -93,7 +93,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
         await _storageService.remove(key);
       }
     } catch (e) {
-      dev.log('Error clearing user results: $e');
+      debugPrint('Error clearing user results: $e');
     }
   }
 
@@ -109,7 +109,7 @@ class TestResultsLocalDataSourceImpl implements TestResultsLocalDataSource {
         await _storageService.remove(key);
       }
     } catch (e) {
-      dev.log('Error clearing all results: $e');
+      debugPrint('Error clearing all results: $e');
     }
   }
 }

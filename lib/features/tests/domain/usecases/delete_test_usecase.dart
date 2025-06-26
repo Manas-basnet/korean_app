@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
@@ -33,7 +33,7 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
   @override
   Future<ApiResult<void>> execute(DeleteTestParams params) async {
     try {
-      dev.log('DeleteTestUseCase: Attempting to delete test ${params.testId}');
+      debugPrint('DeleteTestUseCase: Attempting to delete test ${params.testId}');
 
       // Business Rule: Validate test ID
       if (params.testId.isEmpty) {
@@ -46,7 +46,7 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
       // Business Rule: Must be authenticated
       final user = authService.getCurrentUser();
       if (user == null) {
-        dev.log('DeleteTestUseCase: User not authenticated');
+        debugPrint('DeleteTestUseCase: User not authenticated');
         return ApiResult.failure(
           'You must be logged in to delete a test',
           FailureType.auth,
@@ -61,7 +61,7 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
       );
 
       if (test == null) {
-        dev.log('DeleteTestUseCase: Test ${params.testId} not found');
+        debugPrint('DeleteTestUseCase: Test ${params.testId} not found');
         return ApiResult.failure(
           'Test not found',
           FailureType.notFound,
@@ -83,7 +83,7 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
         );
 
         if (!canDelete) {
-          dev.log('DeleteTestUseCase: User does not have permission to delete test');
+          debugPrint('DeleteTestUseCase: User does not have permission to delete test');
           return ApiResult.failure(
             'You do not have permission to delete this test',
             FailureType.permission,
@@ -105,11 +105,11 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
         // In a real implementation, you would have:
         // final deleteResult = await repository.deleteTest(params.testId);
         
-        dev.log('DeleteTestUseCase: Successfully deleted test ${params.testId}');
+        debugPrint('DeleteTestUseCase: Successfully deleted test ${params.testId}');
         return ApiResult.success(null);
         
       } catch (e) {
-        dev.log('DeleteTestUseCase: Failed to delete test - $e');
+        debugPrint('DeleteTestUseCase: Failed to delete test - $e');
         return ApiResult.failure(
           'Failed to delete test: $e',
           FailureType.unknown,
@@ -117,7 +117,7 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
       }
 
     } catch (e) {
-      dev.log('DeleteTestUseCase: Unexpected error - $e');
+      debugPrint('DeleteTestUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to delete test: $e', FailureType.unknown);
     }
   }
@@ -129,13 +129,13 @@ class DeleteTestUseCase implements UseCase<void, DeleteTestParams> {
     // Business Rule: Cannot delete test that has been taken by many users
     // This is a business decision - you might want to soft delete instead
     if (test.viewCount > 100) {
-      dev.log('DeleteTestUseCase: Test has high view count (${test.viewCount}), suggesting soft delete');
+      debugPrint('DeleteTestUseCase: Test has high view count (${test.viewCount}), suggesting soft delete');
       // You might return an error here or implement soft delete logic
     }
 
     // Business Rule: Published tests require special handling
     if (test.isPublished && test.ratingCount > 10) {
-      dev.log('DeleteTestUseCase: Test is published with ratings, considering impact');
+      debugPrint('DeleteTestUseCase: Test is published with ratings, considering impact');
       // You might want to warn the user or require confirmation
     }
 

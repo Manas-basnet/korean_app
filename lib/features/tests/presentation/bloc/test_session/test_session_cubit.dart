@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -56,7 +56,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         _startQuestionTimer(currentQuestion.timeLimit);
       }
       
-      dev.log('Started test: ${test.title} for user: ${user.uid}');
+      debugPrint('Started test: ${test.title} for user: ${user.uid}');
     } catch (e) {
       emit(TestSessionError('Failed to start test: $e', FailureType.unknown));
     }
@@ -89,7 +89,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
 
       emit(TestSessionInProgress(updatedSession));
       
-      dev.log('Answered question ${session.currentQuestionIndex + 1}: ${answer.isCorrect ? 'Correct' : 'Incorrect'}');
+      debugPrint('Answered question ${session.currentQuestionIndex + 1}: ${answer.isCorrect ? 'Correct' : 'Incorrect'}');
     } catch (e) {
       emit(TestSessionError('Failed to answer question: $e', FailureType.unknown));
     }
@@ -118,10 +118,10 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           _startQuestionTimer(nextQuestion.timeLimit);
         }
         
-        dev.log('Moved to question ${nextIndex + 1}/${session.test.questions.length}');
+        debugPrint('Moved to question ${nextIndex + 1}/${session.test.questions.length}');
       } else {
         // Last question reached - don't auto-complete, wait for user to finish
-        dev.log('Reached last question, waiting for user to finish manually');
+        debugPrint('Reached last question, waiting for user to finish manually');
       }
     } catch (e) {
       emit(TestSessionError('Failed to proceed to next question: $e', FailureType.unknown));
@@ -151,7 +151,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           _startQuestionTimer(prevQuestion.timeLimit);
         }
         
-        dev.log('Moved back to question ${prevIndex + 1}/${session.test.questions.length}');
+        debugPrint('Moved back to question ${prevIndex + 1}/${session.test.questions.length}');
       }
     } catch (e) {
       emit(TestSessionError('Failed to go to previous question: $e', FailureType.unknown));
@@ -180,7 +180,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           _startQuestionTimer(question.timeLimit);
         }
         
-        dev.log('Jumped to question ${questionIndex + 1}/${session.test.questions.length}');
+        debugPrint('Jumped to question ${questionIndex + 1}/${session.test.questions.length}');
       }
     } catch (e) {
       emit(TestSessionError('Failed to go to question: $e', FailureType.unknown));
@@ -207,7 +207,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       final session = currentState.session;
       
-      dev.log('Completing test session using use case (manual: $isManualCompletion, rating: $rating)...');
+      debugPrint('Completing test session using use case (manual: $isManualCompletion, rating: $rating)...');
       
       final result = await completeTestSessionUseCase.execute(
         CompleteTestSessionParams(session: session, rating: rating)
@@ -215,7 +215,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       result.fold(
         onSuccess: (completionResult) {
-          dev.log('Test session completed successfully');
+          debugPrint('Test session completed successfully');
           if (!isClosed) {
             emit(TestSessionCompleted(
               completionResult.testResult,
@@ -224,7 +224,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
           }
         },
         onFailure: (message, type) {
-          dev.log('Failed to complete test session: $message');
+          debugPrint('Failed to complete test session: $message');
           if (!isClosed) {
             emit(TestSessionError('Failed to complete test: $message', type));
           }
@@ -232,7 +232,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       );
       
     } catch (e) {
-      dev.log('Error completing test: $e');
+      debugPrint('Error completing test: $e');
       if (!isClosed) {
         emit(TestSessionError('Failed to complete test: $e', FailureType.unknown));
       }
@@ -250,7 +250,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         onFailure: (_, __) => null,
       );
     } catch (e) {
-      dev.log('Failed to get existing rating: $e');
+      debugPrint('Failed to get existing rating: $e');
       return null;
     }
   }
@@ -267,7 +267,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       final updatedSession = session.copyWith(isPaused: true);
       
       emit(TestSessionPaused(updatedSession));
-      dev.log('Test paused');
+      debugPrint('Test paused');
     } catch (e) {
       emit(TestSessionError('Failed to pause test: $e', FailureType.unknown));
     }
@@ -295,7 +295,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
         _startQuestionTimer(currentQuestion.timeLimit);
       }
       
-      dev.log('Test resumed');
+      debugPrint('Test resumed');
     } catch (e) {
       emit(TestSessionError('Failed to resume test: $e', FailureType.unknown));
     }
@@ -307,7 +307,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       _questionTimer?.cancel();
       
       emit(const TestSessionInitial());
-      dev.log('Test cancelled');
+      debugPrint('Test cancelled');
     } catch (e) {
       emit(TestSessionError('Failed to cancel test: $e', FailureType.unknown));
     }
@@ -331,7 +331,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
       
       if (newTimeRemaining <= 0) {
         timer.cancel();
-        dev.log('Test time expired, completing automatically');
+        debugPrint('Test time expired, completing automatically');
         completeTestAutomatically();
       } else {
         final updatedSession = session.copyWith(timeRemaining: newTimeRemaining);

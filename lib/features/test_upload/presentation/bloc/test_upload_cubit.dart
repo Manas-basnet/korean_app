@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
@@ -28,7 +28,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
   /// Create test with optional image - atomic operation
   Future<void> createTest(TestItem test, {File? imageFile}) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Create test operation already in progress, skipping...');
+      debugPrint('Create test operation already in progress, skipping...');
       return;
     }
 
@@ -51,7 +51,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       result.fold(
         onSuccess: (createdTest) {
           _operationStopwatch.stop();
-          dev.log('Test created successfully in ${_operationStopwatch.elapsedMilliseconds}ms: ${createdTest.title} with ID: ${createdTest.id}');
+          debugPrint('Test created successfully in ${_operationStopwatch.elapsedMilliseconds}ms: ${createdTest.title} with ID: ${createdTest.id}');
           
           emit(state.copyWith(
             isLoading: false,
@@ -67,7 +67,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Test creation failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Test creation failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -83,7 +83,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error creating test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error creating test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to create test: $e', TestUploadOperationType.createTest);
     }
   }
@@ -91,7 +91,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
   /// Update test with optional new image - atomic operation
   Future<void> updateTest(String testId, TestItem updatedTest, {File? imageFile}) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Update test operation already in progress, skipping...');
+      debugPrint('Update test operation already in progress, skipping...');
       return;
     }
 
@@ -115,7 +115,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       result.fold(
         onSuccess: (updatedTestResult) {
           _operationStopwatch.stop();
-          dev.log('Test updated successfully in ${_operationStopwatch.elapsedMilliseconds}ms: ${updatedTestResult.title}');
+          debugPrint('Test updated successfully in ${_operationStopwatch.elapsedMilliseconds}ms: ${updatedTestResult.title}');
           
           emit(state.copyWith(
             isLoading: false,
@@ -132,7 +132,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Test update failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Test update failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -149,7 +149,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error updating test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error updating test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to update test: $e', TestUploadOperationType.updateTest, testId);
     }
   }
@@ -157,7 +157,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
   /// Delete test and all associated files
   Future<void> deleteTest(String testId) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Delete test operation already in progress, skipping...');
+      debugPrint('Delete test operation already in progress, skipping...');
       return;
     }
 
@@ -183,7 +183,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
           _operationStopwatch.stop();
           
           if (success) {
-            dev.log('Test deleted successfully in ${_operationStopwatch.elapsedMilliseconds}ms: $testId');
+            debugPrint('Test deleted successfully in ${_operationStopwatch.elapsedMilliseconds}ms: $testId');
             emit(state.copyWith(
               isLoading: false,
               error: null,
@@ -209,7 +209,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Test deletion failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Test deletion failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -226,7 +226,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error deleting test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error deleting test after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to delete test: $e', TestUploadOperationType.deleteTest, testId);
     }
   }
@@ -244,7 +244,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       
       return false;
     } catch (e) {
-      dev.log('Error uploading new test: $e');
+      debugPrint('Error uploading new test: $e');
       return false;
     }
   }
@@ -261,7 +261,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       
       return false;
     } catch (e) {
-      dev.log('Error updating existing test: $e');
+      debugPrint('Error updating existing test: $e');
       return false;
     }
   }
@@ -278,7 +278,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
       
       return false;
     } catch (e) {
-      dev.log('Error deleting test: $e');
+      debugPrint('Error deleting test: $e');
       return false;
     }
   }
@@ -288,23 +288,23 @@ class TestUploadCubit extends Cubit<TestUploadState> {
     try {
       final UserEntity? user = _getCurrentUser();
       if (user == null) {
-        dev.log('No authenticated user for edit permission check');
+        debugPrint('No authenticated user for edit permission check');
         return false;
       }
       
       final result = await repository.hasEditPermission(testId, user.uid);
       return result.fold(
         onSuccess: (hasPermission) {
-          dev.log('Edit permission for test $testId: $hasPermission (user: ${user.uid})');
+          debugPrint('Edit permission for test $testId: $hasPermission (user: ${user.uid})');
           return hasPermission;
         },
         onFailure: (_, __) {
-          dev.log('Error checking edit permission for test $testId');
+          debugPrint('Error checking edit permission for test $testId');
           return false;
         },
       );
     } catch (e) {
-      dev.log('Error checking edit permission: $e');
+      debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
@@ -344,7 +344,7 @@ class TestUploadCubit extends Cubit<TestUploadState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing TestUploadCubit...');
+    debugPrint('Closing TestUploadCubit...');
     return super.close();
   }
 }

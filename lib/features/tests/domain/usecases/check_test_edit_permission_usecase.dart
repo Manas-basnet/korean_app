@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
@@ -20,11 +20,11 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
   @override
   Future<ApiResult<TestPermissionResult>> execute(CheckTestPermissionParams params) async {
     try {
-      dev.log('CheckTestEditPermissionUseCase: Checking permissions for test ${params.testId}');
+      debugPrint('CheckTestEditPermissionUseCase: Checking permissions for test ${params.testId}');
 
       final user = authService.getCurrentUser();
       if (user == null) {
-        dev.log('CheckTestEditPermissionUseCase: User not authenticated');
+        debugPrint('CheckTestEditPermissionUseCase: User not authenticated');
         return ApiResult.success(const TestPermissionResult(
           canEdit: false,
           canDelete: false,
@@ -41,7 +41,7 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
       try {
         isAdmin = await adminPermissionService.isUserAdmin(user.uid);
         if (isAdmin) {
-          dev.log('CheckTestEditPermissionUseCase: User is admin, granting full permissions');
+          debugPrint('CheckTestEditPermissionUseCase: User is admin, granting full permissions');
           return ApiResult.success(const TestPermissionResult(
             canEdit: true,
             canDelete: true,
@@ -50,7 +50,7 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
           ));
         }
       } catch (e) {
-        dev.log('CheckTestEditPermissionUseCase: Error checking admin status - $e');
+        debugPrint('CheckTestEditPermissionUseCase: Error checking admin status - $e');
       }
 
       bool isOwner = false;
@@ -59,7 +59,7 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
       }
 
       if (isOwner) {
-        dev.log('CheckTestEditPermissionUseCase: User is test owner, granting edit permissions');
+        debugPrint('CheckTestEditPermissionUseCase: User is test owner, granting edit permissions');
         return ApiResult.success(const TestPermissionResult(
           canEdit: true,
           canDelete: true,
@@ -68,7 +68,7 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
         ));
       }
 
-      dev.log('CheckTestEditPermissionUseCase: Regular user, view-only permissions');
+      debugPrint('CheckTestEditPermissionUseCase: Regular user, view-only permissions');
       return ApiResult.success(const TestPermissionResult(
         canEdit: false,
         canDelete: false,
@@ -77,7 +77,7 @@ class CheckTestEditPermissionUseCase implements UseCase<TestPermissionResult, Ch
       ));
 
     } catch (e) {
-      dev.log('CheckTestEditPermissionUseCase: Unexpected error - $e');
+      debugPrint('CheckTestEditPermissionUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to check permissions: $e', FailureType.unknown);
     }
   }

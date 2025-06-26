@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -23,7 +23,7 @@ class GetUserLatestResultUseCase implements UseCase<TestResult?, GetUserLatestRe
   @override
   Future<ApiResult<TestResult?>> execute(GetUserLatestResultParams params) async {
     try {
-      dev.log('GetUserLatestResultUseCase: Getting latest result for test ${params.testId}');
+      debugPrint('GetUserLatestResultUseCase: Getting latest result for test ${params.testId}');
 
       final user = authService.getCurrentUser();
       if (user == null) {
@@ -37,7 +37,7 @@ class GetUserLatestResultUseCase implements UseCase<TestResult?, GetUserLatestRe
       return await repository.getUserLatestResult(user.uid, params.testId);
 
     } catch (e) {
-      dev.log('GetUserLatestResultUseCase: Unexpected error - $e');
+      debugPrint('GetUserLatestResultUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to get latest result: $e', FailureType.unknown);
     }
   }

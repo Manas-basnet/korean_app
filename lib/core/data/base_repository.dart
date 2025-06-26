@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
@@ -35,7 +35,7 @@ abstract class BaseRepository {
           try {
             await cacheData(result.data as T);
           } catch (e) {
-            dev.log('Cache error: $e');
+            debugPrint('Cache error: $e');
           }
         }
         
@@ -50,7 +50,7 @@ abstract class BaseRepository {
         final delay = Duration(seconds: initialRetryDelay.inSeconds * attempt);
         await Future.delayed(delay);
         
-        dev.log('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
+        debugPrint('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
       }
     }
     
@@ -85,7 +85,7 @@ abstract class BaseRepository {
           try {
             await cacheData(result.data as T);
           } catch (e) {
-            dev.log('Cache error: $e');
+            debugPrint('Cache error: $e');
           }
         }
         
@@ -100,7 +100,7 @@ abstract class BaseRepository {
         final delay = Duration(seconds: initialRetryDelay.inSeconds * attempt);
         await Future.delayed(delay);
         
-        dev.log('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
+        debugPrint('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
       }
     }
     

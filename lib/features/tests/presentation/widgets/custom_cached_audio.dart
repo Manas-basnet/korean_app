@@ -76,11 +76,14 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
   }
 
   Future<void> _resolveAudioSource() async {
-    if (_isResolving) return;
-    
-    if (widget.audioPath == _lastAudioPath && widget.audioUrl == _lastAudioUrl && _cachedAudioSource != null) {
+    if (_isResolving) {
       return;
     }
+    
+    if (audioPath == _lastAudioPath && audioUrl == _lastAudioUrl && _cachedAudioSource != null) {
+      return;
+    }
+  
     
     setState(() {
       _isResolving = true;
@@ -90,10 +93,11 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
       final audioSource = await _determineAudioSource();
       
       if (mounted) {
+        
         setState(() {
           _cachedAudioSource = audioSource;
-          _lastAudioPath = widget.audioPath;
-          _lastAudioUrl = widget.audioUrl;
+          _lastAudioPath = audioPath;
+          _lastAudioUrl = audioUrl;
           _isResolving = false;
         });
       }
@@ -101,8 +105,8 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
       if (mounted) {
         setState(() {
           _cachedAudioSource = AudioDisplaySource(type: AudioDisplayType.none);
-          _lastAudioPath = widget.audioPath;
-          _lastAudioUrl = widget.audioUrl;
+          _lastAudioPath = audioPath;
+          _lastAudioUrl = audioUrl;
           _isResolving = false;
         });
       }
@@ -145,8 +149,13 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
 
   Future<String?> _resolveAudioPath(String path) async {
     try {
+
       if (path.startsWith('/')) {
-        return path;
+        if (await File(path).exists()) {
+          return path;
+        } else {
+          return null;
+        }
       }
       
       final documentsDir = await getApplicationDocumentsDirectory();
@@ -163,18 +172,9 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
         return cachePath;
       }
       
-      if (path.contains('/')) {
-        final fileName = path.split('/').last;
-        final files = await cacheDir.list().toList();
-        
-        for (final fileEntity in files) {
-          if (fileEntity is File && fileEntity.path.endsWith(fileName)) {
-            return fileEntity.path;
-          }
-        }
-      }
       
       return null;
+      
     } catch (e) {
       return null;
     }

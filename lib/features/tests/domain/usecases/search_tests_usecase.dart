@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -48,12 +48,12 @@ class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams>
   @override
   Future<ApiResult<TestSearchResult>> execute(SearchTestsParams params) async {
     try {
-      dev.log('SearchTestsUseCase: Searching tests with query "${params.query}"');
+      debugPrint('SearchTestsUseCase: Searching tests with query "${params.query}"');
 
       // Business Rule: Validate search query
       final trimmedQuery = params.query.trim();
       if (trimmedQuery.isEmpty) {
-        dev.log('SearchTestsUseCase: Empty search query');
+        debugPrint('SearchTestsUseCase: Empty search query');
         return ApiResult.success(TestSearchResult(
           tests: const [],
           query: trimmedQuery,
@@ -64,7 +64,7 @@ class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams>
 
       // Business Rule: Minimum query length
       if (trimmedQuery.length < 2) {
-        dev.log('SearchTestsUseCase: Query too short (${trimmedQuery.length} characters)');
+        debugPrint('SearchTestsUseCase: Query too short (${trimmedQuery.length} characters)');
         return ApiResult.failure(
           'Search query must be at least 2 characters long',
           FailureType.validation,
@@ -73,7 +73,7 @@ class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams>
 
       // Business Rule: Maximum query length
       if (trimmedQuery.length > 100) {
-        dev.log('SearchTestsUseCase: Query too long (${trimmedQuery.length} characters)');
+        debugPrint('SearchTestsUseCase: Query too long (${trimmedQuery.length} characters)');
         return ApiResult.failure(
           'Search query cannot exceed 100 characters',
           FailureType.validation,
@@ -105,7 +105,7 @@ class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams>
           // Business Rule: Apply limit
           final limitedTests = tests.take(params.limit).toList();
           
-          dev.log('SearchTestsUseCase: Found ${limitedTests.length} tests for query "$sanitizedQuery"');
+          debugPrint('SearchTestsUseCase: Found ${limitedTests.length} tests for query "$sanitizedQuery"');
 
           return ApiResult.success(TestSearchResult(
             tests: limitedTests,
@@ -115,13 +115,13 @@ class SearchTestsUseCase implements UseCase<TestSearchResult, SearchTestsParams>
           ));
         },
         onFailure: (message, type) {
-          dev.log('SearchTestsUseCase: Search failed - $message');
+          debugPrint('SearchTestsUseCase: Search failed - $message');
           return ApiResult.failure(message, type);
         },
       );
 
     } catch (e) {
-      dev.log('SearchTestsUseCase: Unexpected error - $e');
+      debugPrint('SearchTestsUseCase: Unexpected error - $e');
       return ApiResult.failure('Search failed: $e', FailureType.unknown);
     }
   }

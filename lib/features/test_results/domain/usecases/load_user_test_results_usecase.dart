@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -27,7 +27,7 @@ class LoadUserTestResultsUseCase implements UseCase<List<TestResult>, LoadUserTe
   @override
   Future<ApiResult<List<TestResult>>> execute(LoadUserTestResultsParams params) async {
     try {
-      dev.log('LoadUserTestResultsUseCase: Loading results with limit ${params.limit}');
+      debugPrint('LoadUserTestResultsUseCase: Loading results with limit ${params.limit}');
 
       final user = authService.getCurrentUser();
       if (user == null) {
@@ -45,7 +45,7 @@ class LoadUserTestResultsUseCase implements UseCase<List<TestResult>, LoadUserTe
       return await repository.getUserTestResults(user.uid, limit: params.limit);
 
     } catch (e) {
-      dev.log('LoadUserTestResultsUseCase: Unexpected error - $e');
+      debugPrint('LoadUserTestResultsUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to load test results: $e', FailureType.unknown);
     }
   }

@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -17,7 +17,7 @@ class SaveTestResultUseCase implements UseCase<bool, TestResult> {
   @override
   Future<ApiResult<bool>> execute(TestResult result) async {
     try {
-      dev.log('SaveTestResultUseCase: Saving test result for ${result.testTitle}');
+      debugPrint('SaveTestResultUseCase: Saving test result for ${result.testTitle}');
 
       final user = authService.getCurrentUser();
       if (user == null) {
@@ -46,7 +46,7 @@ class SaveTestResultUseCase implements UseCase<bool, TestResult> {
       return await repository.saveTestResult(validatedResult);
 
     } catch (e) {
-      dev.log('SaveTestResultUseCase: Unexpected error - $e');
+      debugPrint('SaveTestResultUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to save test result: $e', FailureType.unknown);
     }
   }

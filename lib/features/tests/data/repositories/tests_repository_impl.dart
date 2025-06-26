@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
@@ -34,7 +34,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
   }) async {
-    dev.log('Getting tests - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
+    debugPrint('Getting tests - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
     
     await _manageCacheValidity();
     
@@ -42,7 +42,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       () async {
         final cachedTests = await localDataSource.getTestsPage(page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} tests from cache (page $page, sortType: ${sortType.name})');
+          debugPrint('Returning ${cachedTests.length} tests from cache (page $page, sortType: ${sortType.name})');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -52,7 +52,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final currentCount = page * pageSize;
 
           if(totalCached > currentCount) {
-            dev.log('Requested page $page is within cached range but no data found');
+            debugPrint('Requested page $page is within cached range but no data found');
             return ApiResult.success(<TestItem>[]);
           }
         }
@@ -94,7 +94,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     TestSortType sortType = TestSortType.recent
   }) async {
     final categoryString = category.toString().split('.').last;
-    dev.log('Getting tests by category: $categoryString - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
+    debugPrint('Getting tests by category: $categoryString - page: $page, pageSize: $pageSize, sortType: ${sortType.name}');
     
     await _manageCacheValidity();
     
@@ -102,7 +102,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       () async {
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
-          dev.log('Returning ${cachedTests.length} category tests from cache (page $page, sortType: ${sortType.name})');
+          debugPrint('Returning ${cachedTests.length} category tests from cache (page $page, sortType: ${sortType.name})');
           final processedTests = await _processTestsWithMedia(cachedTests);
           return ApiResult.success(processedTests);
         }
@@ -113,7 +113,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final requestedEndIndex = (page + 1) * pageSize;
           
           if (requestedEndIndex <= categoryTests.length) {
-            dev.log('Requested category page $page is within cached range but no data found');
+            debugPrint('Requested category page $page is within cached range but no data found');
             return ApiResult.success(<TestItem>[]);
           }
         }
@@ -192,7 +192,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
   }) async {
-    dev.log('Hard refresh requested with sortType: ${sortType.name}');
+    debugPrint('Hard refresh requested with sortType: ${sortType.name}');
 
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
@@ -206,7 +206,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh requested but offline - returning cached data with sortType: ${sortType.name}');
+        debugPrint('Hard refresh requested but offline - returning cached data with sortType: ${sortType.name}');
         final cachedTests = await localDataSource.getTestsPage(0, pageSize, sortType: sortType);
         final processedTests = await _processTestsWithMedia(cachedTests);
         return ApiResult.success(processedTests);
@@ -231,7 +231,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
   }) async {
-    dev.log('Hard refresh category requested with sortType: ${sortType.name}');
+    debugPrint('Hard refresh category requested with sortType: ${sortType.name}');
     
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
@@ -246,7 +246,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(remoteTests);
       },
       cacheCall: () async {
-        dev.log('Hard refresh category requested but offline - returning cached data with sortType: ${sortType.name}');
+        debugPrint('Hard refresh category requested but offline - returning cached data with sortType: ${sortType.name}');
         final categoryString = category.toString().split('.').last;
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, 0, pageSize, sortType: sortType);
         final processedTests = await _processTestsWithMedia(cachedTests);
@@ -286,13 +286,13 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
-          dev.log('Search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
+          debugPrint('Search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
           
           final processedResults = await _processTestsWithMedia(combinedResults);
           return ApiResult.success(processedResults);
           
         } catch (e) {
-          dev.log('Remote search failed, returning ${cachedResults.length} cached results: $e');
+          debugPrint('Remote search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
             final processedResults = await _processTestsWithMedia(cachedResults);
             return ApiResult.success(processedResults);
@@ -300,7 +300,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           rethrow;
         }
       } else {
-        dev.log('Offline search returned ${cachedResults.length} cached results');
+        debugPrint('Offline search returned ${cachedResults.length} cached results');
         final processedResults = await _processTestsWithMedia(cachedResults);
         return ApiResult.success(processedResults);
       }
@@ -336,7 +336,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
             return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
           }
           
-          dev.log('Cache expired or media missing for test ${cachedTest.id}, will refresh from remote');
+          debugPrint('Cache expired or media missing for test ${cachedTest.id}, will refresh from remote');
           return ApiResult.failure('Cache expired or media missing', FailureType.cache);
         },
         () async {
@@ -347,7 +347,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           if (remoteTest != null) {
             await localDataSource.updateTest(remoteTest);
             await _updateTestHash(remoteTest);
-            dev.log('Caching full media for individual test: ${remoteTest.id}');
+            debugPrint('Caching full media for individual test: ${remoteTest.id}');
 
             _cacheTestMediaInBackground([remoteTest]);
           }
@@ -373,7 +373,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(null);
       },
       cacheCall: () async {
-        dev.log('Cannot record test view offline');
+        debugPrint('Cannot record test view offline');
         return ApiResult.success(null);
       },
     );
@@ -387,7 +387,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(null);
       },
       cacheCall: () async {
-        dev.log('Cannot rate test offline');
+        debugPrint('Cannot rate test offline');
         return ApiResult.success(null);
       },
     );
@@ -401,7 +401,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         return ApiResult.success(updatedInteractionData);
       },
       cacheCall: () async {
-        dev.log('Cannot complete test with view and rating offline');
+        debugPrint('Cannot complete test with view and rating offline');
         return ApiResult.success(null);
       },
       cacheData: (interaction) async {
@@ -444,12 +444,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       final isValid = cacheAge < cacheValidityDuration;
       
       if (!isValid) {
-        dev.log('Cache expired: age=${cacheAge.inMinutes}min, limit=${cacheValidityDuration.inMinutes}min');
+        debugPrint('Cache expired: age=${cacheAge.inMinutes}min, limit=${cacheValidityDuration.inMinutes}min');
       }
       
       return isValid;
     } catch (e) {
-      dev.log('Error checking cache validity: $e');
+      debugPrint('Error checking cache validity: $e');
       return false;
     }
   }
@@ -459,14 +459,14 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       final isValid = await _isCacheValid();
       if (!isValid) {
         if (await networkInfo.isConnected) {
-          dev.log('Cache expired and online, clearing cache');
+          debugPrint('Cache expired and online, clearing cache');
           await localDataSource.clearAllTests();
         } else {
-          dev.log('Cache expired but offline, keeping expired cache for offline access');
+          debugPrint('Cache expired but offline, keeping expired cache for offline access');
         }
       }
     } catch (e) {
-      dev.log('Error managing cache validity: $e');
+      debugPrint('Error managing cache validity: $e');
     }
   }
 
@@ -476,9 +476,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       await localDataSource.setLastSyncTime(DateTime.now());
       await _updateTestsHashes(tests);
       
-      dev.log('Cached ${tests.length} tests data only (media will be cached on-demand)');
+      debugPrint('Cached ${tests.length} tests data only (media will be cached on-demand)');
     } catch (e) {
-      dev.log('Failed to cache tests data: $e');
+      debugPrint('Failed to cache tests data: $e');
     }
   }
 
@@ -489,9 +489,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         await _updateTestHash(test);
       }
       
-      dev.log('Added ${newTests.length} new tests data to cache (media will be cached on-demand)');
+      debugPrint('Added ${newTests.length} new tests data to cache (media will be cached on-demand)');
     } catch (e) {
-      dev.log('Failed to update cache with new tests data: $e');
+      debugPrint('Failed to update cache with new tests data: $e');
     }
   }
 
@@ -500,7 +500,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
         final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
         if (cachedPath == null) {
-          dev.log('Cover image not cached for test: ${test.id}');
+          debugPrint('Cover image not cached for test: ${test.id}');
           return false;
         }
       }
@@ -510,7 +510,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
           final cachedPath = await localDataSource.getCachedImagePath(question.questionImageUrl!, test.id, 'question_$i');
           if (cachedPath == null) {
-            dev.log('Question image not cached for test: ${test.id}, question: $i');
+            debugPrint('Question image not cached for test: ${test.id}, question: $i');
             return false;
           }
         }
@@ -518,7 +518,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
           final cachedPath = await localDataSource.getCachedAudioPath(question.questionAudioUrl!, test.id, 'question_audio_$i');
           if (cachedPath == null) {
-            dev.log('Question audio not cached for test: ${test.id}, question: $i');
+            debugPrint('Question audio not cached for test: ${test.id}, question: $i');
             return false;
           }
         }
@@ -529,7 +529,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
             final cachedPath = await localDataSource.getCachedImagePath(option.imageUrl!, test.id, 'answer_${i}_$j');
             if (cachedPath == null) {
-              dev.log('Answer image not cached for test: ${test.id}, question: $i, option: $j');
+              debugPrint('Answer image not cached for test: ${test.id}, question: $i, option: $j');
               return false;
             }
           }
@@ -537,17 +537,17 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
             final cachedPath = await localDataSource.getCachedAudioPath(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
             if (cachedPath == null) {
-              dev.log('Answer audio not cached for test: ${test.id}, question: $i, option: $j');
+              debugPrint('Answer audio not cached for test: ${test.id}, question: $i, option: $j');
               return false;
             }
           }
         }
       }
       
-      dev.log('All media cached for test: ${test.id}');
+      debugPrint('All media cached for test: ${test.id}');
       return true;
     } catch (e) {
-      dev.log('Error checking cached media for test: ${test.id}, error: $e');
+      debugPrint('Error checking cached media for test: ${test.id}, error: $e');
       return false;
     }
   }
@@ -555,11 +555,11 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   void _cacheTestMediaInBackground(List<TestItem> tests) {
     Future.microtask(() async {
       try {
-        dev.log('Starting background media caching for ${tests.length} tests...');
+        debugPrint('Starting background media caching for ${tests.length} tests...');
         await _cacheTestMedia(tests);
-        dev.log('Completed background media caching for ${tests.length} tests');
+        debugPrint('Completed background media caching for ${tests.length} tests');
       } catch (e) {
-        dev.log('Background media caching failed: $e');
+        debugPrint('Background media caching failed: $e');
       }
     });
   }
@@ -567,11 +567,11 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   void _cacheCoverImagesInBackground(List<TestItem> tests) {
     Future.microtask(() async {
       try {
-        dev.log('Starting background cover image caching for ${tests.length} tests...');
+        debugPrint('Starting background cover image caching for ${tests.length} tests...');
         await _cacheCoverImages(tests);
-        dev.log('Completed background cover image caching for ${tests.length} tests');
+        debugPrint('Completed background cover image caching for ${tests.length} tests');
       } catch (e) {
-        dev.log('Background cover image caching failed: $e');
+        debugPrint('Background cover image caching failed: $e');
       }
     });
   }
@@ -582,15 +582,15 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
           final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
           if (cachedPath == null) {
-            dev.log('Caching cover image for test: ${test.id}');
+            debugPrint('Caching cover image for test: ${test.id}');
             await localDataSource.cacheImage(test.imageUrl!, test.id, 'main');
           } else {
-            dev.log('Cover image already cached for test: ${test.id}');
+            debugPrint('Cover image already cached for test: ${test.id}');
           }
         }
       }
     } catch (e) {
-      dev.log('Error caching cover images: $e');
+      debugPrint('Error caching cover images: $e');
     }
   }
 
@@ -634,7 +634,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         }
       }
     } catch (e) {
-      dev.log('Error caching test media: $e');
+      debugPrint('Error caching test media: $e');
     }
   }
 
@@ -659,21 +659,23 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
 
   Future<List<TestItem>> _processTestsWithMedia(List<TestItem> tests) async {
     try {
+      debugPrint('🏭 Processing ${tests.length} tests with media');
       final processedTests = <TestItem>[];
       
       for (final test in tests) {
+         debugPrint('📝 Processing test: ${test.id} - ${test.title}');
         TestItem updatedTest = test;
         
         if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
           final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
           if (cachedPath != null) {
-            dev.log('Using cached image for test ${test.id}: $cachedPath');
+            debugPrint('Using cached image for test ${test.id}: $cachedPath');
             updatedTest = updatedTest.copyWith(
               imagePath: cachedPath,
               imageUrl: null
             );
           } else {
-            dev.log('No cached image found for test ${test.id}, will use network URL');
+            debugPrint('No cached image found for test ${test.id}, will use network URL');
             updatedTest = updatedTest.copyWith(imagePath: null);
           }
         }
@@ -681,6 +683,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final updatedQuestions = <TestQuestion>[];
         for (int i = 0; i < test.questions.length; i++) {
           final question = test.questions[i];
+          debugPrint('❓ Processing question $i: hasImage=${question.questionImageUrl?.isNotEmpty}');
           TestQuestion updatedQuestion = question;
           
           if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
@@ -688,13 +691,13 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
               question.questionImageUrl!, test.id, 'question_$i'
             );
             if (cachedPath != null) {
-              dev.log('Using cached question image for test ${test.id}, question $i: $cachedPath');
+              debugPrint('Using cached question image for test ${test.id}, question $i: $cachedPath');
               updatedQuestion = updatedQuestion.copyWith(
                 questionImagePath: cachedPath,
                 questionImageUrl: null,
               );
             } else {
-              dev.log('No cached question image found for test ${test.id}, question $i');
+              debugPrint('No cached question image found for test ${test.id}, question $i');
               updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
             }
           }
@@ -704,13 +707,13 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
               question.questionAudioUrl!, test.id, 'question_audio_$i'
             );
             if (cachedPath != null) {
-              dev.log('Using cached question audio for test ${test.id}, question $i: $cachedPath');
+              debugPrint('Using cached question audio for test ${test.id}, question $i: $cachedPath');
               updatedQuestion = updatedQuestion.copyWith(
                 questionAudioPath: cachedPath,
                 questionAudioUrl: null,
               );
             } else {
-              dev.log('No cached question audio found for test ${test.id}, question $i');
+              debugPrint('No cached question audio found for test ${test.id}, question $i');
               updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
             }
           }
@@ -718,20 +721,22 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final updatedOptions = <AnswerOption>[];
           for (int j = 0; j < question.options.length; j++) {
             final option = question.options[j];
+            debugPrint('🎯 Processing option $j: isImage=${option.isImage}, text="${option.text}"');
             AnswerOption updatedOption = option;
             
             if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
+              debugPrint('   Original image URL: ${option.imageUrl!.substring(option.imageUrl!.length - 20)}');
               final cachedPath = await localDataSource.getCachedImagePath(
                 option.imageUrl!, test.id, 'answer_${i}_$j'
               );
               if (cachedPath != null) {
-                dev.log('Using cached answer image for test ${test.id}, question $i, option $j: $cachedPath');
+                debugPrint('   ✅ Using cached path: ${cachedPath.substring(cachedPath.length - 30)}');
                 updatedOption = updatedOption.copyWith(
                   imagePath: cachedPath,
                   imageUrl: null,
                 );
               } else {
-                dev.log('No cached answer image found for test ${test.id}, question $i, option $j');
+                debugPrint('   🌐 Will use network URL: ${option.imageUrl!.substring(option.imageUrl!.length - 20)}');
                 updatedOption = updatedOption.copyWith(imagePath: null);
               }
             }
@@ -741,13 +746,13 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
                 option.audioUrl!, test.id, 'answer_audio_${i}_$j'
               );
               if (cachedPath != null) {
-                dev.log('Using cached answer audio for test ${test.id}, question $i, option $j: $cachedPath');
+                debugPrint('Using cached answer audio for test ${test.id}, question $i, option $j: $cachedPath');
                 updatedOption = updatedOption.copyWith(
                   audioPath: cachedPath,
                   audioUrl: null,
                 );
               } else {
-                dev.log('No cached answer audio found for test ${test.id}, question $i, option $j');
+                debugPrint('No cached answer audio found for test ${test.id}, question $i, option $j');
                 updatedOption = updatedOption.copyWith(audioPath: null);
               }
             }
@@ -763,10 +768,9 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         processedTests.add(updatedTest);
       }
       
-      dev.log('Processed ${processedTests.length} tests with media paths');
+      debugPrint('✅ Processed ${processedTests.length} tests with media paths');
       return processedTests;
     } catch (e) {
-      dev.log('Error processing tests with media: $e');
       return tests;
     }
   }

@@ -1,4 +1,4 @@
-// import 'dart:developer' as dev;
+// import 'package:flutter/foundation.dart';
 // import 'package:equatable/equatable.dart';
 // import 'package:korean_language_app/core/usecases/usecase.dart';
 // import 'package:korean_language_app/core/errors/api_result.dart';
@@ -30,11 +30,11 @@
 //   @override
 //   Future<ApiResult<void>> execute(RateTestParams params) async {
 //     try {
-//       dev.log('RateTestUseCase: Rating test ${params.testId} with rating ${params.rating}');
+//       debugPrint('RateTestUseCase: Rating test ${params.testId} with rating ${params.rating}');
 
 //       // Business Rule: Validate rating range
 //       if (params.rating < 1.0 || params.rating > 5.0) {
-//         dev.log('RateTestUseCase: Invalid rating ${params.rating}');
+//         debugPrint('RateTestUseCase: Invalid rating ${params.rating}');
 //         return ApiResult.failure(
 //           'Rating must be between 1.0 and 5.0', 
 //           FailureType.validation,
@@ -44,7 +44,7 @@
 //       // Business Rule: Must be authenticated to rate
 //       final user = authService.getCurrentUser();
 //       if (user == null) {
-//         dev.log('RateTestUseCase: User not authenticated');
+//         debugPrint('RateTestUseCase: User not authenticated');
 //         return ApiResult.failure(
 //           'You must be logged in to rate a test', 
 //           FailureType.auth,
@@ -67,7 +67,7 @@
 //       );
 
 //       if (!testExists) {
-//         dev.log('RateTestUseCase: Test ${params.testId} not found');
+//         debugPrint('RateTestUseCase: Test ${params.testId} not found');
 //         return ApiResult.failure(
 //           'Test not found', 
 //           FailureType.notFound,
@@ -81,7 +81,7 @@
 //       );
 
 //       if (test != null && test.creatorUid == user.uid) {
-//         dev.log('RateTestUseCase: User trying to rate own test');
+//         debugPrint('RateTestUseCase: User trying to rate own test');
 //         return ApiResult.failure(
 //           'You cannot rate your own test', 
 //           FailureType.validation,
@@ -98,17 +98,17 @@
 
 //       return result.fold(
 //         onSuccess: (_) {
-//           dev.log('RateTestUseCase: Successfully rated test ${params.testId}');
+//           debugPrint('RateTestUseCase: Successfully rated test ${params.testId}');
 //           return ApiResult.success(null);
 //         },
 //         onFailure: (message, type) {
-//           dev.log('RateTestUseCase: Failed to rate test - $message');
+//           debugPrint('RateTestUseCase: Failed to rate test - $message');
 //           return ApiResult.failure(message, type);
 //         },
 //       );
 
 //     } catch (e) {
-//       dev.log('RateTestUseCase: Unexpected error - $e');
+//       debugPrint('RateTestUseCase: Unexpected error - $e');
 //       return ApiResult.failure('Failed to rate test: $e', FailureType.unknown);
 //     }
 //   }

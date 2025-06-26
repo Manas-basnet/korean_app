@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -19,10 +19,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
   Future<ApiResult<void>> clearCachedBooks() async {
     try {
       await localDataSource.clearAllBooks();
-      dev.log('Favorite books cache cleared successfully');
+      debugPrint('Favorite books cache cleared successfully');
       return ApiResult.success(null);
     } catch (e) {
-      dev.log('Failed to clear favorite books cache: $e');
+      debugPrint('Failed to clear favorite books cache: $e');
       return ApiResult.failure('Failed to clear favorite books cache: $e', FailureType.cache);
     }
   }
@@ -38,10 +38,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
     try {
       final books = await localDataSource.getAllBooks();
       final validBooks = _filterValidBooks(books);
-      dev.log('Retrieved ${validBooks.length} favorite books from cache');
+      debugPrint('Retrieved ${validBooks.length} favorite books from cache');
       return ApiResult.success(validBooks);
     } catch (e) {
-      dev.log('Failed to get favorite books from cache: $e');
+      debugPrint('Failed to get favorite books from cache: $e');
       return ApiResult.failure('Failed to get favorite books from cache: $e', FailureType.cache);
     }
   }
@@ -58,10 +58,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
     try {
       final totalCount = await localDataSource.getBooksCount();
       final hasMore = currentCount < totalCount;
-      dev.log('Favorite books hasMore check: $currentCount < $totalCount = $hasMore');
+      debugPrint('Favorite books hasMore check: $currentCount < $totalCount = $hasMore');
       return ApiResult.success(hasMore);
     } catch (e) {
-      dev.log('Failed to check if more favorite books exist: $e');
+      debugPrint('Failed to check if more favorite books exist: $e');
       return ApiResult.success(false);
     }
   }
@@ -83,10 +83,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
                book.category.toLowerCase().contains(normalizedQuery);
       }).toList();
       
-      dev.log('Favorite books search for "$query" returned ${results.length} results');
+      debugPrint('Favorite books search for "$query" returned ${results.length} results');
       return ApiResult.success(results);
     } catch (e) {
-      dev.log('Failed to search favorite books: $e');
+      debugPrint('Failed to search favorite books: $e');
       return ApiResult.failure('Failed to search favorite books: $e', FailureType.cache);
     }
   }
@@ -98,10 +98,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       final updatedBooks = await localDataSource.getAllBooks();
       final validBooks = _filterValidBooks(updatedBooks);
       
-      dev.log('Added book to favorites: ${bookItem.title} (${bookItem.id})');
+      debugPrint('Added book to favorites: ${bookItem.title} (${bookItem.id})');
       return ApiResult.success(validBooks);
     } catch (e) {
-      dev.log('Failed to add book to favorites: $e');
+      debugPrint('Failed to add book to favorites: $e');
       return ApiResult.failure('Failed to add book to favorites: $e', FailureType.cache);
     }
   }
@@ -113,10 +113,10 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       final updatedBooks = await localDataSource.getAllBooks();
       final validBooks = _filterValidBooks(updatedBooks);
       
-      dev.log('Removed book from favorites: ${bookItem.title} (${bookItem.id})');
+      debugPrint('Removed book from favorites: ${bookItem.title} (${bookItem.id})');
       return ApiResult.success(validBooks);
     } catch (e) {
-      dev.log('Failed to remove book from favorites: $e');
+      debugPrint('Failed to remove book from favorites: $e');
       return ApiResult.failure('Failed to remove book from favorites: $e', FailureType.cache);
     }
   }
@@ -129,7 +129,7 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       final isFavorited = favoriteBooks.any((book) => book.id == bookId);
       return ApiResult.success(isFavorited);
     } catch (e) {
-      dev.log('Failed to check if book is favorited: $e');
+      debugPrint('Failed to check if book is favorited: $e');
       return ApiResult.success(false);
     }
   }
@@ -139,7 +139,7 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       final count = await localDataSource.getBooksCount();
       return ApiResult.success(count);
     } catch (e) {
-      dev.log('Failed to get favorite books count: $e');
+      debugPrint('Failed to get favorite books count: $e');
       return ApiResult.success(0);
     }
   }
@@ -154,7 +154,7 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       
       return ApiResult.success(filteredBooks);
     } catch (e) {
-      dev.log('Failed to get favorite books by category: $e');
+      debugPrint('Failed to get favorite books by category: $e');
       return ApiResult.failure('Failed to get favorite books by category: $e', FailureType.cache);
     }
   }
@@ -175,7 +175,7 @@ class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookR
       final recentBooks = validBooks.take(limit).toList();
       return ApiResult.success(recentBooks);
     } catch (e) {
-      dev.log('Failed to get recently favorited books: $e');
+      debugPrint('Failed to get recently favorited books: $e');
       return ApiResult.failure('Failed to get recently favorited books: $e', FailureType.cache);
     }
   }

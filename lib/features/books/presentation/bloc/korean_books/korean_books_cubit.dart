@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +41,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       _isConnected = result != ConnectivityResult.none;
       
       if (!wasConnected && _isConnected && (state.books.isEmpty || state.hasError)) {
-        dev.log('Connection restored, reloading books...');
+        debugPrint('Connection restored, reloading books...');
         loadInitialBooks();
       }
     });
@@ -50,7 +49,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   
   Future<void> loadInitialBooks() async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Load operation already in progress, skipping...');
+      debugPrint('Load operation already in progress, skipping...');
       return;
     }
     
@@ -85,7 +84,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
           final uniqueBooks = _removeDuplicates(books);
           
           _operationStopwatch.stop();
-          dev.log('loadInitialBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('loadInitialBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(KoreanBooksState(
             books: uniqueBooks,
@@ -103,7 +102,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadInitialBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadInitialBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -118,14 +117,14 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading initial books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading initial books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load books: $e', KoreanBooksOperationType.loadBooks);
     }
   }
   
   Future<void> loadMoreBooks() async {
     if (!state.hasMore || !_isConnected || state.currentOperation.isInProgress) {
-      dev.log('loadMoreBooks skipped - hasMore: ${state.hasMore}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');
+      debugPrint('loadMoreBooks skipped - hasMore: ${state.hasMore}, connected: $_isConnected, inProgress: ${state.currentOperation.isInProgress}');
       return;
     }
     
@@ -158,7 +157,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
             final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, allBooks.length);
             
             _operationStopwatch.stop();
-            dev.log('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewBooks.length} new books');
+            debugPrint('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewBooks.length} new books');
             
             emit(state.copyWith(
               books: allBooks,
@@ -173,7 +172,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
             ));
           } else {
             _operationStopwatch.stop();
-            dev.log('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with no new books');
+            debugPrint('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with no new books');
             
             emit(state.copyWith(
               hasMore: false,
@@ -187,7 +186,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadMoreBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadMoreBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message, 
@@ -201,14 +200,14 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading more books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading more books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load more books: $e', KoreanBooksOperationType.loadMoreBooks);
     }
   }
   
   Future<void> hardRefresh() async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Refresh operation already in progress, skipping...');
+      debugPrint('Refresh operation already in progress, skipping...');
       return;
     }
     
@@ -237,7 +236,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
           final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, uniqueBooks.length);
           
           _operationStopwatch.stop();
-          dev.log('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(KoreanBooksState(
             books: uniqueBooks,
@@ -254,7 +253,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('hardRefresh failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('hardRefresh failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -269,14 +268,14 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error refreshing books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error refreshing books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to refresh books: $e', KoreanBooksOperationType.refreshBooks);
     }
   }
   
   Future<void> loadBookPdf(String bookId) async {
     if (_downloadsInProgress.contains(bookId)) {
-      dev.log('PDF download already in progress for book: $bookId');
+      debugPrint('PDF download already in progress for book: $bookId');
       return;
     }
     
@@ -301,7 +300,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
           _operationStopwatch.stop();
           
           if (pdfFile != null) {
-            dev.log('PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
+            debugPrint('PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
             
             emit(state.copyWith(
               loadedPdfFile: pdfFile,
@@ -313,7 +312,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
               ),
             ));
           } else {
-            dev.log('PDF file is null after ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
+            debugPrint('PDF file is null after ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
             
             emit(state.copyWith(
               currentOperation: KoreanBooksOperation(
@@ -328,7 +327,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('PDF load failed after ${_operationStopwatch.elapsedMilliseconds}ms for book $bookId: $message');
+          debugPrint('PDF load failed after ${_operationStopwatch.elapsedMilliseconds}ms for book $bookId: $message');
           
           emit(state.copyWith(
             currentOperation: KoreanBooksOperation(
@@ -343,7 +342,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading PDF after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading PDF after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       
       emit(state.copyWith(
         currentOperation: KoreanBooksOperation(
@@ -363,7 +362,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     final updatedBooks = [book, ...state.books];
     final uniqueBooks = _removeDuplicates(updatedBooks);
     
-    dev.log('Added book to state: ${book.title}');
+    debugPrint('Added book to state: ${book.title}');
     emit(state.copyWith(books: uniqueBooks));
   }
   
@@ -374,17 +373,17 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       final updatedBooks = List<BookItem>.from(state.books);
       updatedBooks[bookIndex] = updatedBook;
       
-      dev.log('Updated book in state: ${updatedBook.title}');
+      debugPrint('Updated book in state: ${updatedBook.title}');
       emit(state.copyWith(books: updatedBooks));
     } else {
-      dev.log('Book not found in state for update: ${updatedBook.id}');
+      debugPrint('Book not found in state for update: ${updatedBook.id}');
     }
   }
 
   void removeBookFromState(String bookId) {
     final updatedBooks = state.books.where((b) => b.id != bookId).toList();
     
-    dev.log('Removed book from state: $bookId');
+    debugPrint('Removed book from state: $bookId');
     emit(state.copyWith(books: updatedBooks));
   }
   
@@ -392,12 +391,12 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     try {
       final UserEntity? user = _getCurrentUser();
       if (user == null) {
-        dev.log('No authenticated user for edit permission check');
+        debugPrint('No authenticated user for edit permission check');
         return false;
       }
       
       if (await adminService.isUserAdmin(user.uid)) {
-        dev.log('User is admin, granting edit permission for book: $bookId');
+        debugPrint('User is admin, granting edit permission for book: $bookId');
         return true;
       }
       
@@ -412,11 +411,11 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       );
       
       final canEdit = book.id.isNotEmpty && book.creatorUid == user.uid;
-      dev.log('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
+      debugPrint('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
       
       return canEdit;
     } catch (e) {
-      dev.log('Error checking edit permission: $e');
+      debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
@@ -427,12 +426,12 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   
   Future<void> regenerateBookImageUrl(BookItem book) async {
     if (book.bookImagePath == null || book.bookImagePath!.isEmpty) {
-      dev.log('No image path to regenerate for book: ${book.id}');
+      debugPrint('No image path to regenerate for book: ${book.id}');
       return;
     }
     
     try {
-      dev.log('Regenerating image URL for book: ${book.id}');
+      debugPrint('Regenerating image URL for book: ${book.id}');
       final result = await repository.regenerateImageUrl(book);
       
       result.fold(
@@ -440,17 +439,17 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
           if (newImageUrl != null) {
             final updatedBook = book.copyWith(bookImage: newImageUrl);
             updateBookInState(updatedBook);
-            dev.log('Successfully regenerated image URL for book: ${book.id}');
+            debugPrint('Successfully regenerated image URL for book: ${book.id}');
           } else {
-            dev.log('No new image URL generated for book: ${book.id}');
+            debugPrint('No new image URL generated for book: ${book.id}');
           }
         },
         onFailure: (message, type) {
-          dev.log('Failed to regenerate book image URL: $message');
+          debugPrint('Failed to regenerate book image URL: $message');
         },
       );
     } catch (e) {
-      dev.log('Error regenerating book image URL: $e');
+      debugPrint('Error regenerating book image URL: $e');
     }
   }
   
@@ -496,7 +495,7 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing KoreanBooksCubit...');
+    debugPrint('Closing KoreanBooksCubit...');
     _connectivitySubscription?.cancel();
     return super.close();
   }

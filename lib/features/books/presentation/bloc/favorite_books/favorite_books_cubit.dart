@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
@@ -18,7 +18,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
   
   Future<void> loadInitialBooks() async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Favorite books load operation already in progress, skipping...');
+      debugPrint('Favorite books load operation already in progress, skipping...');
       return;
     }
     
@@ -45,7 +45,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
           final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, uniqueBooks.length);
           
           _operationStopwatch.stop();
-          dev.log('loadFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('loadFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(FavoriteBooksState(
             books: uniqueBooks,
@@ -63,7 +63,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('loadFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('loadFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -78,14 +78,14 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error loading favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error loading favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load favorite books: $e', FavoriteBooksOperationType.loadBooks);
     }
   }
   
   Future<void> hardRefresh() async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Favorite books refresh operation already in progress, skipping...');
+      debugPrint('Favorite books refresh operation already in progress, skipping...');
       return;
     }
     
@@ -112,7 +112,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
           final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, uniqueBooks.length);
           
           _operationStopwatch.stop();
-          dev.log('refreshFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
+          debugPrint('refreshFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(FavoriteBooksState(
             books: uniqueBooks,
@@ -130,7 +130,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('refreshFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('refreshFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -145,14 +145,14 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error refreshing favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error refreshing favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to refresh favorite books: $e', FavoriteBooksOperationType.refreshBooks);
     }
   }
   
   Future<void> searchBooks(String query) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Favorite books search operation already in progress, skipping...');
+      debugPrint('Favorite books search operation already in progress, skipping...');
       return;
     }
     
@@ -175,7 +175,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
           final uniqueSearchResults = _removeDuplicates(searchResults);
           
           _operationStopwatch.stop();
-          dev.log('searchFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
+          debugPrint('searchFavoriteBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
           
           emit(state.copyWith(
             books: uniqueSearchResults,
@@ -192,7 +192,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('searchFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('searchFavoriteBooks failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -207,7 +207,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error searching favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error searching favorite books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to search favorite books: $e', FavoriteBooksOperationType.searchBooks);
     }
   }
@@ -215,7 +215,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
   Future<void> toggleFavorite(BookItem bookItem) async {
     if (state.currentOperation.type == FavoriteBooksOperationType.toggleFavorite && 
         state.currentOperation.isInProgress) {
-      dev.log('Toggle favorite operation already in progress for book: ${bookItem.id}');
+      debugPrint('Toggle favorite operation already in progress for book: ${bookItem.id}');
       return;
     }
     
@@ -242,7 +242,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
           final hasMoreResult = await repository.hasMoreBooks(CourseCategory.favorite, updatedBooks.length);
           
           _operationStopwatch.stop();
-          dev.log('toggleFavorite completed in ${_operationStopwatch.elapsedMilliseconds}ms for book: ${bookItem.title} (${isAlreadyFavorite ? 'removed' : 'added'})');
+          debugPrint('toggleFavorite completed in ${_operationStopwatch.elapsedMilliseconds}ms for book: ${bookItem.title} (${isAlreadyFavorite ? 'removed' : 'added'})');
           
           emit(state.copyWith(
             books: updatedBooks,
@@ -260,7 +260,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('toggleFavorite failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('toggleFavorite failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(error: message, errorType: type));
           
@@ -272,7 +272,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error toggling favorite after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error toggling favorite after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       
       emit(state.copyWithBaseState(error: 'Failed to toggle favorite status: $e'));
       

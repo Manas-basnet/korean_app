@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -36,7 +36,7 @@ class ProfileRepositoryImpl extends BaseRepository implements ProfileRepository 
     if (!await networkInfo.isConnected || await localDataSource.isCacheValid(userId)) {
       final cachedProfile = await localDataSource.getCachedProfile(userId);
       if (cachedProfile != null) {
-        dev.log('Returning cached profile for user: $userId');
+        debugPrint('Returning cached profile for user: $userId');
         return ApiResult.success(cachedProfile);
       }
     }
@@ -64,7 +64,7 @@ class ProfileRepositoryImpl extends BaseRepository implements ProfileRepository 
       try {
         await localDataSource.cacheProfile(profile);
       } catch (e) {
-        dev.log('Failed to cache profile: $e');
+        debugPrint('Failed to cache profile: $e');
       }
 
       return profile;
@@ -95,7 +95,7 @@ class ProfileRepositoryImpl extends BaseRepository implements ProfileRepository 
       try {
         await localDataSource.cacheProfile(profile);
       } catch (e) {
-        dev.log('Failed to update cache: $e');
+        debugPrint('Failed to update cache: $e');
       }
 
       return;
@@ -151,7 +151,7 @@ class ProfileRepositoryImpl extends BaseRepository implements ProfileRepository 
         final delay = Duration(seconds: _initialRetryDelay.inSeconds * attempt);
         await Future.delayed(delay);
         
-        dev.log('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
+        debugPrint('Retry attempt $attempt failed: $e. Retrying in ${delay.inSeconds}s...');
       }
     }
     

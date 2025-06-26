@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
@@ -36,7 +35,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
     final trimmedQuery = query.trim();
     
     if (trimmedQuery.length < 2) {
-      dev.log('Search query too short, clearing search results');
+      debugPrint('Search query too short, clearing search results');
       _lastSearchQuery = '';
       
       emit(state.copyWith(
@@ -56,7 +55,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
     }
     
     if (trimmedQuery == _lastSearchQuery && state.searchResults.isNotEmpty) {
-      dev.log('Duplicate search query, skipping');
+      debugPrint('Duplicate search query, skipping');
       return;
     }
     
@@ -67,7 +66,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
   
   Future<void> _performSearch(String query) async {
     if (state.currentOperation.isInProgress) {
-      dev.log('Search operation already in progress, skipping...');
+      debugPrint('Search operation already in progress, skipping...');
       return;
     }
     
@@ -96,7 +95,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
           final uniqueSearchResults = _removeDuplicates(searchResults);
           
           _operationStopwatch.stop();
-          dev.log('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
+          debugPrint('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
           
           emit(state.copyWith(
             searchResults: uniqueSearchResults,
@@ -115,7 +114,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
         },
         onFailure: (message, type) {
           _operationStopwatch.stop();
-          dev.log('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
+          debugPrint('Search failed after ${_operationStopwatch.elapsedMilliseconds}ms: $message');
           
           emit(state.copyWithBaseState(
             error: message,
@@ -132,13 +131,13 @@ class BookSearchCubit extends Cubit<BookSearchState> {
       );
     } catch (e) {
       _operationStopwatch.stop();
-      dev.log('Error searching books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      debugPrint('Error searching books after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to search books: $e', BookSearchOperationType.search, query);
     }
   }
 
   void clearSearch() {
-    dev.log('Clearing search results');
+    debugPrint('Clearing search results');
     _searchDebounceTimer?.cancel();
     _lastSearchQuery = '';
     
@@ -161,12 +160,12 @@ class BookSearchCubit extends Cubit<BookSearchState> {
     try {
       final UserEntity? user = _getCurrentUser();
       if (user == null) {
-        dev.log('No authenticated user for edit permission check');
+        debugPrint('No authenticated user for edit permission check');
         return false;
       }
       
       if (await adminService.isUserAdmin(user.uid)) {
-        dev.log('User is admin, granting edit permission for book: $bookId');
+        debugPrint('User is admin, granting edit permission for book: $bookId');
         return true;
       }
       
@@ -187,11 +186,11 @@ class BookSearchCubit extends Cubit<BookSearchState> {
       );
       
       final canEdit = book.id.isNotEmpty && book.creatorUid == user.uid;
-      dev.log('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
+      debugPrint('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
       
       return canEdit;
     } catch (e) {
-      dev.log('Error checking edit permission: $e');
+      debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
@@ -243,7 +242,7 @@ class BookSearchCubit extends Cubit<BookSearchState> {
 
   @override
   Future<void> close() {
-    dev.log('Closing BookSearchCubit...');
+    debugPrint('Closing BookSearchCubit...');
     _searchDebounceTimer?.cancel();
     return super.close();
   }

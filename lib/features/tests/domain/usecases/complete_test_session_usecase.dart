@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/test_results/domain/usecases/save_test_result_usecase.dart';
@@ -38,7 +38,7 @@ class CompleteTestSessionUseCase implements UseCase<CompleteTestSessionResult, C
   @override
   Future<ApiResult<CompleteTestSessionResult>> execute(CompleteTestSessionParams params) async {
     try {
-      dev.log('CompleteTestSessionUseCase: Completing test session for ${params.session.test.title}');
+      debugPrint('CompleteTestSessionUseCase: Completing test session for ${params.session.test.title}');
 
       final user = authService.getCurrentUser();
       if (user == null) {
@@ -81,7 +81,7 @@ class CompleteTestSessionUseCase implements UseCase<CompleteTestSessionResult, C
         },
       );
       
-      dev.log('CompleteTestSessionUseCase: Test completed - Score: $score%, Passed: $isPassed');
+      debugPrint('CompleteTestSessionUseCase: Test completed - Score: $score%, Passed: $isPassed');
 
       // Save test result first
       final saveResult = await saveTestResultUseCase.execute(testResult);
@@ -109,25 +109,25 @@ class CompleteTestSessionUseCase implements UseCase<CompleteTestSessionResult, C
 
 
 
-        dev.log('CompleteTestSessionUseCase: Successfully updated view count');
+        debugPrint('CompleteTestSessionUseCase: Successfully updated view count');
       } catch (e) {
-        dev.log('CompleteTestSessionUseCase: Failed to update view count: $e');
+        debugPrint('CompleteTestSessionUseCase: Failed to update view count: $e');
         // Continue anyway - this is not critical for test completion
       }
 
       return saveResult.fold(
         onSuccess: (_) {
-          dev.log('CompleteTestSessionUseCase: Test result saved successfully');
+          debugPrint('CompleteTestSessionUseCase: Test result saved successfully');
           return ApiResult.success(result);
         },
         onFailure: (message, type) {
-          dev.log('CompleteTestSessionUseCase: Failed to save result but test completed: $message');
+          debugPrint('CompleteTestSessionUseCase: Failed to save result but test completed: $message');
           return ApiResult.success(result);
         },
       );
 
     } catch (e) {
-      dev.log('CompleteTestSessionUseCase: Unexpected error - $e');
+      debugPrint('CompleteTestSessionUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to complete test session: $e', FailureType.unknown);
     }
   }

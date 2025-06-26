@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -46,12 +46,12 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
   @override
   Future<ApiResult<TestSessionStartResult>> execute(StartTestSessionParams params) async {
     try {
-      dev.log('StartTestSessionUseCase: Starting test session for test ${params.testId}');
+      debugPrint('StartTestSessionUseCase: Starting test session for test ${params.testId}');
 
       // Business Rule: Must be authenticated to start a test
       final user = authService.getCurrentUser();
       if (user == null) {
-        dev.log('StartTestSessionUseCase: User not authenticated');
+        debugPrint('StartTestSessionUseCase: User not authenticated');
         return ApiResult.failure(
           'You must be logged in to take a test',
           FailureType.auth,
@@ -72,7 +72,7 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
       return testResult.fold(
         onSuccess: (test) async {
           if (test == null) {
-            dev.log('StartTestSessionUseCase: Test ${params.testId} not found');
+            debugPrint('StartTestSessionUseCase: Test ${params.testId} not found');
             return ApiResult.failure(
               'Test not found',
               FailureType.notFound,
@@ -94,15 +94,15 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
               onFailure: (_, __) => false,
             );
           } catch (e) {
-            dev.log('StartTestSessionUseCase: Could not check previous interaction - $e');
+            debugPrint('StartTestSessionUseCase: Could not check previous interaction - $e');
           }
 
           // Business Rule: Record test view
           try {
             await repository.recordTestView(params.testId, user.uid);
-            dev.log('StartTestSessionUseCase: Recorded test view for user ${user.uid}');
+            debugPrint('StartTestSessionUseCase: Recorded test view for user ${user.uid}');
           } catch (e) {
-            dev.log('StartTestSessionUseCase: Failed to record test view - $e');
+            debugPrint('StartTestSessionUseCase: Failed to record test view - $e');
             // Continue anyway - this is not critical
           }
 
@@ -117,7 +117,7 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
             questionStartTime: DateTime.now(),
           );
 
-          dev.log('StartTestSessionUseCase: Successfully created test session for ${test.title}');
+          debugPrint('StartTestSessionUseCase: Successfully created test session for ${test.title}');
 
           return ApiResult.success(TestSessionStartResult(
             session: session,
@@ -126,13 +126,13 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
           ));
         },
         onFailure: (message, type) {
-          dev.log('StartTestSessionUseCase: Failed to load test - $message');
+          debugPrint('StartTestSessionUseCase: Failed to load test - $message');
           return ApiResult.failure(message, type);
         },
       );
 
     } catch (e) {
-      dev.log('StartTestSessionUseCase: Unexpected error - $e');
+      debugPrint('StartTestSessionUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to start test session: $e', FailureType.unknown);
     }
   }
@@ -140,13 +140,13 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
   String? _validateTestForSession(TestItem test) {
     // Business Rule: Test must have questions
     if (test.questions.isEmpty) {
-      dev.log('StartTestSessionUseCase: Test has no questions');
+      debugPrint('StartTestSessionUseCase: Test has no questions');
       return 'This test has no questions and cannot be started';
     }
 
     // Business Rule: Test must be published (if you have this field)
     if (!test.isPublished) {
-      dev.log('StartTestSessionUseCase: Test is not published');
+      debugPrint('StartTestSessionUseCase: Test is not published');
       return 'This test is not published and cannot be started';
     }
 
@@ -155,30 +155,30 @@ class StartTestSessionUseCase implements UseCase<TestSessionStartResult, StartTe
       final question = test.questions[i];
       
       if (question.question.isEmpty) {
-        dev.log('StartTestSessionUseCase: Question $i has empty text');
+        debugPrint('StartTestSessionUseCase: Question $i has empty text');
         return 'Test contains invalid questions and cannot be started';
       }
 
       if (question.options.isEmpty) {
-        dev.log('StartTestSessionUseCase: Question $i has no options');
+        debugPrint('StartTestSessionUseCase: Question $i has no options');
         return 'Test contains questions without answer options';
       }
 
       if (question.correctAnswerIndex < 0 || question.correctAnswerIndex >= question.options.length) {
-        dev.log('StartTestSessionUseCase: Question $i has invalid correct answer index');
+        debugPrint('StartTestSessionUseCase: Question $i has invalid correct answer index');
         return 'Test contains questions with invalid correct answers';
       }
     }
 
     // Business Rule: Validate time limits are reasonable
     if (test.timeLimit < 0) {
-      dev.log('StartTestSessionUseCase: Test has negative time limit');
+      debugPrint('StartTestSessionUseCase: Test has negative time limit');
       return 'Test has invalid time limit';
     }
 
     // Business Rule: Validate passing score
     if (test.passingScore < 0 || test.passingScore > 100) {
-      dev.log('StartTestSessionUseCase: Test has invalid passing score');
+      debugPrint('StartTestSessionUseCase: Test has invalid passing score');
       return 'Test has invalid passing score';
     }
 

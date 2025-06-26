@@ -1,4 +1,4 @@
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
@@ -27,7 +27,7 @@ class GetTestByIdUseCase implements UseCase<TestItem, GetTestByIdParams> {
   @override
   Future<ApiResult<TestItem>> execute(GetTestByIdParams params) async {
     try {
-      dev.log('GetTestByIdUseCase: Loading test ${params.testId}');
+      debugPrint('GetTestByIdUseCase: Loading test ${params.testId}');
 
       // Business Rule: Validate test ID
       if (params.testId.isEmpty) {
@@ -43,7 +43,7 @@ class GetTestByIdUseCase implements UseCase<TestItem, GetTestByIdParams> {
       return result.fold(
         onSuccess: (test) async {
           if (test == null) {
-            dev.log('GetTestByIdUseCase: Test ${params.testId} not found');
+            debugPrint('GetTestByIdUseCase: Test ${params.testId} not found');
             return ApiResult.failure(
               'Test not found',
               FailureType.notFound,
@@ -56,25 +56,25 @@ class GetTestByIdUseCase implements UseCase<TestItem, GetTestByIdParams> {
             if (user != null) {
               try {
                 await repository.recordTestView(params.testId, user.uid);
-                dev.log('GetTestByIdUseCase: Recorded view for test ${params.testId}');
+                debugPrint('GetTestByIdUseCase: Recorded view for test ${params.testId}');
               } catch (e) {
-                dev.log('GetTestByIdUseCase: Failed to record view - $e');
+                debugPrint('GetTestByIdUseCase: Failed to record view - $e');
                 // Continue anyway - this is not critical
               }
             }
           }
 
-          dev.log('GetTestByIdUseCase: Successfully loaded test ${test.title}');
+          debugPrint('GetTestByIdUseCase: Successfully loaded test ${test.title}');
           return ApiResult.success(test);
         },
         onFailure: (message, type) {
-          dev.log('GetTestByIdUseCase: Failed to load test - $message');
+          debugPrint('GetTestByIdUseCase: Failed to load test - $message');
           return ApiResult.failure(message, type);
         },
       );
 
     } catch (e) {
-      dev.log('GetTestByIdUseCase: Unexpected error - $e');
+      debugPrint('GetTestByIdUseCase: Unexpected error - $e');
       return ApiResult.failure('Failed to load test: $e', FailureType.unknown);
     }
   }

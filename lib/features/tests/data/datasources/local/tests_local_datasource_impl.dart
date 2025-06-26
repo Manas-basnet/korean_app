@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -67,7 +67,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       return tests;
     } catch (e) {
-      dev.log('Error reading tests from storage: $e');
+      debugPrint('Error reading tests from storage: $e');
       return [];
     }
   }
@@ -79,9 +79,9 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final jsonString = json.encode(jsonList);
       await _storageService.setString(testsKey, jsonString);
       
-      dev.log('Saved ${tests.length} tests to cache');
+      debugPrint('Saved ${tests.length} tests to cache');
     } catch (e) {
-      dev.log('Error saving tests to storage: $e');
+      debugPrint('Error saving tests to storage: $e');
       throw Exception('Failed to save tests: $e');
     }
   }
@@ -100,7 +100,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       await saveTests(tests);
     } catch (e) {
-      dev.log('Error adding test to storage: $e');
+      debugPrint('Error adding test to storage: $e');
       throw Exception('Failed to add test: $e');
     }
   }
@@ -118,7 +118,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
         throw Exception('Test not found for update: ${test.id}');
       }
     } catch (e) {
-      dev.log('Error updating test in storage: $e');
+      debugPrint('Error updating test in storage: $e');
       throw Exception('Failed to update test: $e');
     }
   }
@@ -140,7 +140,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final updatedTests = tests.where((test) => test.id != testId).toList();
       await saveTests(updatedTests);
     } catch (e) {
-      dev.log('Error removing test from storage: $e');
+      debugPrint('Error removing test from storage: $e');
       throw Exception('Failed to remove test: $e');
     }
   }
@@ -166,9 +166,9 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       await _clearAllImages();
       await _clearAllAudio();
       
-      dev.log('Cleared all tests cache, images, interaction and audio');
+      debugPrint('Cleared all tests cache, images, interaction and audio');
     } catch (e) {
-      dev.log('Error clearing all tests from storage: $e');
+      debugPrint('Error clearing all tests from storage: $e');
     }
   }
 
@@ -217,7 +217,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final Map<String, dynamic> decoded = json.decode(hashesJson);
       return decoded.cast<String, String>();
     } catch (e) {
-      dev.log('Error reading test hashes: $e');
+      debugPrint('Error reading test hashes: $e');
       return {};
     }
   }
@@ -234,11 +234,11 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       if (startIndex >= sortedTests.length) return [];
       
       final result = sortedTests.sublist(startIndex, endIndex);
-      dev.log('Retrieved ${result.length} tests (page $page, sortType: ${sortType.name})');
+      debugPrint('Retrieved ${result.length} tests (page $page, sortType: ${sortType.name})');
       
       return result;
     } catch (e) {
-      dev.log('Error getting tests page: $e');
+      debugPrint('Error getting tests page: $e');
       return [];
     }
   }
@@ -259,11 +259,11 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       if (startIndex >= sortedTests.length) return [];
       
       final result = sortedTests.sublist(startIndex, endIndex);
-      dev.log('Retrieved ${result.length} category tests (page $page, category: $category, sortType: ${sortType.name})');
+      debugPrint('Retrieved ${result.length} category tests (page $page, category: $category, sortType: ${sortType.name})');
       
       return result;
     } catch (e) {
-      dev.log('Error getting category tests page: $e');
+      debugPrint('Error getting category tests page: $e');
       return [];
     }
   }
@@ -330,7 +330,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        dev.log('Image already cached: $fileName');
+        debugPrint('Image already cached: $fileName');
         return;
       }
       
@@ -346,14 +346,14 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       if (response.statusCode == 200 && response.data != null) {
         await file.writeAsBytes(response.data);
-        dev.log('Cached image: $fileName (${response.data.length} bytes)');
+        debugPrint('Cached image: $fileName (${response.data.length} bytes)');
         
         await _updateImageMetadata(testId, imageType, imageUrl);
       } else {
-        dev.log('Failed to download image: $imageUrl (${response.statusCode})');
+        debugPrint('Failed to download image: $imageUrl (${response.statusCode})');
       }
     } catch (e) {
-      dev.log('Error caching image $imageUrl: $e');
+      debugPrint('Error caching image $imageUrl: $e');
     }
   }
 
@@ -365,7 +365,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       final file = File('${cacheDir.path}/$fileName');
       
       if (await file.exists()) {
-        dev.log('Audio already cached: $fileName');
+        debugPrint('Audio already cached: $fileName');
         return;
       }
       
@@ -381,14 +381,14 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       if (response.statusCode == 200 && response.data != null) {
         await file.writeAsBytes(response.data);
-        dev.log('Cached audio: $fileName (${response.data.length} bytes)');
+        debugPrint('Cached audio: $fileName (${response.data.length} bytes)');
         
         await _updateAudioMetadata(testId, audioType, audioUrl);
       } else {
-        dev.log('Failed to download audio: $audioUrl (${response.statusCode})');
+        debugPrint('Failed to download audio: $audioUrl (${response.statusCode})');
       }
     } catch (e) {
-      dev.log('Error caching audio $audioUrl: $e');
+      debugPrint('Error caching audio $audioUrl: $e');
     }
   }
 
@@ -401,13 +401,13 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       if (await file.exists()) {
         final absolutePath = file.absolute.path;
-        dev.log('Found cached image: $absolutePath');
+        debugPrint('Found cached image: $absolutePath');
         return absolutePath;
       } else {
-        dev.log('Cached image not found: ${file.path}');
+        debugPrint('Cached image not found: ${file.path}');
       }
     } catch (e) {
-      dev.log('Error getting cached image path: $e');
+      debugPrint('Error getting cached image path: $e');
     }
     return null;
   }
@@ -421,13 +421,13 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       if (await file.exists()) {
         final absolutePath = file.absolute.path;
-        dev.log('Found cached audio: $absolutePath');
+        debugPrint('Found cached audio: $absolutePath');
         return absolutePath;
       } else {
-        dev.log('Cached audio not found: ${file.path}');
+        debugPrint('Cached audio not found: ${file.path}');
       }
     } catch (e) {
-      dev.log('Error getting cached audio path: $e');
+      debugPrint('Error getting cached audio path: $e');
     }
     return null;
   }
@@ -451,7 +451,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       return userInteraction;
 
     } catch (e) {
-      dev.log('Error getting user interaction: $e');
+      debugPrint('Error getting user interaction: $e');
       return null;
     }
   }
@@ -462,7 +462,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       await _storageService.setString(userInteractionKey, json.encode(userInteraction.toJson()));
       return true;
     } catch (e) {
-      dev.log('Error saving user interaction: $e');
+      debugPrint('Error saving user interaction: $e');
       return false;
     }
   }
@@ -499,7 +499,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       };
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error updating image metadata: $e');
+      debugPrint('Error updating image metadata: $e');
     }
   }
 
@@ -512,7 +512,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       };
       await _saveAudioMetadata(audioMetadata);
     } catch (e) {
-      dev.log('Error updating audio metadata: $e');
+      debugPrint('Error updating audio metadata: $e');
     }
   }
 
@@ -535,7 +535,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       await _saveImageMetadata(imageMetadata);
     } catch (e) {
-      dev.log('Error removing test images: $e');
+      debugPrint('Error removing test images: $e');
     }
   }
 
@@ -558,7 +558,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       await _saveAudioMetadata(audioMetadata);
     } catch (e) {
-      dev.log('Error removing test audio: $e');
+      debugPrint('Error removing test audio: $e');
     }
   }
 
@@ -569,9 +569,9 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
         await cacheDir.delete(recursive: true);
         await cacheDir.create(recursive: true);
       }
-      dev.log('Cleared all cached images');
+      debugPrint('Cleared all cached images');
     } catch (e) {
-      dev.log('Error clearing all images: $e');
+      debugPrint('Error clearing all images: $e');
     }
   }
 
@@ -582,9 +582,9 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
         await cacheDir.delete(recursive: true);
         await cacheDir.create(recursive: true);
       }
-      dev.log('Cleared all cached audio');
+      debugPrint('Cleared all cached audio');
     } catch (e) {
-      dev.log('Error clearing all audio: $e');
+      debugPrint('Error clearing all audio: $e');
     }
   }
 
@@ -595,7 +595,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       return json.decode(metadataJson);
     } catch (e) {
-      dev.log('Error reading image metadata: $e');
+      debugPrint('Error reading image metadata: $e');
       return {};
     }
   }
@@ -604,7 +604,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
     try {
       await _storageService.setString(imageMetadataKey, json.encode(metadata));
     } catch (e) {
-      dev.log('Error saving image metadata: $e');
+      debugPrint('Error saving image metadata: $e');
     }
   }
 
@@ -615,7 +615,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
       
       return json.decode(metadataJson);
     } catch (e) {
-      dev.log('Error reading audio metadata: $e');
+      debugPrint('Error reading audio metadata: $e');
       return {};
     }
   }
@@ -624,7 +624,7 @@ class TestsLocalDataSourceImpl implements TestsLocalDataSource {
     try {
       await _storageService.setString(audioMetadataKey, json.encode(metadata));
     } catch (e) {
-      dev.log('Error saving audio metadata: $e');
+      debugPrint('Error saving audio metadata: $e');
     }
   }
 }
