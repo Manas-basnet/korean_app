@@ -376,6 +376,8 @@ class TestPortraitModeWidget extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_rounded, size: 18),
                 label: Text(
                   languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: colorScheme.onSurfaceVariant,
@@ -795,23 +797,6 @@ class TestPortraitModeWidget extends StatelessWidget {
                     ),
                   ),
                 
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(
-                      Icons.zoom_out_map_rounded,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                  ),
-                ),
-                
                 if (option.text.isNotEmpty)
                   Positioned(
                     bottom: 0,
@@ -998,22 +983,6 @@ class TestPortraitModeWidget extends StatelessWidget {
                         fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,
-                      ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(
-                            Icons.zoom_out_map_rounded,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
                       ),
                     ],
                   ),
