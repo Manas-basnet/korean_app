@@ -4,7 +4,7 @@ import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/books/domain/repositories/favorite_book_repository.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 part 'favorite_books_state.dart';
 

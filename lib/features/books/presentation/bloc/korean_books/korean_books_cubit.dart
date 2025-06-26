@@ -7,11 +7,11 @@ import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
 
 part 'korean_books_state.dart';
 
@@ -79,7 +79,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
             CourseCategory.korean,
             books.length
           );
-
 
           final uniqueBooks = _removeDuplicates(books);
           
@@ -355,6 +354,91 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       _clearOperationAfterDelay();
     } finally {
       _downloadsInProgress.remove(bookId);
+    }
+  }
+
+  Future<void> loadChapterPdf(String bookId, String chapterId) async {
+    if (_downloadsInProgress.contains(chapterId)) {
+      debugPrint('Chapter PDF download already in progress for chapter: $chapterId');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      _downloadsInProgress.add(chapterId);
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadPdf,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: chapterId, // Using chapterId as bookId for the operation
+        ),
+      ));
+      
+      final result = await repository.getChapterPdf(bookId, chapterId);
+      
+      result.fold(
+        onSuccess: (pdfFile) {
+          _operationStopwatch.stop();
+          
+          if (pdfFile != null) {
+            debugPrint('Chapter PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for chapter: $chapterId');
+            
+            emit(state.copyWith(
+              loadedPdfFile: pdfFile,
+              loadedPdfBookId: chapterId,
+              currentOperation: KoreanBooksOperation(
+                type: KoreanBooksOperationType.loadPdf,
+                status: KoreanBooksOperationStatus.completed,
+                bookId: chapterId,
+              ),
+            ));
+          } else {
+            debugPrint('Chapter PDF file is null after ${_operationStopwatch.elapsedMilliseconds}ms for chapter: $chapterId');
+            
+            emit(state.copyWith(
+              currentOperation: KoreanBooksOperation(
+                type: KoreanBooksOperationType.loadPdf,
+                status: KoreanBooksOperationStatus.failed,
+                bookId: chapterId,
+                message: 'Chapter PDF file is empty or corrupted',
+              ),
+            ));
+          }
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter PDF load failed after ${_operationStopwatch.elapsedMilliseconds}ms for chapter $chapterId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadPdf,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: chapterId,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error loading chapter PDF after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadPdf,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: chapterId,
+          message: 'Failed to load chapter PDF: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
+    } finally {
+      _downloadsInProgress.remove(chapterId);
     }
   }
   

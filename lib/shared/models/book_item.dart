@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 
@@ -20,6 +22,9 @@ class BookItem {
   final String? creatorUid;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  
+  final BookUploadType uploadType;
+  final List<Chapter> chapters;
 
   const BookItem({
     required this.id,
@@ -39,6 +44,8 @@ class BookItem {
     this.creatorUid,
     this.createdAt,
     this.updatedAt,
+    this.uploadType = BookUploadType.singlePdf,
+    this.chapters = const [],
   });
 
   BookItem copyWith({
@@ -59,6 +66,8 @@ class BookItem {
     String? creatorUid,
     DateTime? createdAt,
     DateTime? updatedAt,
+    BookUploadType? uploadType,
+    List<Chapter>? chapters,
   }) {
     return BookItem(
       id: id ?? this.id,
@@ -78,6 +87,8 @@ class BookItem {
       creatorUid: creatorUid ?? this.creatorUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      uploadType: uploadType ?? this.uploadType,
+      chapters: chapters ?? this.chapters,
     );
   }
 
@@ -115,13 +126,28 @@ class BookItem {
     } else {
       courseCategory = CourseCategory.korean;
     }
+
+    // Parse upload type
+    BookUploadType uploadType = BookUploadType.singlePdf;
+    if (json['uploadType'] is String) {
+      uploadType = BookUploadType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['uploadType'],
+        orElse: () => BookUploadType.singlePdf,
+      );
+    }
+
+    // Parse chapters
+    List<Chapter> chapters = [];
+    if (json['chapters'] is List) {
+      chapters = (json['chapters'] as List)
+          .map((chapterJson) => Chapter.fromJson(chapterJson))
+          .toList();
+    }
     
-    // Fixed icon handling - only use constant IconData instances
     IconData icon;
     if (json['iconCodePoint'] != null) {
       icon = _iconMapping[json['iconCodePoint']] ?? Icons.book;
     } else if (json['icon'] is int) {
-      // Look up the icon in our mapping instead of creating dynamic IconData
       icon = _iconMapping[json['icon']] ?? Icons.book;
     } else {
       icon = Icons.book;
@@ -160,7 +186,7 @@ class BookItem {
       bookImagePath: json['bookImagePath'] as String?,
       pdfPath: json['pdfPath'] as String?,
       duration: json['duration'] as String? ?? '30 mins',
-      chaptersCount: json['chaptersCount'] as int? ?? 1,
+      chaptersCount: json['chaptersCount'] as int? ?? (chapters.isNotEmpty ? chapters.length : 1),
       icon: icon,
       level: level,
       courseCategory: courseCategory,
@@ -169,6 +195,8 @@ class BookItem {
       creatorUid: json['creatorUid'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      uploadType: uploadType,
+      chapters: chapters,
     );
   }
 
@@ -193,11 +221,12 @@ class BookItem {
       'creatorUid': creatorUid,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
+      'uploadType': uploadType.toString().split('.').last,
+      'chapters': chapters.map((chapter) => chapter.toJson()).toList(),
     };
   }
 
-  static  final Map<int, IconData> _iconMapping = {
-    // Icons used in your Korean books list
+  static final Map<int, IconData> _iconMapping = {
     Icons.menu_book.codePoint: Icons.menu_book,
     Icons.quiz.codePoint: Icons.quiz,
     Icons.business.codePoint: Icons.business,

@@ -3,6 +3,8 @@ import 'package:korean_language_app/features/book_upload/data/datasources/book_u
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource_impl.dart';
 import 'package:korean_language_app/features/book_upload/data/repositories/book_upload_repository_impl.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/image_picker_usecase.dart';
+import 'package:korean_language_app/features/book_upload/domain/usecases/pdf_picker_usecase.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/shared/services/image_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
@@ -39,11 +41,17 @@ void registerBooksDependencies(GetIt sl) {
   ));
 
   sl.registerFactory(() => FavoriteBooksCubit(sl()));
+
+  //Use cases
+  sl.registerLazySingleton(() => PickImageUseCase());
+  sl.registerLazySingleton(() => PickPDFUseCase());
   
   // Upload related
   sl.registerFactory(() => FileUploadCubit(
     uploadRepository: sl(),
     authService: sl(),
+    pickImageUseCase: sl(),
+    pickPDFUseCase: sl()
   ));
   
   sl.registerLazySingleton<BookUploadRepository>(

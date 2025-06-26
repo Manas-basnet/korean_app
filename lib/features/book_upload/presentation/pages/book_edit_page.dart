@@ -9,7 +9,7 @@ import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/file_upload_type.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 class BookEditPage extends StatefulWidget {
   final BookItem book;

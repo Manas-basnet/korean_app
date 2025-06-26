@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
+import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
 import 'package:korean_language_app/core/utils/wrapper.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
@@ -297,6 +298,16 @@ class AppRouter {
                 name: 'favoriteBooks',
                 builder: (context, state) => const FavoriteBooksPage(),
               ),
+              GoRoute(
+                path: Routes.chapters,
+                name: 'chapters',
+                builder: (context, state) {
+                  final extra = state.extra as ChaptersPage;
+                  return ChaptersPage(
+                    book: extra.book,
+                  );
+                } 
+              ),
             ],
           ),
 
@@ -372,6 +383,7 @@ class Routes {
   static const uploadBooks = '/books/upload-books';
   static const editBooks = '/books/edit-books';
   static const favoriteBooks = '/books/favorite-books';
+  static const chapters = '/books/chapters';
 
   static const profile = '/profile';
   static const languagePreferences = '/profile/language-preferences';

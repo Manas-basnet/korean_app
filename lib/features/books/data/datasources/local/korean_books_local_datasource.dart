@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 abstract class KoreanBooksLocalDataSource {
   Future<List<BookItem>> getAllBooks();
@@ -24,8 +24,16 @@ abstract class KoreanBooksLocalDataSource {
   Future<void> cacheImage(String imageUrl, String bookId);
   Future<String?> getCachedImagePath(String imageUrl, String bookId);
   
+  /// Single PDF file methods
   Future<File?> getPdfFile(String bookId);
   Future<void> savePdfFile(String bookId, File pdfFile);
   Future<bool> hasPdfFile(String bookId);
   Future<void> deletePdfFile(String bookId);
+  
+  /// Chapter PDF file methods
+  Future<File?> getChapterPdfFile(String bookId, String chapterId);
+  Future<void> saveChapterPdfFile(String bookId, String chapterId, File pdfFile);
+  Future<bool> hasChapterPdfFile(String bookId, String chapterId);
+  Future<void> deleteChapterPdfFile(String bookId, String chapterId);
+  Future<void> deleteAllChapterPdfs(String bookId);
 }

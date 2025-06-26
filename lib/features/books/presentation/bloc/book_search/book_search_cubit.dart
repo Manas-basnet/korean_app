@@ -8,7 +8,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
 
 part 'book_search_state.dart';

@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/shared/enums/book_upload_type.dart';
+import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
@@ -14,7 +17,6 @@ import 'package:korean_language_app/features/books/presentation/bloc/book_search
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/book_search_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/pdf_viewer_page.dart';
@@ -122,7 +124,6 @@ class _BooksPageState extends State<BooksPage>
     if (category == CourseCategory.korean) {
       _koreanBooksCubit.loadInitialBooks();
     } else {
-      // Handle other categories as needed
       _koreanBooksCubit.loadInitialBooks();
     }
   }
@@ -165,7 +166,7 @@ class _BooksPageState extends State<BooksPage>
         favoriteBooksCubit: _favoriteBooksCubit,
         languageCubit: _languageCubit,
         onToggleFavorite: _toggleFavorite,
-        onViewPdf: _viewPdf,
+        onViewPdf: _viewBook,
         onEditBook: _editBook,
         onDeleteBook: _deleteBook,
         checkEditPermission: _checkEditPermission,
@@ -175,7 +176,22 @@ class _BooksPageState extends State<BooksPage>
     );
   }
 
-  void _viewPdf(BookItem book) {
+  void _viewBook(BookItem book) {
+    if (book.uploadType == BookUploadType.chapterWise) {
+      _navigateToChapters(book);
+    } else {
+      _viewSinglePdf(book);
+    }
+  }
+
+  void _navigateToChapters(BookItem book) {
+    context.push(
+      Routes.chapters,
+      extra: ChaptersPage(book: book),
+    );
+  }
+
+  void _viewSinglePdf(BookItem book) {
     _currentPdfLoadingBookId = book.id;
 
     showDialog(
@@ -333,19 +349,48 @@ class _BooksPageState extends State<BooksPage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf),
-              title: Text(
-                _languageCubit.getLocalizedText(
-                  korean: 'PDF로 다운로드',
-                  english: 'Download as PDF',
+            if (book.uploadType == BookUploadType.singlePdf) ...[
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf),
+                title: Text(
+                  _languageCubit.getLocalizedText(
+                    korean: 'PDF로 다운로드',
+                    english: 'Download as PDF',
+                  ),
                 ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _downloadPdf(book);
+                },
               ),
-              onTap: () {
-                Navigator.of(context).pop();
-                _downloadPdf(book);
-              },
-            ),
+            ] else ...[
+              ListTile(
+                leading: const Icon(Icons.auto_stories),
+                title: Text(
+                  _languageCubit.getLocalizedText(
+                    korean: '모든 챕터 다운로드',
+                    english: 'Download All Chapters',
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _downloadAllChapters(book);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf),
+                title: Text(
+                  _languageCubit.getLocalizedText(
+                    korean: '개별 챕터 다운로드',
+                    english: 'Download Individual Chapters',
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showChapterDownloadOptions(book);
+                },
+              ),
+            ],
           ],
         ),
         actions: [
@@ -364,15 +409,78 @@ class _BooksPageState extends State<BooksPage>
   }
 
   void _downloadPdf(BookItem book) async {
-    //TODO: implement download
     _snackBarCubit.showInfoLocalized(
       korean: '다운로드 기능은 곧 출시될테요',
       english: 'Download feature coming soon',
     );
   }
 
+  void _downloadAllChapters(BookItem book) async {
+    _snackBarCubit.showInfoLocalized(
+      korean: '모든 챕터 다운로드 기능은 곧 출시될테요',
+      english: 'Download all chapters feature coming soon',
+    );
+  }
+
+  void _showChapterDownloadOptions(BookItem book) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          _languageCubit.getLocalizedText(
+            korean: '챕터 선택',
+            english: 'Select Chapters',
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: book.chapters.length,
+            itemBuilder: (context, index) {
+              final chapter = book.chapters[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  child: Text('${chapter.order}'),
+                ),
+                title: Text(chapter.title),
+                subtitle: chapter.description != null 
+                    ? Text(chapter.description!)
+                    : null,
+                trailing: IconButton(
+                  icon: const Icon(Icons.download),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _downloadChapter(book, chapter);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              _languageCubit.getLocalizedText(
+                korean: '취소',
+                english: 'Cancel',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadChapter(BookItem book, dynamic chapter) async {
+    _snackBarCubit.showInfoLocalized(
+      korean: '챕터 다운로드 기능은 곧 출시될테요',
+      english: 'Chapter download feature coming soon',
+    );
+  }
+
   void _testBook(BookItem book) {
-    // Implement test/quiz functionality for book
     _snackBarCubit.showInfoLocalized(
       korean: '퀴즈 기능은 곧 출시됩니다',
       english: 'Quiz feature coming soon',
@@ -464,7 +572,7 @@ class _BooksPageState extends State<BooksPage>
   void _retryPdfLoad(String bookId) {
     final state = _koreanBooksCubit.state;
     final book = state.books.firstWhere((b) => b.id == bookId);
-    _viewPdf(book);
+    _viewSinglePdf(book);
   }
 
   void _verifyAndOpenPdf(File pdfFile, String title) async {
@@ -551,7 +659,7 @@ class _BooksPageState extends State<BooksPage>
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha : 0.3),
+                    color: colorScheme.outlineVariant.withOpacity(0.3),
                     width: 0.5,
                   ),
                 ),
@@ -636,13 +744,13 @@ class _BooksPageState extends State<BooksPage>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha : 0.1)
+                    ? theme.colorScheme.primary.withOpacity(0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline.withValues(alpha : 0.3),
+                      : theme.colorScheme.outline.withOpacity(0.3),
                   width: 1,
                 ),
               ),
@@ -651,7 +759,7 @@ class _BooksPageState extends State<BooksPage>
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha : 0.6),
+                      : theme.colorScheme.onSurface.withOpacity(0.6),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 14,
                 ),
@@ -786,7 +894,7 @@ class _BooksPageState extends State<BooksPage>
                         book: book,
                         isFavorite: isFavorite,
                         showEditOptions: canEdit,
-                        onViewClicked: () => _viewPdf(book),
+                        onViewClicked: () => _viewBook(book),
                         onTestClicked: () => _testBook(book),
                         onEditClicked: canEdit ? () => _editBook(book) : null,
                         onDeleteClicked:
@@ -808,7 +916,7 @@ class _BooksPageState extends State<BooksPage>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha : 0.1),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),

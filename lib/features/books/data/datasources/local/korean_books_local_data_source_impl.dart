@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/korean_books_local_datasource.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
 
 class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   final StorageService _storageService;
@@ -15,6 +15,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
   static const String totalCountKey = 'TOTAL_BOOKS_COUNT';
 
   Directory? _pdfCacheDir;
+  Directory? _chaptersCacheDir;
 
   KoreanBooksLocalDataSourceImpl({required StorageService storageService})
       : _storageService = storageService;
@@ -30,6 +31,19 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     }
     
     return _pdfCacheDir!;
+  }
+
+  Future<Directory> get _chaptersCacheDirectory async {
+    if (_chaptersCacheDir != null) return _chaptersCacheDir!;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    _chaptersCacheDir = Directory('${appDir.path}/chapters_cache');
+    
+    if (!await _chaptersCacheDir!.exists()) {
+      await _chaptersCacheDir!.create(recursive: true);
+    }
+    
+    return _chaptersCacheDir!;
   }
 
   @override
@@ -102,6 +116,10 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final books = await getAllBooks();
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
+      
+      // Clean up associated PDF files
+      await deletePdfFile(bookId);
+      await deleteAllChapterPdfs(bookId);
     } catch (e) {
       debugPrint('Error removing book from storage: $e');
       throw Exception('Failed to remove book: $e');
@@ -117,6 +135,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       await _storageService.remove(totalCountKey);
       
       await _clearAllPdfs();
+      await _clearAllChapterPdfs();
       
       debugPrint('Cleared all books cache and PDFs');
     } catch (e) {
@@ -211,6 +230,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     return null;
   }
 
+  // Single PDF file methods
   @override
   Future<File?> getPdfFile(String bookId) async {
     try {
@@ -270,6 +290,89 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     }
   }
 
+  // Chapter PDF file methods
+  @override
+  Future<File?> getChapterPdfFile(String bookId, String chapterId) async {
+    try {
+      final cacheDir = await _chaptersCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      final file = File('${bookDir.path}/$chapterId.pdf');
+      
+      if (await file.exists() && await _isValidPDF(file)) {
+        return file;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting chapter PDF file: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveChapterPdfFile(String bookId, String chapterId, File pdfFile) async {
+    try {
+      final cacheDir = await _chaptersCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      
+      if (!await bookDir.exists()) {
+        await bookDir.create(recursive: true);
+      }
+      
+      final cacheFile = File('${bookDir.path}/$chapterId.pdf');
+      await pdfFile.copy(cacheFile.path);
+      
+      if (!await cacheFile.exists() || await cacheFile.length() == 0) {
+        throw Exception('Failed to save chapter PDF file properly');
+      }
+      
+      debugPrint('Cached chapter PDF: ${cacheFile.path}');
+    } catch (e) {
+      debugPrint('Error saving chapter PDF file: $e');
+      throw Exception('Failed to save chapter PDF file: $e');
+    }
+  }
+
+  @override
+  Future<bool> hasChapterPdfFile(String bookId, String chapterId) async {
+    try {
+      final file = await getChapterPdfFile(bookId, chapterId);
+      return file != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> deleteChapterPdfFile(String bookId, String chapterId) async {
+    try {
+      final cacheDir = await _chaptersCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      final file = File('${bookDir.path}/$chapterId.pdf');
+      
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Deleted chapter PDF cache: ${file.path}');
+      }
+    } catch (e) {
+      debugPrint('Error deleting chapter PDF file: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteAllChapterPdfs(String bookId) async {
+    try {
+      final cacheDir = await _chaptersCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      
+      if (await bookDir.exists()) {
+        await bookDir.delete(recursive: true);
+        debugPrint('Deleted all chapter PDFs for book: $bookId');
+      }
+    } catch (e) {
+      debugPrint('Error deleting all chapter PDFs: $e');
+    }
+  }
+
   Future<void> _clearAllPdfs() async {
     try {
       final cacheDir = await _pdfCacheDirectory;
@@ -280,6 +383,19 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       debugPrint('Cleared all cached PDFs');
     } catch (e) {
       debugPrint('Error clearing all PDFs: $e');
+    }
+  }
+
+  Future<void> _clearAllChapterPdfs() async {
+    try {
+      final cacheDir = await _chaptersCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      debugPrint('Cleared all cached chapter PDFs');
+    } catch (e) {
+      debugPrint('Error clearing all chapter PDFs: $e');
     }
   }
 
