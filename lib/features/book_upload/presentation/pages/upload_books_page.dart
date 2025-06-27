@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:korean_language_app/core/di/di.dart';
+import 'package:korean_language_app/features/book_upload/data/services/pdf_cache_service.dart';
+import 'package:korean_language_app/features/book_upload/data/services/pdf_manipulation_service.dart';
+import 'package:korean_language_app/features/book_upload/domain/entities/chapter_info.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
+import 'package:korean_language_app/features/book_upload/presentation/bloc/book_editing/book_editing_cubit.dart';
+import 'package:korean_language_app/features/book_upload/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
@@ -40,7 +46,6 @@ class _BookUploadPageState extends State<BookUploadPage>
   String? _imageFileName;
   bool _imageSelected = false;
 
-  // Chapter-wise upload data
   List<ChapterUploadData> _chapters = [];
   late TabController _tabController;
 
@@ -109,10 +114,58 @@ class _BookUploadPageState extends State<BookUploadPage>
     }
   }
 
+  Future<void> _showBookEditingMode() async {
+    final pdfFile = await _fileUploadCubit.pickPdfFile();
+    if (pdfFile == null) return;
+
+    if (!mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BlocProvider(
+          create: (context) => BookEditingCubit(
+            pdfManipulationService: PdfManipulationServiceImpl(),
+            pdfCacheService: PdfCacheService(storageService: sl()),
+          ),
+          child: BookEditingPage(
+            sourcePdf: pdfFile,
+            onChaptersGenerated: (chapterFiles, chapterInfos) {
+              _handleChaptersFromEditor(chapterFiles, chapterInfos);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleChaptersFromEditor(List<File> chapterFiles, List<ChapterInfo> chapterInfos) {
+    setState(() {
+      _chapters.clear();
+      for (int i = 0; i < chapterFiles.length && i < chapterInfos.length; i++) {
+        final chapterInfo = chapterInfos[i];
+        final chapterFile = chapterFiles[i];
+        
+        _chapters.add(ChapterUploadData(
+          title: chapterInfo.title,
+          description: chapterInfo.description,
+          duration: chapterInfo.duration,
+          pdfFile: chapterFile,
+          order: chapterInfo.chapterNumber,
+        ));
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${chapterFiles.length} chapters generated successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   void _removeChapter(int index) {
     setState(() {
       _chapters.removeAt(index);
-      // Update order for remaining chapters
       for (int i = 0; i < _chapters.length; i++) {
         _chapters[i] = _chapters[i].copyWith(order: i + 1);
       }
@@ -650,18 +703,38 @@ class _BookUploadPageState extends State<BookUploadPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Chapters (${_chapters.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                'Chapters (${_chapters.length})',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+            if (_chapters.isEmpty) ...[
+              ElevatedButton.icon(
+                onPressed: isUploading ? null : _showBookEditingMode,
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('Smart Editor'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'or',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             ElevatedButton.icon(
               onPressed: isUploading ? null : _addChapter,
               icon: const Icon(Icons.add),
-              label: const Text('Add Chapter'),
+              label: Text(_chapters.isEmpty ? 'Manual Add' : 'Add Chapter'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.secondary,
                 foregroundColor: theme.colorScheme.onSecondary,
@@ -670,6 +743,7 @@ class _BookUploadPageState extends State<BookUploadPage>
           ],
         ),
         const SizedBox(height: 16),
+        
         if (_chapters.isEmpty)
           Container(
             width: double.infinity,
@@ -692,7 +766,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Add chapters by clicking the "Add Chapter" button above',
+                  'Use Smart Editor for automatic page selection\nor add chapters manually',
                   style: TextStyle(
                     color: Colors.grey[500],
                     fontSize: 14,
@@ -1007,7 +1081,6 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title bar
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -1028,7 +1101,6 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
               ),
             ),
             
-            // Scrollable content
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
