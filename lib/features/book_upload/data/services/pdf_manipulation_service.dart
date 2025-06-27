@@ -1,4 +1,3 @@
-// lib/features/book_upload/data/services/pdf_manipulation_service.dart
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -29,7 +28,7 @@ class PdfManipulationServiceImpl implements PdfManipulationService {
       final document = await pdfx.PdfDocument.openFile(sourcePdf.path);
       final pdf = pw.Document();
       
-      for (final pageNum in pageNumbers.toSet().toList()..sort()) {
+      for (final pageNum in pageNumbers) {
         if (pageNum > 0 && pageNum <= document.pagesCount) {
           final page = await document.getPage(pageNum);
           final pageImage = await page.render(

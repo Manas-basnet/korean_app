@@ -61,8 +61,8 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         sourcePdf: pdfFile,
         pdfId: pdfId,
         pages: pages,
-        chapters: [],
-        selectedPageNumbers: [],
+        chapters: const [],
+        selectedPageNumbers: const [],
       ));
 
     } catch (e) {
@@ -84,7 +84,7 @@ class BookEditingCubit extends Cubit<BookEditingState> {
           chapterNumber: chapterNumber,
           title: title,
           description: description,
-          pageNumbers: [],
+          pageNumbers: const [],
           duration: duration,
         ),
       );
@@ -108,7 +108,7 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         orElse: () => ChapterInfo(
           chapterNumber: chapterNumber,
           title: 'Chapter $chapterNumber',
-          pageNumbers: [],
+          pageNumbers: const [],
         ),
       );
 
@@ -137,7 +137,6 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         }
       }
       
-      updatedSelection.sort();
       emit(currentState.copyWith(selectedPageNumbers: updatedSelection));
     }
   }
@@ -158,7 +157,6 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         }
       }
       
-      updatedSelection.sort();
       emit(currentState.copyWith(selectedPageNumbers: updatedSelection));
     }
   }
@@ -191,7 +189,7 @@ class BookEditingCubit extends Cubit<BookEditingState> {
 
     try {
       final chapterNumber = currentState.currentChapterForSelection!;
-      final selectedPages = List<int>.from(currentState.selectedPageNumbers)..sort();
+      final selectedPages = List<int>.from(currentState.selectedPageNumbers);
       
       final newChapter = ChapterInfo(
         chapterNumber: chapterNumber,
@@ -257,7 +255,7 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         orElse: () => ChapterInfo(
           chapterNumber: chapterNumber,
           title: 'Chapter $chapterNumber',
-          pageNumbers: [],
+          pageNumbers: const [],
         ),
       );
 
@@ -303,11 +301,11 @@ class BookEditingCubit extends Cubit<BookEditingState> {
           progress: (i + 1) / sortedChapters.length,
         ));
 
-        final sortedPages = List<int>.from(chapter.pageNumbers)..sort();
+        final pagesInSelectionOrder = chapter.pageNumbers;
 
         final chapterFile = await _pdfManipulationService.extractPagesAsNewPdf(
           sourcePdf: currentState.sourcePdf,
-          pageNumbers: sortedPages,
+          pageNumbers: pagesInSelectionOrder,
           outputFileName: 'chapter_${chapter.chapterNumber}_${DateTime.now().millisecondsSinceEpoch}',
         );
 

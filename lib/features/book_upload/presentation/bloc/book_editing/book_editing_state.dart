@@ -61,10 +61,10 @@ class BookEditingLoaded extends BookEditingState {
       chapters: chapters ?? this.chapters,
       selectedPageNumbers: selectedPageNumbers ?? this.selectedPageNumbers,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
-      currentChapterForSelection: currentChapterForSelection,
-      pendingChapterTitle: pendingChapterTitle,
-      pendingChapterDescription: pendingChapterDescription,
-      pendingChapterDuration: pendingChapterDuration,
+      currentChapterForSelection: currentChapterForSelection ?? this.currentChapterForSelection,
+      pendingChapterTitle: pendingChapterTitle ?? this.pendingChapterTitle,
+      pendingChapterDescription: pendingChapterDescription ?? this.pendingChapterDescription,
+      pendingChapterDuration: pendingChapterDuration ?? this.pendingChapterDuration,
     );
   }
 

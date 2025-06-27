@@ -39,11 +39,13 @@ class PdfPageGridView extends StatelessWidget {
         final page = pages[index];
         final chapterInfo = _getPageChapterInfo(page.pageNumber);
         final pageOrderInChapter = _getPageOrderInChapter(page.pageNumber, chapterInfo);
+        final selectionOrder = _getSelectionOrder(page.pageNumber);
         
         return PdfPageThumbnail(
           page: page,
           chapterInfo: chapterInfo,
           pageOrderInChapter: pageOrderInChapter,
+          selectionOrder: selectionOrder,
           isSelected: selectedPageNumbers.contains(page.pageNumber),
           isSelectionMode: isSelectionMode,
           onTap: () => onPageTap(page.pageNumber),
@@ -70,8 +72,12 @@ class PdfPageGridView extends StatelessWidget {
 
   int? _getPageOrderInChapter(int pageNumber, ChapterInfo? chapterInfo) {
     if (chapterInfo == null) return null;
-    final sortedPages = List<int>.from(chapterInfo.pageNumbers)..sort();
-    final index = sortedPages.indexOf(pageNumber);
+    final index = chapterInfo.pageNumbers.indexOf(pageNumber);
+    return index >= 0 ? index + 1 : null;
+  }
+
+  int? _getSelectionOrder(int pageNumber) {
+    final index = selectedPageNumbers.indexOf(pageNumber);
     return index >= 0 ? index + 1 : null;
   }
 }
@@ -80,6 +86,7 @@ class PdfPageThumbnail extends StatelessWidget {
   final PdfPageInfo page;
   final ChapterInfo? chapterInfo;
   final int? pageOrderInChapter;
+  final int? selectionOrder;
   final bool isSelected;
   final bool isSelectionMode;
   final VoidCallback onTap;
@@ -90,6 +97,7 @@ class PdfPageThumbnail extends StatelessWidget {
     required this.page,
     this.chapterInfo,
     this.pageOrderInChapter,
+    this.selectionOrder,
     required this.isSelected,
     required this.isSelectionMode,
     required this.onTap,
@@ -130,7 +138,7 @@ class PdfPageThumbnail extends StatelessWidget {
                 ),
               ),
 
-              if (isSelected && isSelectionMode)
+              if (isSelected && isSelectionMode && selectionOrder != null)
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
@@ -145,10 +153,15 @@ class PdfPageThumbnail extends StatelessWidget {
                           color: colorScheme.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.check,
-                          color: colorScheme.onPrimary,
-                          size: 20,
+                        child: Center(
+                          child: Text(
+                            '$selectionOrder',
+                            style: TextStyle(
+                              color: colorScheme.onPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -161,45 +174,46 @@ class PdfPageThumbnail extends StatelessWidget {
                   left: 4,
                   right: 4,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getChapterColor(chapterInfo!.chapterNumber),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Ch ${chapterInfo!.chapterNumber}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      _truncateChapterTitle(chapterInfo!.title),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+
+              if (chapterInfo != null && !isSelected && pageOrderInChapter != null)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _getChapterColor(chapterInfo!.chapterNumber),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$pageOrderInChapter',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (pageOrderInChapter != null) ...[
-                          const SizedBox(width: 2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: Text(
-                              '$pageOrderInChapter',
-                              style: TextStyle(
-                                color: _getChapterColor(chapterInfo!.chapterNumber),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -255,6 +269,11 @@ class PdfPageThumbnail extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _truncateChapterTitle(String title) {
+    if (title.length <= 8) return title;
+    return '${title.substring(0, 8)}...';
   }
 
   Color _getBorderColor(ColorScheme colorScheme) {
