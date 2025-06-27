@@ -2,6 +2,8 @@ import 'package:get_it/get_it.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource_impl.dart';
 import 'package:korean_language_app/features/book_upload/data/repositories/book_upload_repository_impl.dart';
+import 'package:korean_language_app/features/book_upload/data/services/pdf_cache_service.dart';
+import 'package:korean_language_app/features/book_upload/data/services/pdf_manipulation_service.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/create_book_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/create_book_with_chapters_usecase.dart';
@@ -10,6 +12,7 @@ import 'package:korean_language_app/features/book_upload/domain/usecases/image_p
 import 'package:korean_language_app/features/book_upload/domain/usecases/pdf_picker_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_with_chapters_usecase.dart';
+import 'package:korean_language_app/features/book_upload/presentation/bloc/book_editing/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/get_book_pdf_usecase.dart';
@@ -41,6 +44,14 @@ void registerBooksDependencies(GetIt sl) {
   // Services
   sl.registerLazySingleton<ImageCacheService>(
     () => ImageCacheService(storageService: sl())
+  );
+  sl.registerLazySingleton<PdfManipulationService>(
+    () => PdfManipulationServiceImpl()
+  );
+  sl.registerLazySingleton<PdfCacheService>(
+    () => PdfCacheService(
+      storageService: sl()
+    )
   );
   
   // Book Upload Use Cases
@@ -128,6 +139,11 @@ void registerBooksDependencies(GetIt sl) {
     getChapterPdfUseCase: sl(),
     checkBookEditPermissionUseCase: sl(),
     regenerateBookImageUrlUseCase: sl(),
+  ));
+
+  sl.registerFactory(() => BookEditingCubit(
+    pdfManipulationService: sl(), 
+    pdfCacheService: sl()
   ));
 
   sl.registerFactory(() => BookSearchCubit(

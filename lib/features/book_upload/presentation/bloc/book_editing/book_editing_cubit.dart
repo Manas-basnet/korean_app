@@ -141,11 +141,6 @@ class BookEditingCubit extends Cubit<BookEditingState> {
     }
 
     try {
-      emit(BookEditingLoading(
-        message: 'Creating chapter PDF...', 
-        progress: 0.5,
-      ));
-
       final chapterNumber = currentState.currentChapterForSelection!;
       final selectedPages = List<int>.from(currentState.selectedPageNumbers)..sort();
       
@@ -166,15 +161,6 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         updatedChapters.add(newChapter);
         updatedChapters.sort((a, b) => a.chapterNumber.compareTo(b.chapterNumber));
       }
-
-      emit(currentState.copyWith(
-        chapters: updatedChapters,
-        selectedPageNumbers: [],
-        isSelectionMode: false,
-        currentChapterForSelection: null,
-      ));
-
-      emit(BookEditingChapterSaved(newChapter));
 
       emit(currentState.copyWith(
         chapters: updatedChapters,

@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/core/di/di.dart';
-import 'package:korean_language_app/features/book_upload/data/services/pdf_cache_service.dart';
-import 'package:korean_language_app/features/book_upload/data/services/pdf_manipulation_service.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_info.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
-import 'package:korean_language_app/features/book_upload/presentation/bloc/book_editing/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
@@ -122,17 +118,11 @@ class _BookUploadPageState extends State<BookUploadPage>
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => BlocProvider(
-          create: (context) => BookEditingCubit(
-            pdfManipulationService: PdfManipulationServiceImpl(),
-            pdfCacheService: PdfCacheService(storageService: sl()),
-          ),
-          child: BookEditingPage(
-            sourcePdf: pdfFile,
-            onChaptersGenerated: (chapterFiles, chapterInfos) {
-              _handleChaptersFromEditor(chapterFiles, chapterInfos);
-            },
-          ),
+        builder: (context) => BookEditingPage(
+          sourcePdf: pdfFile,
+          onChaptersGenerated: (chapterFiles, chapterInfos) {
+            _handleChaptersFromEditor(chapterFiles, chapterInfos);
+          },
         ),
       ),
     );

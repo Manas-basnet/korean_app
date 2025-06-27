@@ -25,6 +25,9 @@ class BookEditingLoaded extends BookEditingState {
   final List<int> selectedPageNumbers;
   final bool isSelectionMode;
   final int? currentChapterForSelection;
+  final String? pendingChapterTitle;
+  final String? pendingChapterDescription;
+  final String? pendingChapterDuration;
 
   BookEditingLoaded({
     required this.sourcePdf,
@@ -34,6 +37,9 @@ class BookEditingLoaded extends BookEditingState {
     required this.selectedPageNumbers,
     this.isSelectionMode = false,
     this.currentChapterForSelection,
+    this.pendingChapterTitle,
+    this.pendingChapterDescription,
+    this.pendingChapterDuration,
   });
 
   BookEditingLoaded copyWith({
@@ -44,6 +50,9 @@ class BookEditingLoaded extends BookEditingState {
     List<int>? selectedPageNumbers,
     bool? isSelectionMode,
     int? currentChapterForSelection,
+    String? pendingChapterTitle,
+    String? pendingChapterDescription,
+    String? pendingChapterDuration,
   }) {
     return BookEditingLoaded(
       sourcePdf: sourcePdf ?? this.sourcePdf,
@@ -53,6 +62,9 @@ class BookEditingLoaded extends BookEditingState {
       selectedPageNumbers: selectedPageNumbers ?? this.selectedPageNumbers,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
       currentChapterForSelection: currentChapterForSelection ?? this.currentChapterForSelection,
+      pendingChapterTitle: pendingChapterTitle ?? this.pendingChapterTitle,
+      pendingChapterDescription: pendingChapterDescription ?? this.pendingChapterDescription,
+      pendingChapterDuration: pendingChapterDuration ?? this.pendingChapterDuration,
     );
   }
 
@@ -85,6 +97,9 @@ class BookEditingLoaded extends BookEditingState {
     selectedPageNumbers,
     isSelectionMode,
     currentChapterForSelection,
+    pendingChapterTitle,
+    pendingChapterDescription,
+    pendingChapterDuration,
   ];
 }
 
@@ -95,13 +110,4 @@ class BookEditingError extends BookEditingState {
 
   @override
   List<Object?> get props => [message];
-}
-
-class BookEditingChapterSaved extends BookEditingState {
-  final ChapterInfo chapter;
-
-  BookEditingChapterSaved(this.chapter);
-
-  @override
-  List<Object?> get props => [chapter];
 }
