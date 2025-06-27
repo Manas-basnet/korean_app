@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/favorite_button.dart';
@@ -50,10 +51,8 @@ class BookGridCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Full card image
             _buildCoverImage(context),
             
-            // Top options (menu and level badge)
             Positioned(
               top: 8,
               right: 8,
@@ -61,32 +60,37 @@ class BookGridCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Level Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: book.level.getColor().withValues( alpha: 0.85),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: book.level.getColor().withValues( alpha: 0.85),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      book.level.toString().split('.').last,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
+                        child: Text(
+                          book.level.toString().split('.').last,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      _buildBookTypeIndicator(context),
+                    ],
                   ),
                   
-                  // Options menu with background
                   Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(50),
@@ -169,7 +173,6 @@ class BookGridCard extends StatelessWidget {
                           ),
                         ];
                         
-                        // Add edit/delete options if user has permission
                         if (showEditOptions) {
                           menuItems.add(const PopupMenuItem<String>(
                             value: 'edit',
@@ -205,7 +208,6 @@ class BookGridCard extends StatelessWidget {
               ),
             ),
             
-            // Edit badge if user has edit permissions
             if (showEditOptions)
               Positioned(
                 top: 48,
@@ -231,7 +233,6 @@ class BookGridCard extends StatelessWidget {
                 ),
               ),
           
-            // Title overlay at bottom
             Positioned(
               bottom: 0,
               left: 0,
@@ -287,6 +288,46 @@ class BookGridCard extends StatelessWidget {
     );
   }
 
+  Widget _buildBookTypeIndicator(BuildContext context) {
+    final isChapterWise = book.uploadType == BookUploadType.chapterWise;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isChapterWise 
+            ? Colors.blue.withValues(alpha: 0.85)
+            : Colors.orange.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isChapterWise ? Icons.auto_stories : Icons.picture_as_pdf,
+            size: 10,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isChapterWise ? 'Chapters' : 'PDF',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCoverImage(BuildContext context) {
     return book.bookImage != null && book.bookImage!.isNotEmpty
         ? CachedNetworkImage(
@@ -294,7 +335,6 @@ class BookGridCard extends StatelessWidget {
             fit: BoxFit.cover,
             placeholder: (context, url) => _buildImagePlaceholder(context),
             errorWidget: (context, url, error) {
-              // Handle image error by attempting to regenerate the URL if possible
               _handleImageLoadError(context);
               return _buildImagePlaceholder(context);
             },
@@ -304,7 +344,6 @@ class BookGridCard extends StatelessWidget {
 
   void _handleImageLoadError(BuildContext context) {
     if (book.bookImagePath != null && book.bookImagePath!.isNotEmpty) {
-      // Only try to regenerate if we have a storage path
       context.read<KoreanBooksCubit>().regenerateBookImageUrl(book);
     }
   }

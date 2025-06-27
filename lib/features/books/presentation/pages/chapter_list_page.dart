@@ -39,7 +39,9 @@ class _ChaptersPageState extends State<ChaptersPage> {
   }
 
   void _viewChapterPdf(Chapter chapter) {
-    _currentLoadingChapterId = chapter.id;
+    setState(() {
+      _currentLoadingChapterId = chapter.id;
+    });
 
     showDialog(
       context: context,
@@ -93,17 +95,26 @@ class _ChaptersPageState extends State<ChaptersPage> {
             state.loadedPdfFile != null) {
           Navigator.of(context, rootNavigator: true).pop();
           _verifyAndOpenPdf(state.loadedPdfFile!, chapter.title);
-          _pdfLoadingSubscription?.cancel();
+          _clearLoadingState();
         } else if (state.currentOperation.status == KoreanBooksOperationStatus.failed) {
           Navigator.of(context, rootNavigator: true).pop();
           _showRetrySnackBar(
             _getReadableErrorMessage(state.currentOperation.message ?? 'Failed to load PDF'),
             () => _viewChapterPdf(chapter),
           );
-          _pdfLoadingSubscription?.cancel();
+          _clearLoadingState();
         }
       }
     });
+  }
+
+  void _clearLoadingState() {
+    _pdfLoadingSubscription?.cancel();
+    if (mounted) {
+      setState(() {
+        _currentLoadingChapterId = null;
+      });
+    }
   }
 
   String _getReadableErrorMessage(String technicalError) {
@@ -188,7 +199,6 @@ class _ChaptersPageState extends State<ChaptersPage> {
       ),
       body: Column(
         children: [
-          // Book info header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -312,7 +322,6 @@ class _ChaptersPageState extends State<ChaptersPage> {
             ),
           ),
 
-          // Chapters list
           Expanded(
             child: sortedChapters.isEmpty
                 ? _buildEmptyChaptersView()
@@ -391,7 +400,6 @@ class _ChaptersPageState extends State<ChaptersPage> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Chapter number
               Container(
                 width: 48,
                 height: 48,
@@ -427,7 +435,6 @@ class _ChaptersPageState extends State<ChaptersPage> {
               ),
               const SizedBox(width: 16),
 
-              // Chapter details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +462,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.picture_as_pdf,
                           size: 14,
                           color: Colors.red,
@@ -489,16 +496,19 @@ class _ChaptersPageState extends State<ChaptersPage> {
                 ),
               ),
 
-              // Action button
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: isLoading 
+                      ? colorScheme.primary.withOpacity(0.05)
+                      : colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.play_arrow,
-                  color: colorScheme.primary,
+                  isLoading ? Icons.hourglass_empty : Icons.play_arrow,
+                  color: isLoading 
+                      ? colorScheme.primary.withOpacity(0.5)
+                      : colorScheme.primary,
                   size: 20,
                 ),
               ),
