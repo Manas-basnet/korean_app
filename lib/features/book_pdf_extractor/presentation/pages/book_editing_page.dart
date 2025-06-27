@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:korean_language_app/core/utils/dialog_utils.dart';
 import 'package:korean_language_app/shared/models/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/widgets/pdf_page_grid_view.dart';
@@ -409,31 +410,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
 
   void _showFullScreenPage(BuildContext context, int pageNumber, BookEditingLoaded state) {
     final page = state.pages.firstWhere((p) => p.pageNumber == pageNumber);
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog.fullscreen(
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            title: Text('Page $pageNumber'),
-            centerTitle: true,
-          ),
-          body: Center(
-            child: page.thumbnailPath != null
-                ? InteractiveViewer(
-                    child: Image.file(
-                      File(page.thumbnailPath!),
-                      fit: BoxFit.contain,
-                    ),
-                  )
-                : const Icon(Icons.image_not_supported, color: Colors.white),
-          ),
-        ),
-      ),
-    );
+    DialogUtils.showFullScreenImage(context, null, page.thumbnailPath);
   }
 
   void _showChapterManagement(BuildContext context, BookEditingLoaded state) {
