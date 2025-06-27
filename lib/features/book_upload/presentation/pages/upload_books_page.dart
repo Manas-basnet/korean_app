@@ -288,15 +288,18 @@ class _BookUploadPageState extends State<BookUploadPage>
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Upload New Book',
           style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
           ),
         ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        backgroundColor: colorScheme.surface,
+        centerTitle: true,
       ),
       body: BlocConsumer<FileUploadCubit, FileUploadState>(
         listener: (context, state) {
@@ -320,661 +323,1097 @@ class _BookUploadPageState extends State<BookUploadPage>
           bool isUploading = state is FileUploading;
           double uploadProgress = isUploading ? (state).progress : 0.0;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildUploadTypeSelection(theme),
-                  const SizedBox(height: 24),
-                  
-                  _buildBasicInfoSection(theme, isUploading),
-                  const SizedBox(height: 24),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width * 0.04,
+                    vertical: MediaQuery.of(context).size.height * 0.02,
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildUploadTypeSelection(context, theme),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.03),
+                        
+                        _buildBasicInfoSection(context, theme, isUploading),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.03),
 
-                  _buildBookDetailsSection(theme, isUploading),
-                  const SizedBox(height: 24),
+                        _buildBookDetailsSection(context, theme, isUploading),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.03),
 
-                  if (_uploadType == BookUploadType.singlePdf)
-                    _buildSinglePdfSection(theme, isUploading)
-                  else
-                    _buildChapterWiseSection(theme, isUploading),
-                  
-                  const SizedBox(height: 24),
-                  _buildCoverImageSection(theme, isUploading),
-                  const SizedBox(height: 32),
-
-                  if (isUploading) _buildProgressSection(uploadProgress, colorScheme),
-
-                  _buildUploadButton(theme, colorScheme, isUploading),
-                ],
+                        if (_uploadType == BookUploadType.singlePdf)
+                          _buildSinglePdfSection(context, theme, isUploading)
+                        else
+                          _buildChapterWiseSection(context, theme, isUploading),
+                        
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.03),
+                        _buildCoverImageSection(context, theme, isUploading),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.04),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
+              
+              if (isUploading) _buildProgressSection(context, uploadProgress, colorScheme),
+              
+              _buildBottomUploadButton(context, theme, colorScheme, isUploading),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildUploadTypeSelection(ThemeData theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Upload Type',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+  Widget _buildUploadTypeSelection(BuildContext context, ThemeData theme) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Upload Type',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: BookUploadType.values.map((type) {
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: InkWell(
-                      onTap: () => setState(() => _uploadType = type),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _uploadType == type
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          Row(
+            children: BookUploadType.values.map((type) {
+              final isSelected = _uploadType == type;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: type == BookUploadType.values.first 
+                        ? MediaQuery.of(context).size.width * 0.02 
+                        : 0,
+                  ),
+                  child: InkWell(
+                    onTap: () => setState(() => _uploadType = type),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outline.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: isSelected
+                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            : Colors.transparent,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            type == BookUploadType.singlePdf
+                                ? Icons.picture_as_pdf_rounded
+                                : Icons.auto_stories_rounded,
+                            size: MediaQuery.of(context).size.width * 0.08,
+                            color: isSelected
                                 ? theme.colorScheme.primary
-                                : Colors.grey.withOpacity(0.3),
-                            width: 2,
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                          color: _uploadType == type
-                              ? theme.colorScheme.primary.withOpacity(0.1)
-                              : null,
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              type == BookUploadType.singlePdf
-                                  ? Icons.picture_as_pdf
-                                  : Icons.auto_stories,
-                              size: 32,
-                              color: _uploadType == type
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                          Text(
+                            type.displayName,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
                                   ? theme.colorScheme.primary
-                                  : Colors.grey,
+                                  : theme.colorScheme.onSurface,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              type.displayName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _uploadType == type
-                                    ? theme.colorScheme.primary
-                                    : null,
-                              ),
+                          ),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.005),
+                          Text(
+                            type.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.7),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              type.description,
-                              style: theme.textTheme.bodySmall,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBasicInfoSection(ThemeData theme, bool isUploading) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _titleController,
-          decoration: const InputDecoration(
-            labelText: 'Book Title',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.book),
-          ),
-          enabled: !isUploading,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter a title';
-            }
-            return null;
-          },
+  Widget _buildBasicInfoSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
         ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _descriptionController,
-          decoration: const InputDecoration(
-            labelText: 'Book Description',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.description),
-            alignLabelWithHint: true,
-          ),
-          enabled: !isUploading,
-          maxLines: 4,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter a description';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBookDetailsSection(ThemeData theme, bool isUploading) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Book Details',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _durationController,
-                decoration: const InputDecoration(
-                  labelText: 'Duration',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.timer),
-                ),
-                enabled: !isUploading,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  return null;
-                },
-              ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Basic Information',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _countryController,
-                decoration: const InputDecoration(
-                  labelText: 'Country',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.public),
-                ),
-                enabled: !isUploading,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
-                ),
-                enabled: !isUploading,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DropdownButtonFormField<BookLevel>(
-                value: _selectedLevel,
-                decoration: const InputDecoration(
-                  labelText: 'Level',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.bar_chart),
-                ),
-                items: BookLevel.values.map((level) {
-                  return DropdownMenuItem<BookLevel>(
-                    value: level,
-                    child: Text(level.toString().split('.').last),
-                  );
-                }).toList(),
-                onChanged: isUploading
-                    ? null
-                    : (BookLevel? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedLevel = newValue;
-                          });
-                        }
-                      },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<CourseCategory>(
-          value: _selectedCategory,
-          decoration: const InputDecoration(
-            labelText: 'Course Category',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.school),
           ),
-          items: CourseCategory.values.map((category) {
-            if (category == CourseCategory.favorite) {
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          TextFormField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              labelText: 'Book Title',
+              hintText: 'Enter book title',
+              prefixIcon: const Icon(Icons.book_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withOpacity(0.3),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withOpacity(0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            enabled: !isUploading,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a title';
+              }
               return null;
-            }
-            return DropdownMenuItem<CourseCategory>(
-              value: category,
-              child: Text(category.toString().split('.').last),
-            );
-          }).where((item) => item != null).cast<DropdownMenuItem<CourseCategory>>().toList(),
-          onChanged: isUploading
-              ? null
-              : (CourseCategory? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedCategory = newValue;
-                    });
-                  }
-                },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSinglePdfSection(ThemeData theme, bool isUploading) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Book PDF File (Required)',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+            },
           ),
-        ),
-        const SizedBox(height: 8),
-        BlocBuilder<FileUploadCubit, FileUploadState>(
-          builder: (context, fileState) {
-            bool isPdfPickerLoading = fileState is FilePickerLoading &&
-                fileState.fileType == FileUploadType.pdf;
-
-            return Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _pdfSelected ? Colors.green : Colors.grey,
-                  width: 1,
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          TextFormField(
+            controller: _descriptionController,
+            decoration: InputDecoration(
+              labelText: 'Book Description',
+              hintText: 'Enter book description',
+              prefixIcon: const Icon(Icons.description_rounded),
+              alignLabelWithHint: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withOpacity(0.3),
                 ),
-                borderRadius: BorderRadius.circular(8),
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _pdfSelected ? Icons.check_circle : Icons.picture_as_pdf,
-                        color: _pdfSelected ? Colors.green : Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _pdfFileName ?? 'No PDF selected',
-                          style: TextStyle(
-                            color: _pdfSelected ? Colors.green : Colors.grey,
-                            fontWeight: _pdfSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (fileState is FilePickerError && fileState.fileType == FileUploadType.pdf)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        fileState.message,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: (isUploading || isPdfPickerLoading) ? null : _pickPdfFile,
-                      icon: isPdfPickerLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file),
-                      label: Text(isPdfPickerLoading ? 'Selecting...' : 'Select PDF File'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withOpacity(0.3),
+                ),
               ),
-            );
-          },
-        ),
-      ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            enabled: !isUploading,
+            maxLines: 4,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a description';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildChapterWiseSection(ThemeData theme, bool isUploading) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Chapters (${_chapters.length})',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            if (_chapters.isEmpty) ...[
-              ElevatedButton.icon(
-                onPressed: isUploading ? null : _showBookEditingMode,
-                icon: const Icon(Icons.auto_fix_high),
-                label: const Text('Smart Editor'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'or',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            ElevatedButton.icon(
-              onPressed: isUploading ? null : _addChapter,
-              icon: const Icon(Icons.add),
-              label: Text(_chapters.isEmpty ? 'Manual Add' : 'Add Chapter'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.secondary,
-                foregroundColor: theme.colorScheme.onSecondary,
-              ),
-            ),
-          ],
+  Widget _buildBookDetailsSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
         ),
-        const SizedBox(height: 16),
-        
-        if (_chapters.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-              borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Book Details',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
             ),
-            child: Column(
-              children: [
-                Icon(Icons.auto_stories, size: 48, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'No chapters added yet',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _durationController,
+                  decoration: InputDecoration(
+                    labelText: 'Duration',
+                    hintText: '30 mins',
+                    prefixIcon: const Icon(Icons.timer_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                  ),
+                  enabled: !isUploading,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+              Expanded(
+                child: TextFormField(
+                  controller: _countryController,
+                  decoration: InputDecoration(
+                    labelText: 'Country',
+                    hintText: 'Korea',
+                    prefixIcon: const Icon(Icons.public_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                  ),
+                  enabled: !isUploading,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _categoryController,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    hintText: 'Language',
+                    prefixIcon: const Icon(Icons.category_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                  ),
+                  enabled: !isUploading,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+              Expanded(
+                child: DropdownButtonFormField<BookLevel>(
+                  value: _selectedLevel,
+                  decoration: InputDecoration(
+                    labelText: 'Level',
+                    prefixIcon: const Icon(Icons.bar_chart_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                  ),
+                  items: BookLevel.values.map((level) {
+                    return DropdownMenuItem<BookLevel>(
+                      value: level,
+                      child: Text(level.toString().split('.').last),
+                    );
+                  }).toList(),
+                  onChanged: isUploading
+                      ? null
+                      : (BookLevel? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedLevel = newValue;
+                            });
+                          }
+                        },
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          DropdownButtonFormField<CourseCategory>(
+            value: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: 'Course Category',
+              prefixIcon: const Icon(Icons.school_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            items: CourseCategory.values.map((category) {
+              if (category == CourseCategory.favorite) {
+                return null;
+              }
+              return DropdownMenuItem<CourseCategory>(
+                value: category,
+                child: Text(category.toString().split('.').last),
+              );
+            }).where((item) => item != null).cast<DropdownMenuItem<CourseCategory>>().toList(),
+            onChanged: isUploading
+                ? null
+                : (CourseCategory? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedCategory = newValue;
+                      });
+                    }
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSinglePdfSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.picture_as_pdf_rounded,
+                color: theme.colorScheme.primary,
+                size: MediaQuery.of(context).size.width * 0.06,
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              Text(
+                'Book PDF File',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.02,
+                  vertical: MediaQuery.of(context).size.height * 0.005,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Required',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Use Smart Editor for automatic page selection\nor add chapters manually',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 14,
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          
+          BlocBuilder<FileUploadCubit, FileUploadState>(
+            builder: (context, fileState) {
+              bool isPdfPickerLoading = fileState is FilePickerLoading &&
+                  fileState.fileType == FileUploadType.pdf;
+
+              return Container(
+                padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _pdfSelected 
+                        ? theme.colorScheme.primary.withOpacity(0.5)
+                        : theme.colorScheme.outline.withOpacity(0.3),
+                    width: 1.5,
                   ),
-                  textAlign: TextAlign.center,
+                  borderRadius: BorderRadius.circular(12),
+                  color: _pdfSelected 
+                      ? theme.colorScheme.primary.withOpacity(0.05)
+                      : theme.colorScheme.surface,
                 ),
-              ],
-            ),
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _chapters.length,
-            itemBuilder: (context, index) {
-              final chapter = _chapters[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        color: theme.colorScheme.onPrimary,
-                        fontWeight: FontWeight.bold,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.02),
+                          decoration: BoxDecoration(
+                            color: _pdfSelected 
+                                ? theme.colorScheme.primary.withOpacity(0.1)
+                                : theme.colorScheme.outline.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _pdfSelected ? Icons.check_circle_rounded : Icons.upload_file_rounded,
+                            color: _pdfSelected 
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                            size: MediaQuery.of(context).size.width * 0.05,
+                          ),
+                        ),
+                        SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _pdfFileName ?? 'No PDF selected',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: _pdfSelected 
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                  fontWeight: _pdfSelected ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (_pdfSelected)
+                                Text(
+                                  'PDF file ready for upload',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.primary.withOpacity(0.8),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (fileState is FilePickerError && fileState.fileType == FileUploadType.pdf) ...[
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                      Container(
+                        padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              color: theme.colorScheme.error,
+                              size: MediaQuery.of(context).size.width * 0.04,
+                            ),
+                            SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                            Expanded(
+                              child: Text(
+                                fileState.message,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: (isUploading || isPdfPickerLoading) ? null : _pickPdfFile,
+                        icon: isPdfPickerLoading
+                            ? SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.04,
+                                height: MediaQuery.of(context).size.width * 0.04,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Icon(Icons.upload_file_rounded),
+                        label: Text(isPdfPickerLoading ? 'Selecting...' : 'Select PDF File'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          padding: EdgeInsets.symmetric(
+                            vertical: MediaQuery.of(context).size.height * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
                       ),
                     ),
-                  ),
-                  title: Text(
-                    chapter.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (chapter.description != null)
-                        Text(chapter.description!),
-                      Text(
-                        'File: ${chapter.pdfFile.path.split('/').last}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    enabled: !isUploading,
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _editChapter(index);
-                      } else if (value == 'delete') {
-                        _removeChapter(index);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 18),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               );
             },
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildCoverImageSection(ThemeData theme, bool isUploading) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Book Cover Image (Optional)',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+  Widget _buildChapterWiseSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
         ),
-        const SizedBox(height: 8),
-        BlocBuilder<FileUploadCubit, FileUploadState>(
-          builder: (context, fileState) {
-            bool isImagePickerLoading = fileState is FilePickerLoading &&
-                fileState.fileType == FileUploadType.image;
-
-            return Container(
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.auto_stories_rounded,
+                color: theme.colorScheme.primary,
+                size: MediaQuery.of(context).size.width * 0.06,
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              Expanded(
+                child: Text(
+                  'Chapters (${_chapters.length})',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (_chapters.isEmpty) ...[
+                ElevatedButton.icon(
+                  onPressed: isUploading ? null : _showBookEditingMode,
+                  icon: const Icon(Icons.auto_fix_high_rounded),
+                  label: const Text('Smart'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.of(context).size.width * 0.03,
+                      vertical: MediaQuery.of(context).size.height * 0.01,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+                SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              ],
+              ElevatedButton.icon(
+                onPressed: isUploading ? null : _addChapter,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(_chapters.isEmpty ? 'Manual' : 'Add'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.secondary,
+                  foregroundColor: theme.colorScheme.onSecondary,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width * 0.03,
+                    vertical: MediaQuery.of(context).size.height * 0.01,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          
+          if (_chapters.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.08),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: _imageSelected ? Colors.green : Colors.grey,
-                  width: 1,
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  style: BorderStyle.solid,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                color: theme.colorScheme.surface,
               ),
-              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_selectedImageFile != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedImageFile!,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  if (_selectedImageFile != null) const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(
-                        _imageSelected ? Icons.check_circle : Icons.image,
-                        color: _imageSelected ? Colors.green : Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _imageFileName ?? 'No image selected',
-                          style: TextStyle(
-                            color: _imageSelected ? Colors.green : Colors.grey,
-                            fontWeight: _imageSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    Icons.auto_stories_outlined,
+                    size: MediaQuery.of(context).size.width * 0.12,
+                    color: theme.colorScheme.onSurface.withOpacity(0.4),
                   ),
-                  if (fileState is FilePickerError && fileState.fileType == FileUploadType.image)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        fileState.message,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                  Text(
+                    'No chapters added yet',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w600,
                     ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: (isUploading || isImagePickerLoading) ? null : _pickImageFile,
-                      icon: isImagePickerLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file),
-                      label: Text(isImagePickerLoading ? 'Selecting...' : 'Select Cover Image'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.secondary,
-                        foregroundColor: theme.colorScheme.onSecondary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                  Text(
+                    'Use Smart Editor for automatic extraction\nor add chapters manually',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
-            );
-          },
-        ),
-      ],
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _chapters.length,
+              separatorBuilder: (context, index) => SizedBox(
+                height: MediaQuery.of(context).size.height * 0.01,
+              ),
+              itemBuilder: (context, index) {
+                final chapter = _chapters[index];
+                return Container(
+                  padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withOpacity(0.2),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.surface,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.1,
+                        height: MediaQuery.of(context).size.width * 0.1,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              chapter.title,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            if (chapter.description != null) ...[
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.005),
+                              Text(
+                                chapter.description!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.005),
+                            Text(
+                              'File: ${chapter.pdfFile.path.split('/').last}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        enabled: !isUploading,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _editChapter(index);
+                          } else if (value == 'delete') {
+                            _removeChapter(index);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_rounded, size: 18),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_rounded, size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildProgressSection(double uploadProgress, ColorScheme colorScheme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LinearProgressIndicator(
-          value: uploadProgress,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+  Widget _buildCoverImageSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Uploading ${(uploadProgress * 100).toStringAsFixed(0)}%',
-          style: TextStyle(color: colorScheme.primary),
-        ),
-        const SizedBox(height: 24),
-      ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.image_rounded,
+                color: theme.colorScheme.secondary,
+                size: MediaQuery.of(context).size.width * 0.06,
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              Text(
+                'Cover Image',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.02,
+                  vertical: MediaQuery.of(context).size.height * 0.005,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Optional',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          
+          BlocBuilder<FileUploadCubit, FileUploadState>(
+            builder: (context, fileState) {
+              bool isImagePickerLoading = fileState is FilePickerLoading &&
+                  fileState.fileType == FileUploadType.image;
+
+              return Container(
+                padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _imageSelected 
+                        ? theme.colorScheme.secondary.withOpacity(0.5)
+                        : theme.colorScheme.outline.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  color: _imageSelected 
+                      ? theme.colorScheme.secondary.withOpacity(0.05)
+                      : theme.colorScheme.surface,
+                ),
+                child: Column(
+                  children: [
+                    if (_selectedImageFile != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          _selectedImageFile!,
+                          height: MediaQuery.of(context).size.height * 0.2,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                    ],
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.02),
+                          decoration: BoxDecoration(
+                            color: _imageSelected 
+                                ? theme.colorScheme.secondary.withOpacity(0.1)
+                                : theme.colorScheme.outline.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _imageSelected ? Icons.check_circle_rounded : Icons.image_rounded,
+                            color: _imageSelected 
+                                ? theme.colorScheme.secondary
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                            size: MediaQuery.of(context).size.width * 0.05,
+                          ),
+                        ),
+                        SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _imageFileName ?? 'No image selected',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: _imageSelected 
+                                      ? theme.colorScheme.secondary
+                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                  fontWeight: _imageSelected ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (_imageSelected)
+                                Text(
+                                  'Image ready for upload',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.secondary.withOpacity(0.8),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (fileState is FilePickerError && fileState.fileType == FileUploadType.image) ...[
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                      Container(
+                        padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              color: theme.colorScheme.error,
+                              size: MediaQuery.of(context).size.width * 0.04,
+                            ),
+                            SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                            Expanded(
+                              child: Text(
+                                fileState.message,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: (isUploading || isImagePickerLoading) ? null : _pickImageFile,
+                        icon: isImagePickerLoading
+                            ? SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.04,
+                                height: MediaQuery.of(context).size.width * 0.04,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.onSecondary,
+                                ),
+                              )
+                            : const Icon(Icons.upload_file_rounded),
+                        label: Text(isImagePickerLoading ? 'Selecting...' : 'Select Cover Image'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.secondary,
+                          foregroundColor: theme.colorScheme.onSecondary,
+                          padding: EdgeInsets.symmetric(
+                            vertical: MediaQuery.of(context).size.height * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildUploadButton(ThemeData theme, ColorScheme colorScheme, bool isUploading) {
+  Widget _buildProgressSection(BuildContext context, double uploadProgress, ColorScheme colorScheme) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withOpacity(0.05),
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cloud_upload_rounded,
+                color: colorScheme.primary,
+                size: MediaQuery.of(context).size.width * 0.05,
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              Text(
+                'Uploading ${(uploadProgress * 100).toStringAsFixed(0)}%',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: uploadProgress,
+              backgroundColor: colorScheme.outline.withOpacity(0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              minHeight: MediaQuery.of(context).size.height * 0.008,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomUploadButton(BuildContext context, ThemeData theme, ColorScheme colorScheme, bool isUploading) {
     final canUpload = (_uploadType == BookUploadType.singlePdf && _pdfSelected) ||
         (_uploadType == BookUploadType.chapterWise && _chapters.isNotEmpty);
 
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton.icon(
-        onPressed: (isUploading || !canUpload) ? null : _uploadBook,
-        icon: Icon(isUploading ? Icons.hourglass_top : Icons.cloud_upload),
-        label: Text(isUploading ? 'Uploading...' : 'Upload Book'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          disabledBackgroundColor: Colors.grey,
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.height * 0.06,
+          child: ElevatedButton.icon(
+            onPressed: (isUploading || !canUpload) ? null : _uploadBook,
+            icon: Icon(
+              isUploading ? Icons.hourglass_top_rounded : Icons.cloud_upload_rounded,
+              size: MediaQuery.of(context).size.width * 0.05,
+            ),
+            label: Text(
+              isUploading ? 'Uploading...' : 'Upload Book',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: canUpload ? colorScheme.primary : colorScheme.outline.withOpacity(0.3),
+              foregroundColor: canUpload ? colorScheme.onPrimary : colorScheme.onSurface.withOpacity(0.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+          ),
         ),
       ),
     );
@@ -1064,6 +1503,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
     final mediaQuery = MediaQuery.of(context);
     
     return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         constraints: BoxConstraints(
           maxHeight: mediaQuery.size.height * 0.8,
@@ -1072,21 +1512,38 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
+            Container(
+              padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
               child: Row(
                 children: [
+                  Icon(
+                    Icons.auto_stories_rounded,
+                    color: theme.colorScheme.primary,
+                    size: mediaQuery.size.width * 0.06,
+                  ),
+                  SizedBox(width: mediaQuery.size.width * 0.02),
                   Expanded(
                     child: Text(
                       widget.existingChapter != null ? 'Edit Chapter' : 'Add Chapter',
                       style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.colorScheme.outline.withOpacity(0.1),
+                    ),
                   ),
                 ],
               ),
@@ -1094,7 +1551,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
             
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -1102,9 +1559,15 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                     children: [
                       TextFormField(
                         controller: _titleController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Chapter Title',
-                          border: OutlineInputBorder(),
+                          hintText: 'Enter chapter title',
+                          prefixIcon: const Icon(Icons.title_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -1113,87 +1576,158 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: mediaQuery.size.height * 0.02),
                       TextFormField(
                         controller: _descriptionController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Description (Optional)',
-                          border: OutlineInputBorder(),
+                          hintText: 'Enter chapter description',
+                          prefixIcon: const Icon(Icons.description_rounded),
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
                         ),
-                        maxLines: 2,
+                        maxLines: 3,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: mediaQuery.size.height * 0.02),
                       TextFormField(
                         controller: _durationController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Duration (Optional)',
-                          border: OutlineInputBorder(),
+                          hintText: '10 mins',
+                          prefixIcon: const Icon(Icons.timer_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: mediaQuery.size.height * 0.02),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _selectedFile != null
+                                ? theme.colorScheme.primary.withOpacity(0.5)
+                                : theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: _selectedFile != null
+                              ? theme.colorScheme.primary.withOpacity(0.05)
+                              : theme.colorScheme.surface,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Icon(
-                                  _selectedFile != null ? Icons.check_circle : Icons.picture_as_pdf,
-                                  color: _selectedFile != null ? Colors.green : Colors.grey,
+                                Container(
+                                  padding: EdgeInsets.all(mediaQuery.size.width * 0.02),
+                                  decoration: BoxDecoration(
+                                    color: _selectedFile != null
+                                        ? theme.colorScheme.primary.withOpacity(0.1)
+                                        : theme.colorScheme.outline.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    _selectedFile != null ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
+                                    color: _selectedFile != null
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurface.withOpacity(0.6),
+                                    size: mediaQuery.size.width * 0.05,
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: mediaQuery.size.width * 0.03),
                                 Expanded(
                                   child: Text(
                                     _fileName ?? 'No PDF selected',
-                                    style: TextStyle(
-                                      color: _selectedFile != null ? Colors.green : Colors.grey,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: _selectedFile != null
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface.withOpacity(0.7),
+                                      fontWeight: _selectedFile != null ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: mediaQuery.size.height * 0.015),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: _pickFile,
-                                icon: const Icon(Icons.upload_file),
+                                icon: const Icon(Icons.upload_file_rounded),
                                 label: const Text('Select PDF File'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: theme.colorScheme.primary,
                                   foregroundColor: theme.colorScheme.onPrimary,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: mediaQuery.size.height * 0.015,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
               ),
             ),
             
-            Padding(
-              padding: const EdgeInsets.all(16),
+            Container(
+              padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outline.withOpacity(0.2),
+                  ),
+                ),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: mediaQuery.size.width * 0.04,
+                        vertical: mediaQuery.size.height * 0.015,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: mediaQuery.size.width * 0.02),
                   ElevatedButton(
                     onPressed: _selectedFile != null ? _saveChapter : null,
-                    child: const Text('Save'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: mediaQuery.size.width * 0.04,
+                        vertical: mediaQuery.size.height * 0.015,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text('Save Chapter'),
                   ),
                 ],
               ),
