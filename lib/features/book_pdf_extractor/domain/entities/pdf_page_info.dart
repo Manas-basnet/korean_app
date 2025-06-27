@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:korean_language_app/features/book_upload/domain/entities/page_selection.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/page_selection.dart';
 
 class PdfPageInfo extends Equatable {
   final int pageNumber;

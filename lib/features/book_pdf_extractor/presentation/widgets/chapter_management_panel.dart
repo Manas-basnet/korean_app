@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/features/book_upload/domain/entities/chapter_info.dart';
+import 'package:korean_language_app/shared/models/chapter_info.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 class ChapterManagementPanel extends StatelessWidget {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
@@ -91,6 +92,7 @@ class PdfCacheService {
       final metadata = await _getCacheMetadata();
       metadata.remove(pdfId);
       await _saveCacheMetadata(metadata);
+      log('cleared pdf cache');
     } catch (e) {
       debugPrint('Error clearing PDF cache: $e');
     }
@@ -105,6 +107,7 @@ class PdfCacheService {
       }
       
       await _storageService.remove(pdfCacheKey);
+      log('cleared pdf cache');
     } catch (e) {
       debugPrint('Error clearing all PDF cache: $e');
     }

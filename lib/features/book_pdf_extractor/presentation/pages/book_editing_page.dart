@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/features/book_upload/domain/entities/chapter_info.dart';
-import 'package:korean_language_app/features/book_upload/presentation/bloc/book_editing/book_editing_cubit.dart';
-import 'package:korean_language_app/features/book_upload/presentation/widgets/pdf_page_grid_view.dart';
+import 'package:korean_language_app/shared/models/chapter_info.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/widgets/pdf_page_grid_view.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 class BookEditingPage extends StatefulWidget {

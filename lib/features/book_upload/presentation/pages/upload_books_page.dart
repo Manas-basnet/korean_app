@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/features/book_upload/domain/entities/chapter_info.dart';
+import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
+import 'package:korean_language_app/shared/models/chapter_info.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
-import 'package:korean_language_app/features/book_upload/presentation/pages/book_editing_page.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
@@ -116,14 +118,13 @@ class _BookUploadPageState extends State<BookUploadPage>
 
     if (!mounted) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => BookEditingPage(
-          sourcePdf: pdfFile,
-          onChaptersGenerated: (chapterFiles, chapterInfos) {
-            _handleChaptersFromEditor(chapterFiles, chapterInfos);
-          },
-        ),
+    context.push(
+      Routes.bookEditingPage, 
+      extra: BookEditingPage(
+        sourcePdf: pdfFile,
+        onChaptersGenerated: (chapterFiles, chapterInfos) {
+          _handleChaptersFromEditor(chapterFiles, chapterInfos);
+        },
       ),
     );
   }

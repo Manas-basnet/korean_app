@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
 import 'package:korean_language_app/core/utils/wrapper.dart';
@@ -140,6 +141,18 @@ class AppRouter {
       ),
 
       // Full-screen routes that don't need bottom nav
+      GoRoute(
+        path: Routes.bookEditingPage,
+        name: 'bookEditingPage',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final pdfFile = state.extra as BookEditingPage;
+          return BookEditingPage(
+            sourcePdf: pdfFile.sourcePdf,
+            onChaptersGenerated: pdfFile.onChaptersGenerated,
+          );
+        },
+      ),
       GoRoute(
         path: '/pdf-viewer',
         name: 'pdfViewer',
@@ -368,6 +381,7 @@ class Routes {
   static const login = '/login';
   static const register = '/register';
   static const forgotPassword = '/forgot-password';
+  static const bookEditingPage = '/book-editing-page';
   static const home = '/home';
 
   static const tests = '/tests';
