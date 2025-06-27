@@ -24,7 +24,7 @@ class BookEditingCubit extends Cubit<BookEditingState> {
     try {
       emit(BookEditingLoading(message: 'Loading PDF...', progress: 0.1));
 
-      final pdfId = DateTime.now().millisecondsSinceEpoch.toString();
+      final pdfId = _generatePdfId(pdfFile);
       
       emit(BookEditingLoading(message: 'Getting page count...', progress: 0.2));
       final pageCount = await _pdfManipulationService.getPdfPageCount(pdfFile);
@@ -34,14 +34,37 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         return;
       }
 
-      emit(BookEditingLoading(message: 'Generating thumbnails...', progress: 0.3));
-      final thumbnails = await _pdfManipulationService.generatePageThumbnails(pdfFile);
+      List<String> cachedPaths = [];
       
-      emit(BookEditingLoading(message: 'Caching thumbnails...', progress: 0.7));
-      await _pdfCacheService.cachePdfThumbnails(pdfId, thumbnails);
+      if (await _pdfCacheService.isCached(pdfId)) {
+        emit(BookEditingLoading(message: 'Loading cached thumbnails...', progress: 0.5));
+        cachedPaths = await _pdfCacheService.getCachedThumbnailPaths(pdfId);
+      }
+
+      if (cachedPaths.length != pageCount) {
+        emit(BookEditingLoading(message: 'Generating thumbnails...', progress: 0.3));
+        
+        await _pdfCacheService.cachePdfThumbnailsStreaming(
+          pdfId,
+          _pdfManipulationService.generatePageThumbnailsStream(
+            pdfFile,
+            maxPages: pageCount,
+            onProgress: (progress) {
+              if (!isClosed) {
+                emit(BookEditingLoading(
+                  message: 'Generating thumbnails...',
+                  progress: 0.3 + (progress * 0.4),
+                ));
+              }
+            },
+          ),
+        );
+        
+        emit(BookEditingLoading(message: 'Loading thumbnails...', progress: 0.8));
+        cachedPaths = await _pdfCacheService.getCachedThumbnailPaths(pdfId);
+      }
       
       emit(BookEditingLoading(message: 'Preparing pages...', progress: 0.9));
-      final cachedPaths = await _pdfCacheService.getCachedThumbnailPaths(pdfId);
       
       final pages = <PdfPageInfo>[];
       for (int i = 0; i < pageCount; i++) {
@@ -51,8 +74,8 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         pages.add(PdfPageInfo(
           pageNumber: pageNumber,
           thumbnailPath: thumbnailPath,
-          width: 200,
-          height: 280,
+          width: 150, // Match new thumbnail size
+          height: 210,
           selection: PageSelection(pageNumber: pageNumber),
         ));
       }
@@ -68,6 +91,11 @@ class BookEditingCubit extends Cubit<BookEditingState> {
     } catch (e) {
       emit(BookEditingError('Failed to load PDF: $e'));
     }
+  }
+
+  String _generatePdfId(File pdfFile) {
+    final stat = pdfFile.statSync();
+    return '${pdfFile.path.hashCode}_${stat.size}_${stat.modified.millisecondsSinceEpoch}';
   }
 
   void startPageSelectionWithDetails({
@@ -296,10 +324,12 @@ class BookEditingCubit extends Cubit<BookEditingState> {
       for (int i = 0; i < sortedChapters.length; i++) {
         final chapter = sortedChapters[i];
         
-        emit(BookEditingLoading(
-          message: 'Generating ${chapter.title}...',
-          progress: (i + 1) / sortedChapters.length,
-        ));
+        if (!isClosed) {
+          emit(BookEditingLoading(
+            message: 'Generating ${chapter.title}...',
+            progress: (i + 1) / sortedChapters.length,
+          ));
+        }
 
         final pagesInSelectionOrder = chapter.pageNumbers;
 

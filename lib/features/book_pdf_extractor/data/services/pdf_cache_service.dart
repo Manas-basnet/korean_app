@@ -9,6 +9,8 @@ import 'package:korean_language_app/shared/services/storage_service.dart';
 class PdfCacheService {
   final StorageService _storageService;
   static const String pdfCacheKey = 'PDF_CACHE_METADATA';
+  static const int maxCacheSize = 200 * 1024 * 1024; // 200MB
+  static const int maxCacheAgeMs = 7 * 24 * 60 * 60 * 1000;
   
   Directory? _pdfCacheDir;
 
@@ -30,6 +32,9 @@ class PdfCacheService {
 
   Future<String> cachePdfThumbnails(String pdfId, List<Uint8List> thumbnails) async {
     try {
+      await _cleanupExpiredCache();
+      await _enforceMaxCacheSize();
+
       final cacheDir = await _pdfCacheDirectory;
       final pdfCacheDir = Directory('${cacheDir.path}/$pdfId');
       
@@ -37,12 +42,48 @@ class PdfCacheService {
         await pdfCacheDir.create(recursive: true);
       }
       
+      int totalSize = 0;
       for (int i = 0; i < thumbnails.length; i++) {
         final thumbnailFile = File('${pdfCacheDir.path}/page_${i + 1}.png');
         await thumbnailFile.writeAsBytes(thumbnails[i]);
+        totalSize += thumbnails[i].length;
       }
       
-      await _updateCacheMetadata(pdfId, thumbnails.length);
+      await _updateCacheMetadata(pdfId, thumbnails.length, totalSize);
+      
+      return pdfCacheDir.path;
+    } catch (e) {
+      debugPrint('Error caching PDF thumbnails: $e');
+      throw Exception('Failed to cache PDF thumbnails');
+    }
+  }
+
+  Future<String> cachePdfThumbnailsStreaming(
+    String pdfId, 
+    Stream<Uint8List> thumbnailStream
+  ) async {
+    try {
+      await _cleanupExpiredCache();
+      await _enforceMaxCacheSize();
+
+      final cacheDir = await _pdfCacheDirectory;
+      final pdfCacheDir = Directory('${cacheDir.path}/$pdfId');
+      
+      if (!await pdfCacheDir.exists()) {
+        await pdfCacheDir.create(recursive: true);
+      }
+      
+      int pageCount = 0;
+      int totalSize = 0;
+      
+      await for (final thumbnailBytes in thumbnailStream) {
+        pageCount++;
+        final thumbnailFile = File('${pdfCacheDir.path}/page_$pageCount.png');
+        await thumbnailFile.writeAsBytes(thumbnailBytes);
+        totalSize += thumbnailBytes.length;
+      }
+      
+      await _updateCacheMetadata(pdfId, pageCount, totalSize);
       
       return pdfCacheDir.path;
     } catch (e) {
@@ -59,6 +100,8 @@ class PdfCacheService {
       if (!await pdfCacheDir.exists()) {
         return [];
       }
+      
+      await _updateLastAccessed(pdfId);
       
       final files = await pdfCacheDir.list().toList();
       final imagePaths = files
@@ -80,6 +123,11 @@ class PdfCacheService {
     }
   }
 
+  Future<bool> isCached(String pdfId) async {
+    final metadata = await _getCacheMetadata();
+    return metadata.containsKey(pdfId);
+  }
+
   Future<void> clearPdfCache(String pdfId) async {
     try {
       final cacheDir = await _pdfCacheDirectory;
@@ -92,7 +140,7 @@ class PdfCacheService {
       final metadata = await _getCacheMetadata();
       metadata.remove(pdfId);
       await _saveCacheMetadata(metadata);
-      log('cleared pdf cache');
+      log('Cleared PDF cache for: $pdfId');
     } catch (e) {
       debugPrint('Error clearing PDF cache: $e');
     }
@@ -107,22 +155,99 @@ class PdfCacheService {
       }
       
       await _storageService.remove(pdfCacheKey);
-      log('cleared pdf cache');
+      log('Cleared all PDF cache');
     } catch (e) {
       debugPrint('Error clearing all PDF cache: $e');
     }
   }
 
-  Future<void> _updateCacheMetadata(String pdfId, int pageCount) async {
+  Future<void> _cleanupExpiredCache() async {
     try {
       final metadata = await _getCacheMetadata();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final expiredKeys = <String>[];
+
+      for (final entry in metadata.entries) {
+        final cacheData = entry.value as Map<String, dynamic>;
+        final cachedAt = cacheData['cachedAt'] as int;
+        
+        if (now - cachedAt > maxCacheAgeMs) {
+          expiredKeys.add(entry.key);
+        }
+      }
+
+      for (final key in expiredKeys) {
+        await clearPdfCache(key);
+      }
+
+      if (expiredKeys.isNotEmpty) {
+        log('Cleaned up ${expiredKeys.length} expired cache entries');
+      }
+    } catch (e) {
+      debugPrint('Error cleaning up expired cache: $e');
+    }
+  }
+
+  Future<void> _enforceMaxCacheSize() async {
+    try {
+      final metadata = await _getCacheMetadata();
+      int totalSize = 0;
+      
+      final cacheEntries = metadata.entries
+          .map((e) => MapEntry(e.key, e.value as Map<String, dynamic>))
+          .toList();
+
+      for (final entry in cacheEntries) {
+        totalSize += (entry.value['size'] as int? ?? 0);
+      }
+
+      if (totalSize <= maxCacheSize) return;
+
+      cacheEntries.sort((a, b) {
+        final aAccessed = a.value['lastAccessed'] as int? ?? 0;
+        final bAccessed = b.value['lastAccessed'] as int? ?? 0;
+        return aAccessed.compareTo(bAccessed);
+      });
+
+      while (totalSize > maxCacheSize && cacheEntries.isNotEmpty) {
+        final oldestEntry = cacheEntries.removeAt(0);
+        await clearPdfCache(oldestEntry.key);
+        totalSize -= (oldestEntry.value['size'] as int? ?? 0);
+      }
+
+      log('Cache size enforced, removed old entries');
+    } catch (e) {
+      debugPrint('Error enforcing max cache size: $e');
+    }
+  }
+
+  Future<void> _updateCacheMetadata(String pdfId, int pageCount, int size) async {
+    try {
+      final metadata = await _getCacheMetadata();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      
       metadata[pdfId] = {
         'pageCount': pageCount,
-        'cachedAt': DateTime.now().millisecondsSinceEpoch,
+        'size': size,
+        'cachedAt': now,
+        'lastAccessed': now,
       };
       await _saveCacheMetadata(metadata);
     } catch (e) {
       debugPrint('Error updating cache metadata: $e');
+    }
+  }
+
+  Future<void> _updateLastAccessed(String pdfId) async {
+    try {
+      final metadata = await _getCacheMetadata();
+      if (metadata.containsKey(pdfId)) {
+        final cacheData = metadata[pdfId] as Map<String, dynamic>;
+        cacheData['lastAccessed'] = DateTime.now().millisecondsSinceEpoch;
+        await _saveCacheMetadata(metadata);
+      }
+    } catch (e) {
+      debugPrint('Error updating last accessed: $e');
     }
   }
 
@@ -144,5 +269,24 @@ class PdfCacheService {
     } catch (e) {
       debugPrint('Error saving cache metadata: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> getCacheStats() async {
+    final metadata = await _getCacheMetadata();
+    int totalSize = 0;
+    int totalFiles = 0;
+
+    for (final entry in metadata.values) {
+      final cacheData = entry as Map<String, dynamic>;
+      totalSize += (cacheData['size'] as int? ?? 0);
+      totalFiles += (cacheData['pageCount'] as int? ?? 0);
+    }
+
+    return {
+      'totalEntries': metadata.length,
+      'totalSize': totalSize,
+      'totalFiles': totalFiles,
+      'maxSize': maxCacheSize,
+    };
   }
 }

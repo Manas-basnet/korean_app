@@ -9,7 +9,8 @@ import 'package:korean_language_app/shared/presentation/language_preference/bloc
 
 class BookEditingPage extends StatefulWidget {
   final File sourcePdf;
-  final Function(List<File> chapterFiles, List<ChapterInfo> chapters) onChaptersGenerated;
+  final Function(List<File> chapterFiles, List<ChapterInfo> chapters)
+      onChaptersGenerated;
 
   const BookEditingPage({
     super.key,
@@ -64,7 +65,8 @@ class _BookEditingPageState extends State<BookEditingPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       foregroundColor: colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                     ),
                   ),
                 );
@@ -102,10 +104,11 @@ class _BookEditingPageState extends State<BookEditingPage> {
             return FloatingActionButton.extended(
               onPressed: () => _showChapterManagement(context, state),
               icon: const Icon(Icons.auto_stories),
-              label: Text(context.read<LanguagePreferenceCubit>().getLocalizedText(
-                korean: '챕터',
-                english: 'Chapters',
-              )),
+              label:
+                  Text(context.read<LanguagePreferenceCubit>().getLocalizedText(
+                        korean: '챕터',
+                        english: 'Chapters',
+                      )),
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
             );
@@ -119,7 +122,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
   Widget _buildLoadingView(BuildContext context, BookEditingState state) {
     final theme = Theme.of(context);
     final languageCubit = context.read<LanguagePreferenceCubit>();
-    
+
     String message = languageCubit.getLocalizedText(
       korean: 'PDF 로딩 중...',
       english: 'Loading PDF...',
@@ -161,14 +164,15 @@ class _BookEditingPageState extends State<BookEditingPage> {
             ),
             if (progress > 0) ...[
               const SizedBox(height: 24),
-              Container(
+              SizedBox(
                 width: 200,
                 child: Column(
                   children: [
                     LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorScheme.primary),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -234,7 +238,8 @@ class _BookEditingPageState extends State<BookEditingPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
               child: Text(
                 languageCubit.getLocalizedText(
@@ -252,7 +257,8 @@ class _BookEditingPageState extends State<BookEditingPage> {
   Widget _buildEditingView(BuildContext context, BookEditingLoaded state) {
     return Column(
       children: [
-        if (state.chapters.isNotEmpty) _buildCompactChapterSummaryBar(context, state),
+        if (state.chapters.isNotEmpty)
+          _buildCompactChapterSummaryBar(context, state),
         if (state.isSelectionMode) _buildSelectionTopBar(context, state),
         Expanded(
           child: Padding(
@@ -264,10 +270,13 @@ class _BookEditingPageState extends State<BookEditingPage> {
               isSelectionMode: state.isSelectionMode,
               onPageTap: (pageNumber) {
                 if (state.isSelectionMode) {
-                  context.read<BookEditingCubit>().togglePageSelection(pageNumber);
+                  context
+                      .read<BookEditingCubit>()
+                      .togglePageSelection(pageNumber);
                 }
               },
-              onPageLongPress: (pageNumber) => _showFullScreenPage(context, pageNumber, state),
+              onPageLongPress: (pageNumber) =>
+                  _showFullScreenPage(context, pageNumber, state),
             ),
           ),
         ),
@@ -275,10 +284,11 @@ class _BookEditingPageState extends State<BookEditingPage> {
     );
   }
 
-  Widget _buildCompactChapterSummaryBar(BuildContext context, BookEditingLoaded state) {
+  Widget _buildCompactChapterSummaryBar(
+      BuildContext context, BookEditingLoaded state) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -380,7 +390,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: state.selectedPageNumbers.isNotEmpty 
+            onPressed: state.selectedPageNumbers.isNotEmpty
                 ? () => _saveSelectedPages(context, state)
                 : null,
             style: ElevatedButton.styleFrom(
@@ -402,57 +412,66 @@ class _BookEditingPageState extends State<BookEditingPage> {
 
   void _saveSelectedPages(BuildContext context, BookEditingLoaded state) {
     context.read<BookEditingCubit>().saveSelectedPagesAsChapter(
-      title: state.pendingChapterTitle ?? 'Chapter ${state.currentChapterForSelection ?? 1}',
-      description: state.pendingChapterDescription,
-      duration: state.pendingChapterDuration,
-    );
+          title: state.pendingChapterTitle ??
+              'Chapter ${state.currentChapterForSelection ?? 1}',
+          description: state.pendingChapterDescription,
+          duration: state.pendingChapterDuration,
+        );
   }
 
-  void _showFullScreenPage(BuildContext context, int pageNumber, BookEditingLoaded state) {
+  void _showFullScreenPage(
+      BuildContext context, int pageNumber, BookEditingLoaded state) {
     final page = state.pages.firstWhere((p) => p.pageNumber == pageNumber);
     DialogUtils.showFullScreenImage(context, null, page.thumbnailPath);
   }
 
   void _showChapterManagement(BuildContext context, BookEditingLoaded state) {
+    final bookEditingCubit = context.read<BookEditingCubit>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => _ChapterManagementSheet(
-          state: state,
-          scrollController: scrollController,
-          onCreateChapter: () async {
-            Navigator.pop(context);
-            await _showChapterDetailsDialog(context, null);
-          },
-          onEditChapter: (chapterNumber) async {
-            Navigator.pop(context);
-            final chapter = state.chapters.firstWhere((c) => c.chapterNumber == chapterNumber);
-            await _showChapterDetailsDialog(context, chapter);
-          },
-          onDeleteChapter: (chapterNumber) {
-            context.read<BookEditingCubit>().deleteChapter(chapterNumber);
-          },
+      useRootNavigator: true,
+      builder: (context) => BlocProvider.value(
+        value: bookEditingCubit,
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => _ChapterManagementSheet(
+            state: state,
+            scrollController: scrollController,
+            onCreateChapter: () async {
+              Navigator.pop(context);
+              await _showChapterDetailsDialog(context, null);
+            },
+            onEditChapter: (chapterNumber) async {
+              Navigator.pop(context);
+              final chapter = state.chapters
+                  .firstWhere((c) => c.chapterNumber == chapterNumber);
+              await _showChapterDetailsDialog(context, chapter);
+            },
+            onDeleteChapter: (chapterNumber) {
+              context.read<BookEditingCubit>().deleteChapter(chapterNumber);
+            },
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _showChapterDetailsDialog(BuildContext context, ChapterInfo? existingChapter) async {
+  Future<void> _showChapterDetailsDialog(
+      BuildContext context, ChapterInfo? existingChapter) async {
     if (!mounted) return;
-    
+
     final languageCubit = context.read<LanguagePreferenceCubit>();
     final bookEditingCubit = context.read<BookEditingCubit>();
     final isEditing = existingChapter != null;
-    final nextChapterNumber = isEditing 
-        ? existingChapter.chapterNumber 
+    final nextChapterNumber = isEditing
+        ? existingChapter.chapterNumber
         : (bookEditingCubit.state as BookEditingLoaded).chapters.length + 1;
-    
+
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dialogContext) => _ChapterDetailsDialog(
@@ -489,7 +508,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
 
   void _showGenerateDialog(BuildContext context) {
     final languageCubit = context.read<LanguagePreferenceCubit>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -502,7 +521,8 @@ class _BookEditingPageState extends State<BookEditingPage> {
         content: Text(
           languageCubit.getLocalizedText(
             korean: '선택한 페이지들로 챕터 PDF 파일들을 생성하시겠습니까?',
-            english: 'Do you want to generate chapter PDF files from the selected pages?',
+            english:
+                'Do you want to generate chapter PDF files from the selected pages?',
           ),
         ),
         actions: [
@@ -536,10 +556,10 @@ class _BookEditingPageState extends State<BookEditingPage> {
     try {
       final cubit = context.read<BookEditingCubit>();
       final state = cubit.state as BookEditingLoaded;
-      
+
       final chapterFiles = await cubit.generateChapterPdfs();
       widget.onChaptersGenerated(chapterFiles, state.chapters);
-      
+
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -598,7 +618,6 @@ class _ChapterManagementSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -626,13 +645,13 @@ class _ChapterManagementSheet extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
             ),
           ),
-
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(12),
@@ -674,9 +693,7 @@ class _ChapterManagementSheet extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
           Expanded(
             child: state.chapters.isEmpty
                 ? _buildEmptyState(context)
@@ -695,7 +712,8 @@ class _ChapterManagementSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, {
+  Widget _buildStatItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -928,7 +946,7 @@ class _ChapterManagementSheet extends StatelessWidget {
 
   void _showDeleteConfirmation(BuildContext context, ChapterInfo chapter) {
     final languageCubit = context.read<LanguagePreferenceCubit>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -941,7 +959,8 @@ class _ChapterManagementSheet extends StatelessWidget {
         content: Text(
           languageCubit.getLocalizedText(
             korean: '챕터 "${chapter.title}"를 삭제하시겠습니까?',
-            english: 'Are you sure you want to delete chapter "${chapter.title}"?',
+            english:
+                'Are you sure you want to delete chapter "${chapter.title}"?',
           ),
         ),
         actions: [
@@ -1002,7 +1021,8 @@ class _ChapterDetailsDialogState extends State<_ChapterDetailsDialog> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(
-      text: widget.existingChapter?.title ?? 'Chapter ${widget.nextChapterNumber}',
+      text: widget.existingChapter?.title ??
+          'Chapter ${widget.nextChapterNumber}',
     );
     _descriptionController = TextEditingController(
       text: widget.existingChapter?.description ?? '',
@@ -1066,8 +1086,8 @@ class _ChapterDetailsDialogState extends State<_ChapterDetailsDialog> {
               Text(
                 'Current pages: ${widget.existingChapter!.pageNumbers.length}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                      color: Colors.grey[600],
+                    ),
               ),
             ],
           ],

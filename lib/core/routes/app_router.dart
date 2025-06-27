@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/shared/models/test_result.dart';
@@ -147,9 +148,12 @@ class AppRouter {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final pdfFile = state.extra as BookEditingPage;
-          return BookEditingPage(
-            sourcePdf: pdfFile.sourcePdf,
-            onChaptersGenerated: pdfFile.onChaptersGenerated,
+          return BlocProvider<BookEditingCubit>(
+            create: (context) => sl<BookEditingCubit>(),
+            child: BookEditingPage(
+              sourcePdf: pdfFile.sourcePdf,
+              onChaptersGenerated: pdfFile.onChaptersGenerated,
+            ),
           );
         },
       ),
@@ -312,15 +316,14 @@ class AppRouter {
                 builder: (context, state) => const FavoriteBooksPage(),
               ),
               GoRoute(
-                path: Routes.chapters,
-                name: 'chapters',
-                builder: (context, state) {
-                  final extra = state.extra as ChaptersPage;
-                  return ChaptersPage(
-                    book: extra.book,
-                  );
-                } 
-              ),
+                  path: Routes.chapters,
+                  name: 'chapters',
+                  builder: (context, state) {
+                    final extra = state.extra as ChaptersPage;
+                    return ChaptersPage(
+                      book: extra.book,
+                    );
+                  }),
             ],
           ),
 
@@ -440,7 +443,8 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
                 type: BottomNavigationBarType.fixed,
                 backgroundColor: colorScheme.surface,
                 selectedItemColor: colorScheme.primary,
-                unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
+                unselectedItemColor:
+                    colorScheme.onSurface.withValues(alpha: 0.6),
                 showUnselectedLabels: true,
                 currentIndex: _calculateSelectedIndex(context),
                 onTap: (index) => _onItemTapped(index, context),
