@@ -27,12 +27,7 @@ class PdfPageGridView extends StatelessWidget {
     final crossAxisCount = _calculateCrossAxisCount(screenWidth);
     
     return GridView.builder(
-      padding: EdgeInsets.only(
-        top: isSelectionMode ? 60 : 8,
-        bottom: 16,
-        left: 8,
-        right: 8,
-      ),
+      padding: const EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: 0.75,
@@ -43,9 +38,12 @@ class PdfPageGridView extends StatelessWidget {
       itemBuilder: (context, index) {
         final page = pages[index];
         final chapterInfo = _getPageChapterInfo(page.pageNumber);
+        final pageOrderInChapter = _getPageOrderInChapter(page.pageNumber, chapterInfo);
+        
         return PdfPageThumbnail(
           page: page,
           chapterInfo: chapterInfo,
+          pageOrderInChapter: pageOrderInChapter,
           isSelected: selectedPageNumbers.contains(page.pageNumber),
           isSelectionMode: isSelectionMode,
           onTap: () => onPageTap(page.pageNumber),
@@ -69,11 +67,19 @@ class PdfPageGridView extends StatelessWidget {
     }
     return null;
   }
+
+  int? _getPageOrderInChapter(int pageNumber, ChapterInfo? chapterInfo) {
+    if (chapterInfo == null) return null;
+    final sortedPages = List<int>.from(chapterInfo.pageNumbers)..sort();
+    final index = sortedPages.indexOf(pageNumber);
+    return index >= 0 ? index + 1 : null;
+  }
 }
 
 class PdfPageThumbnail extends StatelessWidget {
   final PdfPageInfo page;
   final ChapterInfo? chapterInfo;
+  final int? pageOrderInChapter;
   final bool isSelected;
   final bool isSelectionMode;
   final VoidCallback onTap;
@@ -83,6 +89,7 @@ class PdfPageThumbnail extends StatelessWidget {
     super.key,
     required this.page,
     this.chapterInfo,
+    this.pageOrderInChapter,
     required this.isSelected,
     required this.isSelectionMode,
     required this.onTap,
@@ -150,25 +157,49 @@ class PdfPageThumbnail extends StatelessWidget {
 
               if (chapterInfo != null && !isSelected)
                 Positioned(
-                  top: 6,
-                  left: 6,
-                  right: 6,
+                  top: 4,
+                  left: 4,
+                  right: 4,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: _getChapterColor(chapterInfo!.chapterNumber),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      _truncateChapterName(chapterInfo!.title),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Ch ${chapterInfo!.chapterNumber}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (pageOrderInChapter != null) ...[
+                          const SizedBox(width: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              '$pageOrderInChapter',
+                              style: TextStyle(
+                                color: _getChapterColor(chapterInfo!.chapterNumber),
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -179,8 +210,8 @@ class PdfPageThumbnail extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
                     '${page.pageNumber}',
@@ -202,16 +233,16 @@ class PdfPageThumbnail extends StatelessWidget {
                     ),
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.black.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'Assigned',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -224,11 +255,6 @@ class PdfPageThumbnail extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _truncateChapterName(String name) {
-    if (name.length <= 12) return name;
-    return '${name.substring(0, 10)}..';
   }
 
   Color _getBorderColor(ColorScheme colorScheme) {

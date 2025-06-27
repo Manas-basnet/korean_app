@@ -249,62 +249,51 @@ class _BookEditingPageState extends State<BookEditingPage> {
   }
 
   Widget _buildEditingView(BuildContext context, BookEditingLoaded state) {
-    return Stack(
+    return Column(
       children: [
-        Column(
-          children: [
-            if (state.chapters.isNotEmpty) _buildChapterSummaryBar(context, state),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: PdfPageGridView(
-                  pages: state.pages,
-                  chapters: state.chapters,
-                  selectedPageNumbers: state.selectedPageNumbers,
-                  isSelectionMode: state.isSelectionMode,
-                  onPageTap: (pageNumber) {
-                    if (state.isSelectionMode) {
-                      context.read<BookEditingCubit>().togglePageSelection(pageNumber);
-                    }
-                  },
-                  onPageLongPress: (pageNumber) => _showFullScreenPage(context, pageNumber, state),
-                ),
-              ),
+        if (state.chapters.isNotEmpty) _buildCompactChapterSummaryBar(context, state),
+        if (state.isSelectionMode) _buildSelectionTopBar(context, state),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: PdfPageGridView(
+              pages: state.pages,
+              chapters: state.chapters,
+              selectedPageNumbers: state.selectedPageNumbers,
+              isSelectionMode: state.isSelectionMode,
+              onPageTap: (pageNumber) {
+                if (state.isSelectionMode) {
+                  context.read<BookEditingCubit>().togglePageSelection(pageNumber);
+                }
+              },
+              onPageLongPress: (pageNumber) => _showFullScreenPage(context, pageNumber, state),
             ),
-          ],
-        ),
-        
-        if (state.isSelectionMode)
-          Positioned(
-            bottom: 24,
-            left: 16,
-            right: 16,
-            child: _buildSelectionPanel(context, state),
           ),
+        ),
       ],
     );
   }
 
-  Widget _buildChapterSummaryBar(BuildContext context, BookEditingLoaded state) {
+  Widget _buildCompactChapterSummaryBar(BuildContext context, BookEditingLoaded state) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Icon(
             Icons.auto_stories,
             color: colorScheme.onPrimaryContainer,
-            size: 20,
+            size: 18,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               '${state.chapters.length} chapters • ${_getTotalUsedPages(state)} pages assigned',
@@ -318,6 +307,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
             onPressed: () => _showChapterManagement(context, state),
             style: TextButton.styleFrom(
               foregroundColor: colorScheme.onPrimaryContainer,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             ),
             child: const Text('Manage'),
           ),
@@ -326,103 +316,94 @@ class _BookEditingPageState extends State<BookEditingPage> {
     );
   }
 
-  Widget _buildSelectionPanel(BuildContext context, BookEditingLoaded state) {
+  Widget _buildSelectionTopBar(BuildContext context, BookEditingLoaded state) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final languageCubit = context.read<LanguagePreferenceCubit>();
 
-    return Material(
-      elevation: 8,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorScheme.primary, width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check,
-                    color: colorScheme.onPrimary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${state.selectedPageNumbers.length} pages selected',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Creating chapter ${state.currentChapterForSelection ?? 1}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => context.read<BookEditingCubit>().clearSelection(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: colorScheme.outline),
-                    ),
-                    child: Text(
-                      languageCubit.getLocalizedText(
-                        korean: '취소',
-                        english: 'Cancel',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: state.selectedPageNumbers.isNotEmpty 
-                        ? () => _showChapterDetailsDialog(context, state)
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      languageCubit.getLocalizedText(
-                        korean: '저장',
-                        english: 'Save',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.primary, width: 1),
       ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              Icons.check,
+              color: colorScheme.onPrimary,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${state.selectedPageNumbers.length} pages selected',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'For: ${state.pendingChapterTitle ?? 'Chapter ${state.currentChapterForSelection ?? 1}'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () => context.read<BookEditingCubit>().clearSelection(),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              side: BorderSide(color: colorScheme.outline),
+            ),
+            child: Text(
+              languageCubit.getLocalizedText(
+                korean: '취소',
+                english: 'Cancel',
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: state.selectedPageNumbers.isNotEmpty 
+                ? () => _saveSelectedPages(context, state)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text(
+              languageCubit.getLocalizedText(
+                korean: '저장',
+                english: 'Save',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveSelectedPages(BuildContext context, BookEditingLoaded state) {
+    context.read<BookEditingCubit>().saveSelectedPagesAsChapter(
+      title: state.pendingChapterTitle ?? 'Chapter ${state.currentChapterForSelection ?? 1}',
+      description: state.pendingChapterDescription,
+      duration: state.pendingChapterDuration,
     );
   }
 
@@ -456,7 +437,6 @@ class _BookEditingPageState extends State<BookEditingPage> {
   }
 
   void _showChapterManagement(BuildContext context, BookEditingLoaded state) {
-    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -466,16 +446,17 @@ class _BookEditingPageState extends State<BookEditingPage> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => _ChapterManagementBottomSheet(
+        builder: (context, scrollController) => _ChapterManagementSheet(
           state: state,
           scrollController: scrollController,
-          onCreateChapter: (chapterNumber) {
+          onCreateChapter: () async {
             Navigator.pop(context);
-            context.read<BookEditingCubit>().startPageSelection(chapterNumber);
+            await _showChapterDetailsDialog(context, null);
           },
-          onEditChapter: (chapterNumber) {
+          onEditChapter: (chapterNumber) async {
             Navigator.pop(context);
-            context.read<BookEditingCubit>().editChapter(chapterNumber);
+            final chapter = state.chapters.firstWhere((c) => c.chapterNumber == chapterNumber);
+            await _showChapterDetailsDialog(context, chapter);
           },
           onDeleteChapter: (chapterNumber) {
             context.read<BookEditingCubit>().deleteChapter(chapterNumber);
@@ -485,94 +466,48 @@ class _BookEditingPageState extends State<BookEditingPage> {
     );
   }
 
-  void _showChapterDetailsDialog(BuildContext context, BookEditingLoaded state) {
+  Future<void> _showChapterDetailsDialog(BuildContext context, ChapterInfo? existingChapter) async {
+    if (!mounted) return;
+    
     final languageCubit = context.read<LanguagePreferenceCubit>();
-    final titleController = TextEditingController(
-      text: 'Chapter ${state.currentChapterForSelection ?? 1}',
-    );
-    final descriptionController = TextEditingController();
-    final durationController = TextEditingController();
-
-    showDialog(
+    final bookEditingCubit = context.read<BookEditingCubit>();
+    final isEditing = existingChapter != null;
+    final nextChapterNumber = isEditing 
+        ? existingChapter.chapterNumber 
+        : (bookEditingCubit.state as BookEditingLoaded).chapters.length + 1;
+    
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          languageCubit.getLocalizedText(
-            korean: '챕터 세부정보',
-            english: 'Chapter Details',
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Chapter Title',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.title),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description (Optional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: durationController,
-                decoration: const InputDecoration(
-                  labelText: 'Duration (Optional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.timer),
-                  hintText: 'e.g., 30 mins',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              languageCubit.getLocalizedText(
-                korean: '취소',
-                english: 'Cancel',
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isNotEmpty) {
-                Navigator.of(context).pop();
-                context.read<BookEditingCubit>().saveSelectedPagesAsChapter(
-                  title: title,
-                  description: descriptionController.text.trim().isEmpty 
-                      ? null 
-                      : descriptionController.text.trim(),
-                  duration: durationController.text.trim().isEmpty 
-                      ? null 
-                      : durationController.text.trim(),
-                );
-              }
-            },
-            child: Text(
-              languageCubit.getLocalizedText(
-                korean: '저장',
-                english: 'Save',
-              ),
-            ),
-          ),
-        ],
+      builder: (dialogContext) => _ChapterDetailsDialog(
+        isEditing: isEditing,
+        existingChapter: existingChapter,
+        nextChapterNumber: nextChapterNumber,
+        languageCubit: languageCubit,
       ),
     );
+
+    if (!mounted || result == null) return;
+
+    final title = result['title'] as String;
+    final description = result['description'] as String?;
+    final duration = result['duration'] as String?;
+    final action = result['action'] as String;
+
+    if (action == 'save_only' && isEditing) {
+      bookEditingCubit.updateChapterDetails(
+        existingChapter.chapterNumber,
+        title: title,
+        description: description?.isEmpty == true ? null : description,
+        duration: duration?.isEmpty == true ? null : duration,
+      );
+    } else if (action == 'select_pages') {
+      bookEditingCubit.startPageSelectionWithDetails(
+        chapterNumber: nextChapterNumber,
+        title: title,
+        description: description?.isEmpty == true ? null : description,
+        duration: duration?.isEmpty == true ? null : duration,
+      );
+    }
   }
 
   void _showGenerateDialog(BuildContext context) {
@@ -648,14 +583,14 @@ class _BookEditingPageState extends State<BookEditingPage> {
   }
 }
 
-class _ChapterManagementBottomSheet extends StatelessWidget {
+class _ChapterManagementSheet extends StatelessWidget {
   final BookEditingLoaded state;
   final ScrollController scrollController;
-  final Function(int chapterNumber) onCreateChapter;
+  final VoidCallback onCreateChapter;
   final Function(int chapterNumber) onEditChapter;
   final Function(int chapterNumber) onDeleteChapter;
 
-  const _ChapterManagementBottomSheet({
+  const _ChapterManagementSheet({
     required this.state,
     required this.scrollController,
     required this.onCreateChapter,
@@ -672,14 +607,15 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: Column(
         children: [
           Container(
             width: 40,
             height: 4,
-            margin: const EdgeInsets.only(top: 12),
+            margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
               color: colorScheme.onSurfaceVariant.withOpacity(0.4),
               borderRadius: BorderRadius.circular(2),
@@ -687,7 +623,7 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
           ),
           
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Expanded(
@@ -702,13 +638,8 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    final nextChapterNumber = state.chapters.isNotEmpty 
-                        ? state.chapters.last.chapterNumber + 1 
-                        : 1;
-                    onCreateChapter(nextChapterNumber);
-                  },
-                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: onCreateChapter,
+                  icon: const Icon(Icons.add, size: 16),
                   label: Text(
                     languageCubit.getLocalizedText(
                       korean: '새 챕터',
@@ -718,6 +649,7 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
@@ -725,11 +657,12 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
           ),
 
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -743,11 +676,6 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                   ),
                   value: state.pages.length.toString(),
                 ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: colorScheme.onPrimaryContainer.withOpacity(0.3),
-                ),
                 _buildStatItem(
                   context,
                   icon: Icons.auto_stories,
@@ -756,11 +684,6 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                     english: 'Chapters',
                   ),
                   value: state.chapters.length.toString(),
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: colorScheme.onPrimaryContainer.withOpacity(0.3),
                 ),
                 _buildStatItem(
                   context,
@@ -775,14 +698,14 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           Expanded(
             child: state.chapters.isEmpty
                 ? _buildEmptyState(context)
                 : ListView.builder(
                     controller: scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: state.chapters.length,
                     itemBuilder: (context, index) {
                       final chapter = state.chapters[index];
@@ -808,12 +731,12 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
         Icon(
           icon,
           color: colorScheme.onPrimaryContainer,
-          size: 24,
+          size: 18,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           value,
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: colorScheme.onPrimaryContainer,
           ),
@@ -835,16 +758,16 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.auto_stories_outlined,
-              size: 80,
+              size: 64,
               color: Colors.grey[400],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               languageCubit.getLocalizedText(
                 korean: '아직 챕터가 없습니다',
@@ -856,7 +779,7 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               languageCubit.getLocalizedText(
                 korean: '새 챕터를 만들어 페이지를 선택하세요',
@@ -878,26 +801,26 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: _getChapterColor(chapter.chapterNumber),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Center(
                       child: Text(
@@ -905,27 +828,39 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 16,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           chapter.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          '${chapter.pageCount} pages',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${chapter.pageCount} pages',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            if (chapter.pageNumbers.isNotEmpty) ...[
+                              Text(
+                                ' • Pages: ${chapter.pageNumbers.take(3).join(', ')}${chapter.pageNumbers.length > 3 ? '...' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -943,8 +878,8 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit, size: 18),
-                            SizedBox(width: 12),
+                            Icon(Icons.edit, size: 16),
+                            SizedBox(width: 8),
                             Text('Edit'),
                           ],
                         ),
@@ -953,8 +888,8 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete, size: 18, color: Colors.red),
-                            SizedBox(width: 12),
+                            Icon(Icons.delete, size: 16, color: Colors.red),
+                            SizedBox(width: 8),
                             Text('Delete', style: TextStyle(color: Colors.red)),
                           ],
                         ),
@@ -964,19 +899,19 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
                 ],
               ),
               if (chapter.description != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   chapter.description!,
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
               if (chapter.duration != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(
                       Icons.timer,
-                      size: 16,
+                      size: 14,
                       color: colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 4),
@@ -1060,6 +995,154 @@ class _ChapterManagementBottomSheet extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChapterDetailsDialog extends StatefulWidget {
+  final bool isEditing;
+  final ChapterInfo? existingChapter;
+  final int nextChapterNumber;
+  final LanguagePreferenceCubit languageCubit;
+
+  const _ChapterDetailsDialog({
+    required this.isEditing,
+    this.existingChapter,
+    required this.nextChapterNumber,
+    required this.languageCubit,
+  });
+
+  @override
+  State<_ChapterDetailsDialog> createState() => _ChapterDetailsDialogState();
+}
+
+class _ChapterDetailsDialogState extends State<_ChapterDetailsDialog> {
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _durationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(
+      text: widget.existingChapter?.title ?? 'Chapter ${widget.nextChapterNumber}',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.existingChapter?.description ?? '',
+    );
+    _durationController = TextEditingController(
+      text: widget.existingChapter?.duration ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.languageCubit.getLocalizedText(
+          korean: widget.isEditing ? '챕터 편집' : '새 챕터',
+          english: widget.isEditing ? 'Edit Chapter' : 'New Chapter',
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Chapter Title',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.title),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.description),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _durationController,
+              decoration: const InputDecoration(
+                labelText: 'Duration (Optional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.timer),
+                hintText: 'e.g., 30 mins',
+              ),
+            ),
+            if (widget.isEditing && widget.existingChapter != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Current pages: ${widget.existingChapter!.pageNumbers.length}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            widget.languageCubit.getLocalizedText(
+              korean: '취소',
+              english: 'Cancel',
+            ),
+          ),
+        ),
+        if (widget.isEditing)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop({
+                'action': 'save_only',
+                'title': _titleController.text.trim(),
+                'description': _descriptionController.text.trim(),
+                'duration': _durationController.text.trim(),
+              });
+            },
+            child: Text(
+              widget.languageCubit.getLocalizedText(
+                korean: '저장만',
+                english: 'Save Only',
+              ),
+            ),
+          ),
+        ElevatedButton(
+          onPressed: () {
+            final title = _titleController.text.trim();
+            if (title.isNotEmpty) {
+              Navigator.of(context).pop({
+                'action': 'select_pages',
+                'title': title,
+                'description': _descriptionController.text.trim(),
+                'duration': _durationController.text.trim(),
+              });
+            }
+          },
+          child: Text(
+            widget.languageCubit.getLocalizedText(
+              korean: widget.isEditing ? '페이지 재선택' : '페이지 선택',
+              english: widget.isEditing ? 'Reselect Pages' : 'Select Pages',
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -61,10 +61,10 @@ class BookEditingLoaded extends BookEditingState {
       chapters: chapters ?? this.chapters,
       selectedPageNumbers: selectedPageNumbers ?? this.selectedPageNumbers,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
-      currentChapterForSelection: currentChapterForSelection ?? this.currentChapterForSelection,
-      pendingChapterTitle: pendingChapterTitle ?? this.pendingChapterTitle,
-      pendingChapterDescription: pendingChapterDescription ?? this.pendingChapterDescription,
-      pendingChapterDuration: pendingChapterDuration ?? this.pendingChapterDuration,
+      currentChapterForSelection: currentChapterForSelection,
+      pendingChapterTitle: pendingChapterTitle,
+      pendingChapterDescription: pendingChapterDescription,
+      pendingChapterDuration: pendingChapterDuration,
     );
   }
 
@@ -73,8 +73,10 @@ class BookEditingLoaded extends BookEditingState {
   ).toList();
 
   List<PdfPageInfo> get availablePages => pages.where((page) => 
-    !chapters.any((chapter) => chapter.pageNumbers.contains(page.pageNumber)) ||
-    selectedPageNumbers.contains(page.pageNumber)
+    !chapters.any((chapter) => 
+      chapter.pageNumbers.contains(page.pageNumber) &&
+      chapter.chapterNumber != currentChapterForSelection
+    )
   ).toList();
 
   bool isPageSelected(int pageNumber) => selectedPageNumbers.contains(pageNumber);
@@ -87,6 +89,25 @@ class BookEditingLoaded extends BookEditingState {
     }
     return null;
   }
+
+  ChapterInfo? getChapterByNumber(int chapterNumber) {
+    try {
+      return chapters.firstWhere((c) => c.chapterNumber == chapterNumber);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  List<ChapterInfo> get sortedChapters {
+    final sorted = List<ChapterInfo>.from(chapters);
+    sorted.sort((a, b) => a.chapterNumber.compareTo(b.chapterNumber));
+    return sorted;
+  }
+
+  bool get hasUnsavedSelection => 
+    isSelectionMode && 
+    selectedPageNumbers.isNotEmpty && 
+    pendingChapterTitle != null;
 
   @override
   List<Object?> get props => [

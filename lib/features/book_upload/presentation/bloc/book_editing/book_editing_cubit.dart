@@ -70,13 +70,55 @@ class BookEditingCubit extends Cubit<BookEditingState> {
     }
   }
 
-  void startPageSelection(int chapterNumber) {
+  void startPageSelectionWithDetails({
+    required int chapterNumber,
+    required String title,
+    String? description,
+    String? duration,
+  }) {
     final currentState = state;
     if (currentState is BookEditingLoaded) {
+      final existingChapter = currentState.chapters.firstWhere(
+        (c) => c.chapterNumber == chapterNumber,
+        orElse: () => ChapterInfo(
+          chapterNumber: chapterNumber,
+          title: title,
+          description: description,
+          pageNumbers: [],
+          duration: duration,
+        ),
+      );
+
       emit(currentState.copyWith(
         isSelectionMode: true,
         currentChapterForSelection: chapterNumber,
-        selectedPageNumbers: [],
+        selectedPageNumbers: List<int>.from(existingChapter.pageNumbers),
+        pendingChapterTitle: title,
+        pendingChapterDescription: description,
+        pendingChapterDuration: duration,
+      ));
+    }
+  }
+
+  void startPageSelection(int chapterNumber) {
+    final currentState = state;
+    if (currentState is BookEditingLoaded) {
+      final existingChapter = currentState.chapters.firstWhere(
+        (c) => c.chapterNumber == chapterNumber,
+        orElse: () => ChapterInfo(
+          chapterNumber: chapterNumber,
+          title: 'Chapter $chapterNumber',
+          pageNumbers: [],
+        ),
+      );
+
+      emit(currentState.copyWith(
+        isSelectionMode: true,
+        currentChapterForSelection: chapterNumber,
+        selectedPageNumbers: List<int>.from(existingChapter.pageNumbers),
+        pendingChapterTitle: existingChapter.title,
+        pendingChapterDescription: existingChapter.description,
+        pendingChapterDuration: existingChapter.duration,
       ));
     }
   }
@@ -89,11 +131,13 @@ class BookEditingCubit extends Cubit<BookEditingState> {
       if (updatedSelection.contains(pageNumber)) {
         updatedSelection.remove(pageNumber);
       } else {
-        if (currentState.getPageChapterNumber(pageNumber) == null) {
+        if (currentState.getPageChapterNumber(pageNumber) == null || 
+            currentState.getPageChapterNumber(pageNumber) == currentState.currentChapterForSelection) {
           updatedSelection.add(pageNumber);
         }
       }
       
+      updatedSelection.sort();
       emit(currentState.copyWith(selectedPageNumbers: updatedSelection));
     }
   }
@@ -107,7 +151,9 @@ class BookEditingCubit extends Cubit<BookEditingState> {
       final end = startPage < endPage ? endPage : startPage;
       
       for (int i = start; i <= end; i++) {
-        if (currentState.getPageChapterNumber(i) == null && !updatedSelection.contains(i)) {
+        final pageChapter = currentState.getPageChapterNumber(i);
+        if ((pageChapter == null || pageChapter == currentState.currentChapterForSelection) && 
+            !updatedSelection.contains(i)) {
           updatedSelection.add(i);
         }
       }
@@ -124,6 +170,9 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         selectedPageNumbers: [],
         isSelectionMode: false,
         currentChapterForSelection: null,
+        pendingChapterTitle: null,
+        pendingChapterDescription: null,
+        pendingChapterDuration: null,
       ));
     }
   }
@@ -167,10 +216,36 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         selectedPageNumbers: [],
         isSelectionMode: false,
         currentChapterForSelection: null,
+        pendingChapterTitle: null,
+        pendingChapterDescription: null,
+        pendingChapterDuration: null,
       ));
 
     } catch (e) {
       emit(BookEditingError('Failed to save chapter: $e'));
+    }
+  }
+
+  void updateChapterDetails(
+    int chapterNumber, {
+    required String title,
+    String? description,
+    String? duration,
+  }) {
+    final currentState = state;
+    if (currentState is BookEditingLoaded) {
+      final updatedChapters = currentState.chapters.map((chapter) {
+        if (chapter.chapterNumber == chapterNumber) {
+          return chapter.copyWith(
+            title: title,
+            description: description,
+            duration: duration,
+          );
+        }
+        return chapter;
+      }).toList();
+
+      emit(currentState.copyWith(chapters: updatedChapters));
     }
   }
 
@@ -190,6 +265,9 @@ class BookEditingCubit extends Cubit<BookEditingState> {
         isSelectionMode: true,
         currentChapterForSelection: chapterNumber,
         selectedPageNumbers: List<int>.from(chapter.pageNumbers),
+        pendingChapterTitle: chapter.title,
+        pendingChapterDescription: chapter.description,
+        pendingChapterDuration: chapter.duration,
       ));
     }
   }
@@ -214,17 +292,22 @@ class BookEditingCubit extends Cubit<BookEditingState> {
     final chapterFiles = <File>[];
 
     try {
-      for (int i = 0; i < currentState.chapters.length; i++) {
-        final chapter = currentState.chapters[i];
+      final sortedChapters = List<ChapterInfo>.from(currentState.chapters)
+        ..sort((a, b) => a.chapterNumber.compareTo(b.chapterNumber));
+
+      for (int i = 0; i < sortedChapters.length; i++) {
+        final chapter = sortedChapters[i];
         
         emit(BookEditingLoading(
           message: 'Generating ${chapter.title}...',
-          progress: (i + 1) / currentState.chapters.length,
+          progress: (i + 1) / sortedChapters.length,
         ));
+
+        final sortedPages = List<int>.from(chapter.pageNumbers)..sort();
 
         final chapterFile = await _pdfManipulationService.extractPagesAsNewPdf(
           sourcePdf: currentState.sourcePdf,
-          pageNumbers: chapter.pageNumbers,
+          pageNumbers: sortedPages,
           outputFileName: 'chapter_${chapter.chapterNumber}_${DateTime.now().millisecondsSinceEpoch}',
         );
 
