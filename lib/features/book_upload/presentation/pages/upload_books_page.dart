@@ -1080,7 +1080,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                             ],
                             SizedBox(height: MediaQuery.of(context).size.height * 0.005),
                             Text(
-                              'File: ${chapter.pdfFile.path.split('/').last}',
+                              'File: ${chapter.pdfFile?.path.split('/').last}',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurface.withOpacity(0.5),
                               ),
@@ -1459,7 +1459,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
 
     if (widget.existingChapter != null) {
       _selectedFile = widget.existingChapter!.pdfFile;
-      _fileName = widget.existingChapter!.pdfFile.path.split('/').last;
+      _fileName = widget.existingChapter!.pdfFile?.path.split('/').last;
     }
   }
 

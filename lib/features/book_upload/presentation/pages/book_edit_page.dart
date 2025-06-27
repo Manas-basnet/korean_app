@@ -48,6 +48,7 @@ class _BookEditPageState extends State<BookEditPage> {
   bool _imageSelected = false;
 
   List<ChapterUploadData> _chapters = [];
+  bool _hasChapterChanges = false;
   
   @override
   void initState() {
@@ -74,8 +75,10 @@ class _BookEditPageState extends State<BookEditPage> {
         title: chapter.title,
         description: chapter.description,
         duration: chapter.duration,
-        pdfFile: File(''), // Will be replaced when user selects new files
+        pdfFile: null,
         order: chapter.order,
+        isNewOrModified: false,
+        existingId: chapter.id,
       )).toList();
     }
   }
@@ -125,6 +128,7 @@ class _BookEditPageState extends State<BookEditPage> {
     if (result != null) {
       setState(() {
         _chapters.add(result);
+        _hasChapterChanges = true;
       });
     }
   }
@@ -132,6 +136,7 @@ class _BookEditPageState extends State<BookEditPage> {
   void _removeChapter(int index) {
     setState(() {
       _chapters.removeAt(index);
+      _hasChapterChanges = true;
       for (int i = 0; i < _chapters.length; i++) {
         _chapters[i] = _chapters[i].copyWith(order: i + 1);
       }
@@ -139,18 +144,26 @@ class _BookEditPageState extends State<BookEditPage> {
   }
 
   void _editChapter(int index) async {
+    final existingChapter = _chapters[index];
     final result = await showDialog<ChapterUploadData>(
       context: context,
       builder: (context) => _ChapterUploadDialog(
         chapterNumber: index + 1,
         fileUploadCubit: context.read<FileUploadCubit>(),
-        existingChapter: _chapters[index],
+        existingChapter: existingChapter,
       ),
     );
 
     if (result != null) {
       setState(() {
         _chapters[index] = result;
+        if (!existingChapter.isNewOrModified || 
+            existingChapter.title != result.title ||
+            existingChapter.description != result.description ||
+            existingChapter.duration != result.duration ||
+            result.pdfFile != null) {
+          _hasChapterChanges = true;
+        }
       });
     }
   }
@@ -185,10 +198,11 @@ class _BookEditPageState extends State<BookEditPage> {
           imageFile: _selectedImageFile,
         );
       } else {
+        final chaptersToUpdate = _hasChapterChanges ? _chapters : null;
         success = await context.read<FileUploadCubit>().updateBookWithChapters(
           widget.book.id,
           updatedBook,
-          _chapters.isNotEmpty ? _chapters : null,
+          chaptersToUpdate,
           imageFile: _selectedImageFile,
         );
       }
@@ -953,7 +967,7 @@ class _BookEditPageState extends State<BookEditPage> {
           ),
           SizedBox(height: MediaQuery.sizeOf(context).height * 0.02),
           
-          if (_chapters.isEmpty && widget.book.chapters.isEmpty)
+          if (_chapters.isEmpty)
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.08),
@@ -991,7 +1005,7 @@ class _BookEditPageState extends State<BookEditPage> {
                 ],
               ),
             )
-          else if (_chapters.isNotEmpty)
+          else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1001,14 +1015,20 @@ class _BookEditPageState extends State<BookEditPage> {
               ),
               itemBuilder: (context, index) {
                 final chapter = _chapters[index];
+                final isModified = chapter.isNewOrModified;
+                
                 return Container(
                   padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.04),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
+                      color: isModified
+                          ? theme.colorScheme.secondary.withOpacity(0.3)
+                          : theme.colorScheme.outline.withOpacity(0.2),
                     ),
                     borderRadius: BorderRadius.circular(12),
-                    color: theme.colorScheme.surface,
+                    color: isModified
+                        ? theme.colorScheme.secondary.withOpacity(0.05)
+                        : theme.colorScheme.surface,
                   ),
                   child: Row(
                     children: [
@@ -1016,14 +1036,18 @@ class _BookEditPageState extends State<BookEditPage> {
                         width: MediaQuery.sizeOf(context).width * 0.1,
                         height: MediaQuery.sizeOf(context).width * 0.1,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
+                          color: isModified
+                              ? theme.colorScheme.secondary
+                              : theme.colorScheme.outline.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Center(
                           child: Text(
                             '${index + 1}',
                             style: theme.textTheme.labelLarge?.copyWith(
-                              color: theme.colorScheme.onPrimary,
+                              color: isModified
+                                  ? theme.colorScheme.onSecondary
+                                  : theme.colorScheme.onSurface.withOpacity(0.7),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1034,12 +1058,36 @@ class _BookEditPageState extends State<BookEditPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              chapter.title,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    chapter.title,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (isModified)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: MediaQuery.sizeOf(context).width * 0.02,
+                                      vertical: MediaQuery.sizeOf(context).height * 0.002,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.secondary,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Modified',
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        color: theme.colorScheme.onSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                             if (chapter.description != null) ...[
                               SizedBox(height: MediaQuery.sizeOf(context).height * 0.005),
@@ -1054,9 +1102,9 @@ class _BookEditPageState extends State<BookEditPage> {
                             ],
                             SizedBox(height: MediaQuery.sizeOf(context).height * 0.005),
                             Text(
-                              chapter.pdfFile.path.isNotEmpty 
-                                  ? 'File: ${chapter.pdfFile.path.split('/').last}'
-                                  : 'Original chapter file',
+                              chapter.pdfFile != null && chapter.pdfFile!.path.isNotEmpty
+                                  ? 'File: ${chapter.pdfFile!.path.split('/').last}'
+                                  : 'Using existing chapter file',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurface.withOpacity(0.5),
                               ),
@@ -1099,87 +1147,6 @@ class _BookEditPageState extends State<BookEditPage> {
                             ),
                           ),
                         ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: widget.book.chapters.length,
-              separatorBuilder: (context, index) => SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.01,
-              ),
-              itemBuilder: (context, index) {
-                final chapter = widget.book.chapters[index];
-                return Container(
-                  padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.04),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    color: theme.colorScheme.surface,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: MediaQuery.sizeOf(context).width * 0.1,
-                        height: MediaQuery.sizeOf(context).width * 0.1,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.outline.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.7),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: MediaQuery.sizeOf(context).width * 0.03),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              chapter.title,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            if (chapter.description != null) ...[
-                              SizedBox(height: MediaQuery.sizeOf(context).height * 0.005),
-                              Text(
-                                chapter.description!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                            SizedBox(height: MediaQuery.sizeOf(context).height * 0.005),
-                            Text(
-                              'Current chapter',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.lock_rounded,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
-                        size: MediaQuery.sizeOf(context).width * 0.05,
                       ),
                     ],
                   ),
@@ -1538,6 +1505,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
 
   File? _selectedFile;
   String? _fileName;
+  bool _fileChanged = false;
 
   @override
   void initState() {
@@ -1554,7 +1522,9 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
 
     if (widget.existingChapter != null) {
       _selectedFile = widget.existingChapter!.pdfFile;
-      _fileName = widget.existingChapter!.pdfFile.path.split('/').last;
+      if (_selectedFile != null && _selectedFile!.path.isNotEmpty) {
+        _fileName = _selectedFile!.path.split('/').last;
+      }
     }
   }
 
@@ -1572,21 +1542,30 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
       setState(() {
         _selectedFile = file;
         _fileName = file.path.split('/').last;
+        _fileChanged = true;
       });
     }
   }
 
   void _saveChapter() {
-    if (_formKey.currentState?.validate() != true || _selectedFile == null) {
+    if (_formKey.currentState?.validate() != true) {
       return;
     }
+
+    bool isModified = widget.existingChapter == null ||
+        widget.existingChapter!.title != _titleController.text ||
+        widget.existingChapter!.description != _descriptionController.text ||
+        widget.existingChapter!.duration != _durationController.text ||
+        _fileChanged;
 
     final chapter = ChapterUploadData(
       title: _titleController.text,
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
       duration: _durationController.text.isEmpty ? null : _durationController.text,
-      pdfFile: _selectedFile!,
+      pdfFile: _fileChanged ? _selectedFile : null,
       order: widget.chapterNumber,
+      isNewOrModified: isModified,
+      existingId: widget.existingChapter?.existingId,
     );
 
     Navigator.of(context).pop(chapter);
@@ -1707,12 +1686,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                         padding: EdgeInsets.all(mediaQuery.width * 0.04),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _selectedFile != null
+                            color: _fileChanged
                                 ? theme.colorScheme.primary.withOpacity(0.5)
                                 : theme.colorScheme.outline.withOpacity(0.3),
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          color: _selectedFile != null
+                          color: _fileChanged
                               ? theme.colorScheme.primary.withOpacity(0.05)
                               : theme.colorScheme.surface,
                         ),
@@ -1724,14 +1703,14 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                 Container(
                                   padding: EdgeInsets.all(mediaQuery.width * 0.02),
                                   decoration: BoxDecoration(
-                                    color: _selectedFile != null
+                                    color: _fileChanged
                                         ? theme.colorScheme.primary.withOpacity(0.1)
                                         : theme.colorScheme.outline.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
-                                    _selectedFile != null ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
-                                    color: _selectedFile != null
+                                    _fileChanged ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
+                                    color: _fileChanged
                                         ? theme.colorScheme.primary
                                         : theme.colorScheme.onSurface.withOpacity(0.6),
                                     size: mediaQuery.width * 0.05,
@@ -1740,12 +1719,14 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                 SizedBox(width: mediaQuery.width * 0.03),
                                 Expanded(
                                   child: Text(
-                                    _fileName ?? 'No PDF selected',
+                                    _fileName ?? (widget.existingChapter != null 
+                                        ? 'Use existing chapter file' 
+                                        : 'No PDF selected'),
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: _selectedFile != null
+                                      color: _fileChanged
                                           ? theme.colorScheme.primary
                                           : theme.colorScheme.onSurface.withOpacity(0.7),
-                                      fontWeight: _selectedFile != null ? FontWeight.w600 : FontWeight.normal,
+                                      fontWeight: _fileChanged ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
                                 ),
@@ -1757,7 +1738,9 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                               child: ElevatedButton.icon(
                                 onPressed: _pickFile,
                                 icon: const Icon(Icons.upload_file_rounded),
-                                label: const Text('Select PDF File'),
+                                label: Text(widget.existingChapter != null 
+                                    ? 'Change PDF File' 
+                                    : 'Select PDF File'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: theme.colorScheme.primary,
                                   foregroundColor: theme.colorScheme.onPrimary,
@@ -1809,7 +1792,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                   ),
                   SizedBox(width: mediaQuery.width * 0.02),
                   ElevatedButton(
-                    onPressed: _selectedFile != null ? _saveChapter : null,
+                    onPressed: _saveChapter,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: theme.colorScheme.onPrimary,
