@@ -310,56 +310,62 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         }
         
         if (chaptersData != null && chaptersData.isNotEmpty) {
-          final newOrModifiedChapters = chaptersData.where((chapter) => 
-            chapter.isNewOrModified && chapter.pdfFile != null && chapter.pdfFile!.existsSync()
-          ).toList();
+          final existingChapters = existingData['chapters'] as List?;
+          Map<String, Chapter> existingChapterMap = {};
           
-          if (newOrModifiedChapters.isNotEmpty) {
-            final existingChapters = existingData['chapters'] as List?;
-            if (existingChapters != null) {
-              final oldChapters = existingChapters
-                  .map((chapterJson) => Chapter.fromJson(chapterJson))
-                  .toList();
-              oldChapterPathsToDelete = oldChapters
-                  .where((chapter) => chapter.pdfPath != null)
-                  .map((chapter) => chapter.pdfPath!)
-                  .toList();
+          if (existingChapters != null) {
+            for (var chapterJson in existingChapters) {
+              final chapter = Chapter.fromJson(chapterJson);
+              existingChapterMap[chapter.id] = chapter;
             }
+          }
+          
+          processedChapters.clear();
+          
+          for (int i = 0; i < chaptersData.length; i++) {
+            final chapterData = chaptersData[i];
             
-            processedChapters.clear();
-            
-            for (int i = 0; i < chaptersData.length; i++) {
-              final chapterData = chaptersData[i];
-              
-              if (chapterData.isNewOrModified && chapterData.pdfFile != null && chapterData.pdfFile!.existsSync()) {
-                try {
-                  final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
-                  newChapterPaths.add(chapterResult['storagePath']!);
-                  
-                  final chapter = Chapter(
-                    id: chapterData.existingId ?? '${bookId}_chapter_${i + 1}',
-                    title: chapterData.title,
-                    description: chapterData.description,
-                    pdfUrl: chapterResult['url'],
-                    pdfPath: chapterResult['storagePath'],
-                    order: chapterData.order,
-                    duration: chapterData.duration,
-                    createdAt: DateTime.now(),
-                    updatedAt: DateTime.now(),
-                  );
-                  
-                  processedChapters.add(chapter);
-                } catch (e) {
-                  if (newImagePath != null) {
-                    await _deleteFileByPath(newImagePath);
+            if (chapterData.isNewOrModified && chapterData.pdfFile != null && chapterData.pdfFile!.existsSync()) {
+              try {
+                final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
+                newChapterPaths.add(chapterResult['storagePath']!);
+                
+                if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
+                  final existingChapter = existingChapterMap[chapterData.existingId!];
+                  if (existingChapter?.pdfPath != null && existingChapter!.pdfPath!.isNotEmpty) {
+                    oldChapterPathsToDelete.add(existingChapter.pdfPath!);
                   }
-                  for (final path in newChapterPaths) {
-                    await _deleteFileByPath(path);
-                  }
-                  throw Exception('Failed to upload chapter ${i + 1}: $e');
                 }
+                
+                final chapter = Chapter(
+                  id: chapterData.existingId ?? '${bookId}_chapter_${i + 1}',
+                  title: chapterData.title,
+                  description: chapterData.description,
+                  pdfUrl: chapterResult['url'],
+                  pdfPath: chapterResult['storagePath'],
+                  order: chapterData.order,
+                  duration: chapterData.duration,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                );
+                
+                processedChapters.add(chapter);
+              } catch (e) {
+                if (newImagePath != null) {
+                  await _deleteFileByPath(newImagePath);
+                }
+                for (final path in newChapterPaths) {
+                  await _deleteFileByPath(path);
+                }
+                throw Exception('Failed to upload chapter ${i + 1}: $e');
+              }
+            } else {
+              Chapter existingChapter;
+              
+              if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
+                existingChapter = existingChapterMap[chapterData.existingId!]!;
               } else {
-                final existingChapter = updatedBook.chapters.firstWhere(
+                existingChapter = updatedBook.chapters.firstWhere(
                   (ch) => ch.order == chapterData.order,
                   orElse: () => Chapter(
                     id: chapterData.existingId ?? '${bookId}_chapter_${i + 1}',
@@ -373,24 +379,24 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                     updatedAt: DateTime.now(),
                   ),
                 );
-                
-                final updatedChapter = existingChapter.copyWith(
-                  title: chapterData.title,
-                  description: chapterData.description,
-                  duration: chapterData.duration,
-                  order: chapterData.order,
-                  updatedAt: DateTime.now(),
-                );
-                
-                processedChapters.add(updatedChapter);
               }
+              
+              final updatedChapter = existingChapter.copyWith(
+                title: chapterData.title,
+                description: chapterData.description,
+                duration: chapterData.duration,
+                order: chapterData.order,
+                updatedAt: DateTime.now(),
+              );
+              
+              processedChapters.add(updatedChapter);
             }
-            
-            finalBook = finalBook.copyWith(
-              chapters: processedChapters,
-              chaptersCount: processedChapters.length,
-            );
           }
+          
+          finalBook = finalBook.copyWith(
+            chapters: processedChapters,
+            chaptersCount: processedChapters.length,
+          );
         }
         
         final updateData = finalBook.toJson();
@@ -404,10 +410,8 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           await _deleteFileByPath(oldImagePath);
         }
         
-        if (newChapterPaths.isNotEmpty) {
-          for (final oldPath in oldChapterPathsToDelete) {
-            await _deleteFileByPath(oldPath);
-          }
+        for (final oldPath in oldChapterPathsToDelete) {
+          await _deleteFileByPath(oldPath);
         }
         
         return finalBook.copyWith(updatedAt: DateTime.now());

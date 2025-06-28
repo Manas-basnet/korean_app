@@ -245,7 +245,6 @@ class _BookEditPageState extends State<BookEditPage> {
             if (state.book != null) {
               context.read<KoreanBooksCubit>().updateBookInState(state.book!);
             }
-            Navigator.of(context).pop(true);
           } else if (state is FileUploadError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error: ${state.message}')),
@@ -588,10 +587,13 @@ class _BookEditPageState extends State<BookEditPage> {
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
                         SizedBox(width: MediaQuery.sizeOf(context).width * 0.03),
-                        Text(
-                          'Chapters: ${_chapters.length}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface,
+                        Expanded(
+                          child: Text(
+                            'Chapters: ${_chapters.length}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -651,71 +653,71 @@ class _BookEditPageState extends State<BookEditPage> {
             ],
           ),
           SizedBox(height: MediaQuery.sizeOf(context).height * 0.02),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<BookLevel>(
-                  value: _selectedLevel,
-                  decoration: InputDecoration(
-                    labelText: 'Level',
-                    prefixIcon: const Icon(Icons.bar_chart_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  items: BookLevel.values.map((level) {
-                    return DropdownMenuItem<BookLevel>(
-                      value: level,
-                      child: Text(level.toString().split('.').last),
-                    );
-                  }).toList(),
-                  onChanged: isUploading
-                      ? null
-                      : (BookLevel? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedLevel = newValue;
-                            });
-                          }
-                        },
-                ),
+          DropdownButtonFormField<BookLevel>(
+            value: _selectedLevel,
+            decoration: InputDecoration(
+              labelText: 'Level',
+              prefixIcon: const Icon(Icons.bar_chart_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              SizedBox(width: MediaQuery.sizeOf(context).width * 0.03),
-              Expanded(
-                child: DropdownButtonFormField<CourseCategory>(
-                  value: _selectedCategory,
-                  decoration: InputDecoration(
-                    labelText: 'Course Category',
-                    prefixIcon: const Icon(Icons.school_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  items: CourseCategory.values.map((category) {
-                    if (category == CourseCategory.favorite) {
-                      return null;
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            isDense: true,
+            items: BookLevel.values.map((level) {
+              return DropdownMenuItem<BookLevel>(
+                value: level,
+                child: Text(
+                  level.toString().split('.').last,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: isUploading
+                ? null
+                : (BookLevel? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedLevel = newValue;
+                      });
                     }
-                    return DropdownMenuItem<CourseCategory>(
-                      value: category,
-                      child: Text(category.toString().split('.').last),
-                    );
-                  }).where((item) => item != null).cast<DropdownMenuItem<CourseCategory>>().toList(),
-                  onChanged: isUploading
-                      ? null
-                      : (CourseCategory? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedCategory = newValue;
-                            });
-                          }
-                        },
-                ),
+                  },
+          ),
+          SizedBox(height: MediaQuery.sizeOf(context).height * 0.02),
+          DropdownButtonFormField<CourseCategory>(
+            value: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: 'Course Category',
+              prefixIcon: const Icon(Icons.school_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            isDense: true,
+            items: CourseCategory.values.map((category) {
+              if (category == CourseCategory.favorite) {
+                return null;
+              }
+              return DropdownMenuItem<CourseCategory>(
+                value: category,
+                child: Text(
+                  category.toString().split('.').last,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).where((item) => item != null).cast<DropdownMenuItem<CourseCategory>>().toList(),
+            onChanged: isUploading
+                ? null
+                : (CourseCategory? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedCategory = newValue;
+                      });
+                    }
+                  },
           ),
         ],
       ),

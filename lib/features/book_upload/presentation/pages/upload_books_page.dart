@@ -632,61 +632,57 @@ class _BookUploadPageState extends State<BookUploadPage>
             ],
           ),
           SizedBox(height: MediaQuery.of(context).size.height * 0.02),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _categoryController,
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    hintText: 'Language',
-                    prefixIcon: const Icon(Icons.category_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  enabled: !isUploading,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
+          TextFormField(
+            controller: _categoryController,
+            decoration: InputDecoration(
+              labelText: 'Category',
+              hintText: 'Language',
+              prefixIcon: const Icon(Icons.category_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            enabled: !isUploading,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          DropdownButtonFormField<BookLevel>(
+            value: _selectedLevel,
+            decoration: InputDecoration(
+              labelText: 'Level',
+              prefixIcon: const Icon(Icons.bar_chart_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            isDense: true,
+            items: BookLevel.values.map((level) {
+              return DropdownMenuItem<BookLevel>(
+                value: level,
+                child: Text(
+                  level.toString().split('.').last,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: isUploading
+                ? null
+                : (BookLevel? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedLevel = newValue;
+                      });
                     }
-                    return null;
                   },
-                ),
-              ),
-              SizedBox(width: MediaQuery.of(context).size.width * 0.03),
-              Expanded(
-                child: DropdownButtonFormField<BookLevel>(
-                  value: _selectedLevel,
-                  decoration: InputDecoration(
-                    labelText: 'Level',
-                    prefixIcon: const Icon(Icons.bar_chart_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  items: BookLevel.values.map((level) {
-                    return DropdownMenuItem<BookLevel>(
-                      value: level,
-                      child: Text(level.toString().split('.').last),
-                    );
-                  }).toList(),
-                  onChanged: isUploading
-                      ? null
-                      : (BookLevel? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedLevel = newValue;
-                            });
-                          }
-                        },
-                ),
-              ),
-            ],
           ),
           SizedBox(height: MediaQuery.of(context).size.height * 0.02),
           DropdownButtonFormField<CourseCategory>(
@@ -700,13 +696,17 @@ class _BookUploadPageState extends State<BookUploadPage>
               filled: true,
               fillColor: theme.colorScheme.surface,
             ),
+            isDense: true,
             items: CourseCategory.values.map((category) {
               if (category == CourseCategory.favorite) {
                 return null;
               }
               return DropdownMenuItem<CourseCategory>(
                 value: category,
-                child: Text(category.toString().split('.').last),
+                child: Text(
+                  category.toString().split('.').last,
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             }).where((item) => item != null).cast<DropdownMenuItem<CourseCategory>>().toList(),
             onChanged: isUploading
