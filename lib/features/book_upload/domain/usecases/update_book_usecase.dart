@@ -11,12 +11,14 @@ class UpdateBookParams {
   final BookItem updatedBook;
   final File? pdfFile;
   final File? coverImageFile;
+  final File? audioFile;
 
   const UpdateBookParams({
     required this.bookId,
     required this.updatedBook,
     this.pdfFile,
     this.coverImageFile,
+    this.audioFile,
   });
 }
 
@@ -56,6 +58,7 @@ class UpdateBookUseCase extends UseCase<BookItem, UpdateBookParams> {
       updatedBookWithMeta,
       pdfFile: params.pdfFile,
       coverImageFile: params.coverImageFile,
+      audioFile: params.audioFile,
     );
   }
 }

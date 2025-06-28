@@ -10,11 +10,13 @@ class CreateBookParams {
   final BookItem book;
   final File pdfFile;
   final File? coverImageFile;
+  final File? audioFile;
 
   const CreateBookParams({
     required this.book,
     required this.pdfFile,
     this.coverImageFile,
+    this.audioFile,
   });
 }
 
@@ -50,6 +52,7 @@ class CreateBookUseCase extends UseCase<BookItem, CreateBookParams> {
       bookWithId,
       params.pdfFile,
       coverImageFile: params.coverImageFile,
+      audioFile: params.audioFile,
     );
   }
 }

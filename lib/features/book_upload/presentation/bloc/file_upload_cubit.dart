@@ -14,6 +14,7 @@ import 'package:korean_language_app/features/book_upload/domain/usecases/update_
 import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_with_chapters_usecase.dart';
 import 'package:korean_language_app/shared/enums/file_upload_type.dart';
 import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:file_picker/file_picker.dart';
 
 part 'file_upload_state.dart';
 
@@ -89,8 +90,50 @@ class FileUploadCubit extends Cubit<FileUploadState> {
       return null;
     }
   }
+
+  Future<File?> pickAudioFile() async {
+    emit(const FilePickerLoading(FileUploadType.audio));
+    
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+        final file = File(result.files.first.path!);
+        
+        if (await _isAudioValid(file)) {
+          emit(FilePickerSuccess(
+            file: file,
+            fileName: file.path.split('/').last,
+            fileType: FileUploadType.audio,
+          ));
+          return file;
+        } else {
+          emit(const FilePickerError('The selected audio file is invalid or too large.', FileUploadType.audio));
+          return null;
+        }
+      } else {
+        emit(const FilePickerError('No audio file selected', FileUploadType.audio));
+        return null;
+      }
+    } catch (e) {
+      emit(FilePickerError('Could not select audio file: $e', FileUploadType.audio));
+      return null;
+    }
+  }
+
+  Future<bool> _isAudioValid(File audioFile) async {
+    try {
+      final fileSize = await audioFile.length();
+      return fileSize <= 50 * 1024 * 1024 && fileSize >= 100;
+    } catch (e) {
+      return false;
+    }
+  }
   
-  Future<bool> uploadBook(BookItem book, File pdfFile, File? imageFile) async {
+  Future<bool> uploadBook(BookItem book, File pdfFile, File? imageFile, {File? audioFile}) async {
     final isConnected = await _checkConnectivity();
     if (!isConnected) {
       emit(const FileUploadError('No internet connection', FileUploadType.pdf));
@@ -106,6 +149,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
         book: book,
         pdfFile: pdfFile,
         coverImageFile: imageFile,
+        audioFile: audioFile,
       );
       
       final result = await createBookUseCase.execute(params);
@@ -162,7 +206,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     }
   }
   
-  Future<bool> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? imageFile}) async {
+  Future<bool> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? imageFile, File? audioFile}) async {
     final isConnected = await _checkConnectivity();
     if (!isConnected) {
       emit(const FileUploadError('No internet connection', FileUploadType.pdf));
@@ -179,6 +223,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
         updatedBook: updatedBook,
         pdfFile: pdfFile,
         coverImageFile: imageFile,
+        audioFile: audioFile,
       );
       
       final result = await updateBookUseCase.execute(params);

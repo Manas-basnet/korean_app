@@ -4,6 +4,8 @@ class Chapter {
   final String? description;
   final String? pdfUrl;
   final String? pdfPath;
+  final String? audioUrl;
+  final String? audioPath;
   final int order;
   final String? duration;
   final DateTime? createdAt;
@@ -15,6 +17,8 @@ class Chapter {
     this.description,
     this.pdfUrl,
     this.pdfPath,
+    this.audioUrl,
+    this.audioPath,
     required this.order,
     this.duration,
     this.createdAt,
@@ -27,6 +31,8 @@ class Chapter {
     String? description,
     String? pdfUrl,
     String? pdfPath,
+    String? audioUrl,
+    String? audioPath,
     int? order,
     String? duration,
     DateTime? createdAt,
@@ -38,12 +44,17 @@ class Chapter {
       description: description ?? this.description,
       pdfUrl: pdfUrl ?? this.pdfUrl,
       pdfPath: pdfPath ?? this.pdfPath,
+      audioUrl: audioUrl ?? this.audioUrl,
+      audioPath: audioPath ?? this.audioPath,
       order: order ?? this.order,
       duration: duration ?? this.duration,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  bool get hasAudio => (audioUrl != null && audioUrl!.isNotEmpty) || 
+                      (audioPath != null && audioPath!.isNotEmpty);
 
   @override
   bool operator ==(Object other) {
@@ -86,6 +97,8 @@ class Chapter {
       description: json['description'] as String?,
       pdfUrl: json['pdfUrl'] as String?,
       pdfPath: json['pdfPath'] as String?,
+      audioUrl: json['audioUrl'] as String?,
+      audioPath: json['audioPath'] as String?,
       order: json['order'] as int,
       duration: json['duration'] as String?,
       createdAt: createdAt,
@@ -100,6 +113,8 @@ class Chapter {
       'description': description,
       'pdfUrl': pdfUrl,
       'pdfPath': pdfPath,
+      'audioUrl': audioUrl,
+      'audioPath': audioPath,
       'order': order,
       'duration': duration,
       'createdAt': createdAt?.millisecondsSinceEpoch,

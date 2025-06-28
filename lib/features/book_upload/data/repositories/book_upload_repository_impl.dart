@@ -20,9 +20,9 @@ class BookUploadRepositoryImpl extends BaseRepository implements BookUploadRepos
   }) : super(networkInfo);
 
   @override
-  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile}) async {
+  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile, File? audioFile}) async {
     return handleRepositoryCall(() async {
-      final createdBook = await remoteDataSource.uploadBook(book, pdfFile, coverImageFile: coverImageFile);
+      final createdBook = await remoteDataSource.uploadBook(book, pdfFile, coverImageFile: coverImageFile, audioFile: audioFile);
       return ApiResult.success(createdBook);
     });
   }
@@ -44,9 +44,9 @@ class BookUploadRepositoryImpl extends BaseRepository implements BookUploadRepos
   }
 
   @override
-  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile}) async {
+  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, File? audioFile}) async {
     return handleRepositoryCall(() async {
-      final updatedBookResult = await remoteDataSource.updateBook(bookId, updatedBook, pdfFile: pdfFile, coverImageFile: coverImageFile);
+      final updatedBookResult = await remoteDataSource.updateBook(bookId, updatedBook, pdfFile: pdfFile, coverImageFile: coverImageFile, audioFile: audioFile);
       return ApiResult.success(updatedBookResult);
     });
   }

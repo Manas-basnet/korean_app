@@ -5,6 +5,7 @@ class ChapterUploadData {
   final String? description;
   final String? duration;
   final File? pdfFile;
+  final File? audioFile;
   final int order;
   final bool isNewOrModified;
   final String? existingId;
@@ -14,6 +15,7 @@ class ChapterUploadData {
     this.description,
     this.duration,
     this.pdfFile,
+    this.audioFile,
     required this.order,
     this.isNewOrModified = true,
     this.existingId,
@@ -24,6 +26,7 @@ class ChapterUploadData {
     String? description,
     String? duration,
     File? pdfFile,
+    File? audioFile,
     int? order,
     bool? isNewOrModified,
     String? existingId,
@@ -33,11 +36,14 @@ class ChapterUploadData {
       description: description ?? this.description,
       duration: duration ?? this.duration,
       pdfFile: pdfFile ?? this.pdfFile,
+      audioFile: audioFile ?? this.audioFile,
       order: order ?? this.order,
       isNewOrModified: isNewOrModified ?? this.isNewOrModified,
       existingId: existingId ?? this.existingId,
     );
   }
+
+  bool get hasAudio => audioFile != null && audioFile!.existsSync();
 
   @override
   bool operator ==(Object other) {

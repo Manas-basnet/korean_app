@@ -12,6 +12,8 @@ class BookItem {
   final String? pdfUrl;
   final String? bookImagePath;
   final String? pdfPath;
+  final String? audioUrl;
+  final String? audioPath;
   final String duration;
   final int chaptersCount;
   final IconData icon;
@@ -34,6 +36,8 @@ class BookItem {
     this.pdfUrl,
     this.bookImagePath,
     this.pdfPath,
+    this.audioUrl,
+    this.audioPath,
     required this.duration,
     required this.chaptersCount,
     required this.icon,
@@ -56,6 +60,8 @@ class BookItem {
     String? pdfUrl,
     String? bookImagePath,
     String? pdfPath,
+    String? audioUrl,
+    String? audioPath,
     String? duration,
     int? chaptersCount,
     IconData? icon,
@@ -77,6 +83,8 @@ class BookItem {
       pdfUrl: pdfUrl ?? this.pdfUrl,
       bookImagePath: bookImagePath ?? this.bookImagePath,
       pdfPath: pdfPath ?? this.pdfPath,
+      audioUrl: audioUrl ?? this.audioUrl,
+      audioPath: audioPath ?? this.audioPath,
       duration: duration ?? this.duration,
       chaptersCount: chaptersCount ?? this.chaptersCount,
       icon: icon ?? this.icon,
@@ -91,6 +99,11 @@ class BookItem {
       chapters: chapters ?? this.chapters,
     );
   }
+
+  bool get hasAudio => (audioUrl != null && audioUrl!.isNotEmpty) || 
+                      (audioPath != null && audioPath!.isNotEmpty);
+
+  bool get hasChapterAudio => chapters.any((chapter) => chapter.hasAudio);
 
   @override
   bool operator ==(Object other) {
@@ -127,7 +140,6 @@ class BookItem {
       courseCategory = CourseCategory.korean;
     }
 
-    // Parse upload type
     BookUploadType uploadType = BookUploadType.singlePdf;
     if (json['uploadType'] is String) {
       uploadType = BookUploadType.values.firstWhere(
@@ -136,7 +148,6 @@ class BookItem {
       );
     }
 
-    // Parse chapters
     List<Chapter> chapters = [];
     if (json['chapters'] is List) {
       chapters = (json['chapters'] as List)
@@ -185,6 +196,8 @@ class BookItem {
       pdfUrl: json['pdfUrl'] as String?,
       bookImagePath: json['bookImagePath'] as String?,
       pdfPath: json['pdfPath'] as String?,
+      audioUrl: json['audioUrl'] as String?,
+      audioPath: json['audioPath'] as String?,
       duration: json['duration'] as String? ?? '30 mins',
       chaptersCount: json['chaptersCount'] as int? ?? (chapters.isNotEmpty ? chapters.length : 1),
       icon: icon,
@@ -209,6 +222,8 @@ class BookItem {
       'pdfUrl': pdfUrl,
       'bookImagePath': bookImagePath,
       'pdfPath': pdfPath,
+      'audioUrl': audioUrl,
+      'audioPath': audioPath,
       'duration': duration,
       'chaptersCount': chaptersCount,
       'iconCodePoint': icon.codePoint,

@@ -30,7 +30,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
   }
 
   @override
-  Future<BookItem> uploadBook(BookItem book, File pdfFile, {File? coverImageFile}) async {
+  Future<BookItem> uploadBook(BookItem book, File pdfFile, {File? coverImageFile, File? audioFile}) async {
     if (book.title.isEmpty || book.description.isEmpty) {
       throw Exception('Book title and description cannot be empty');
     }
@@ -45,6 +45,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     
     String? uploadedPdfPath;
     String? uploadedImagePath;
+    String? uploadedAudioPath;
     
     try {
       final pdfResult = await _uploadPdfFile(bookId, pdfFile);
@@ -67,6 +68,23 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           throw Exception('Failed to upload cover image: $e');
         }
       }
+
+      if (audioFile != null) {
+        try {
+          final audioResult = await _uploadBookAudio(bookId, audioFile);
+          uploadedAudioPath = audioResult['storagePath'];
+          finalBook = finalBook.copyWith(
+            audioUrl: audioResult['url'],
+            audioPath: audioResult['storagePath'],
+          );
+        } catch (e) {
+          await _deleteFileByPath(uploadedPdfPath!);
+          if (uploadedImagePath != null) {
+            await _deleteFileByPath(uploadedImagePath);
+          }
+          throw Exception('Failed to upload audio file: $e');
+        }
+      }
       
       final bookData = finalBook.toJson();
       bookData['titleLowerCase'] = finalBook.title.toLowerCase();
@@ -87,6 +105,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       }
       if (uploadedImagePath != null) {
         await _deleteFileByPath(uploadedImagePath);
+      }
+      if (uploadedAudioPath != null) {
+        await _deleteFileByPath(uploadedAudioPath);
       }
       
       if (kDebugMode) {
@@ -124,6 +145,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     
     String? uploadedImagePath;
     List<String> uploadedChapterPaths = [];
+    List<String> uploadedAudioPaths = [];
     List<Chapter> processedChapters = [];
     
     try {
@@ -142,12 +164,24 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
           uploadedChapterPaths.add(chapterResult['storagePath']!);
           
+          String? chapterAudioUrl;
+          String? chapterAudioPath;
+          
+          if (chapterData.audioFile != null) {
+            final audioResult = await _uploadChapterAudio(bookId, i + 1, chapterData.audioFile!);
+            chapterAudioUrl = audioResult['url'];
+            chapterAudioPath = audioResult['storagePath'];
+            uploadedAudioPaths.add(chapterAudioPath!);
+          }
+          
           final chapter = Chapter(
             id: '${bookId}_chapter_${i + 1}',
             title: chapterData.title,
             description: chapterData.description,
             pdfUrl: chapterResult['url'],
             pdfPath: chapterResult['storagePath'],
+            audioUrl: chapterAudioUrl,
+            audioPath: chapterAudioPath,
             order: chapterData.order,
             duration: chapterData.duration,
             createdAt: DateTime.now(),
@@ -160,6 +194,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
             await _deleteFileByPath(uploadedImagePath);
           }
           for (final path in uploadedChapterPaths) {
+            await _deleteFileByPath(path);
+          }
+          for (final path in uploadedAudioPaths) {
             await _deleteFileByPath(path);
           }
           throw Exception('Failed to upload chapter ${i + 1}: $e');
@@ -188,6 +225,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       for (final path in uploadedChapterPaths) {
         await _deleteFileByPath(path);
       }
+      for (final path in uploadedAudioPaths) {
+        await _deleteFileByPath(path);
+      }
       
       if (kDebugMode) {
         print('Error uploading book with chapters: $e');
@@ -197,7 +237,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
   }
 
   @override
-  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile}) async {
+  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, File? audioFile}) async {
     try {
       final collection = _getCollectionForCategory(updatedBook.courseCategory);
       final docRef = firestore.collection(collection).doc(bookId);
@@ -212,8 +252,10 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       
       String? newPdfPath;
       String? newImagePath;
+      String? newAudioPath;
       String? oldPdfPath = existingData['pdfPath'] as String?;
       String? oldImagePath = existingData['bookImagePath'] as String?;
+      String? oldAudioPath = existingData['audioPath'] as String?;
       
       try {
         if (pdfFile != null) {
@@ -240,6 +282,25 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
             throw Exception('Failed to upload new cover image: $e');
           }
         }
+
+        if (audioFile != null) {
+          try {
+            final audioResult = await _uploadBookAudio(bookId, audioFile);
+            newAudioPath = audioResult['storagePath'];
+            finalBook = finalBook.copyWith(
+              audioUrl: audioResult['url'],
+              audioPath: audioResult['storagePath'],
+            );
+          } catch (e) {
+            if (newPdfPath != null) {
+              await _deleteFileByPath(newPdfPath);
+            }
+            if (newImagePath != null) {
+              await _deleteFileByPath(newImagePath);
+            }
+            throw Exception('Failed to upload new audio file: $e');
+          }
+        }
         
         final updateData = finalBook.toJson();
         updateData['titleLowerCase'] = finalBook.title.toLowerCase();
@@ -254,6 +315,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         if (newImagePath != null && oldImagePath != null && oldImagePath != newImagePath) {
           await _deleteFileByPath(oldImagePath);
         }
+        if (newAudioPath != null && oldAudioPath != null && oldAudioPath != newAudioPath) {
+          await _deleteFileByPath(oldAudioPath);
+        }
         
         return finalBook.copyWith(updatedAt: DateTime.now());
         
@@ -263,6 +327,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         }
         if (newImagePath != null) {
           await _deleteFileByPath(newImagePath);
+        }
+        if (newAudioPath != null) {
+          await _deleteFileByPath(newAudioPath);
         }
         rethrow;
       }
@@ -296,7 +363,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       String? newImagePath;
       String? oldImagePath = existingData['bookImagePath'] as String?;
       List<String> newChapterPaths = [];
+      List<String> newAudioPaths = [];
       List<String> oldChapterPathsToDelete = [];
+      List<String> oldAudioPathsToDelete = [];
       List<Chapter> processedChapters = List.from(updatedBook.chapters);
       
       try {
@@ -330,10 +399,23 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
                 newChapterPaths.add(chapterResult['storagePath']!);
                 
+                String? chapterAudioUrl;
+                String? chapterAudioPath;
+                
+                if (chapterData.audioFile != null && chapterData.audioFile!.existsSync()) {
+                  final audioResult = await _uploadChapterAudio(bookId, i + 1, chapterData.audioFile!);
+                  chapterAudioUrl = audioResult['url'];
+                  chapterAudioPath = audioResult['storagePath'];
+                  newAudioPaths.add(chapterAudioPath!);
+                }
+                
                 if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
                   final existingChapter = existingChapterMap[chapterData.existingId!];
                   if (existingChapter?.pdfPath != null && existingChapter!.pdfPath!.isNotEmpty) {
                     oldChapterPathsToDelete.add(existingChapter.pdfPath!);
+                  }
+                  if (existingChapter?.audioPath != null && existingChapter!.audioPath!.isNotEmpty) {
+                    oldAudioPathsToDelete.add(existingChapter.audioPath!);
                   }
                 }
                 
@@ -343,6 +425,8 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                   description: chapterData.description,
                   pdfUrl: chapterResult['url'],
                   pdfPath: chapterResult['storagePath'],
+                  audioUrl: chapterAudioUrl,
+                  audioPath: chapterAudioPath,
                   order: chapterData.order,
                   duration: chapterData.duration,
                   createdAt: DateTime.now(),
@@ -355,6 +439,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                   await _deleteFileByPath(newImagePath);
                 }
                 for (final path in newChapterPaths) {
+                  await _deleteFileByPath(path);
+                }
+                for (final path in newAudioPaths) {
                   await _deleteFileByPath(path);
                 }
                 throw Exception('Failed to upload chapter ${i + 1}: $e');
@@ -373,6 +460,8 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                     description: chapterData.description,
                     pdfUrl: null,
                     pdfPath: null,
+                    audioUrl: null,
+                    audioPath: null,
                     order: chapterData.order,
                     duration: chapterData.duration,
                     createdAt: DateTime.now(),
@@ -381,11 +470,40 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 );
               }
               
+              String? updatedAudioUrl = existingChapter.audioUrl;
+              String? updatedAudioPath = existingChapter.audioPath;
+              
+              if (chapterData.audioFile != null && chapterData.audioFile!.existsSync()) {
+                try {
+                  final audioResult = await _uploadChapterAudio(bookId, i + 1, chapterData.audioFile!);
+                  updatedAudioUrl = audioResult['url'];
+                  updatedAudioPath = audioResult['storagePath'];
+                  newAudioPaths.add(updatedAudioPath!);
+                  
+                  if (existingChapter.audioPath != null && existingChapter.audioPath!.isNotEmpty) {
+                    oldAudioPathsToDelete.add(existingChapter.audioPath!);
+                  }
+                } catch (e) {
+                  if (newImagePath != null) {
+                    await _deleteFileByPath(newImagePath);
+                  }
+                  for (final path in newChapterPaths) {
+                    await _deleteFileByPath(path);
+                  }
+                  for (final path in newAudioPaths) {
+                    await _deleteFileByPath(path);
+                  }
+                  throw Exception('Failed to upload audio for chapter ${i + 1}: $e');
+                }
+              }
+              
               final updatedChapter = existingChapter.copyWith(
                 title: chapterData.title,
                 description: chapterData.description,
                 duration: chapterData.duration,
                 order: chapterData.order,
+                audioUrl: updatedAudioUrl,
+                audioPath: updatedAudioPath,
                 updatedAt: DateTime.now(),
               );
               
@@ -414,6 +532,10 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           await _deleteFileByPath(oldPath);
         }
         
+        for (final oldPath in oldAudioPathsToDelete) {
+          await _deleteFileByPath(oldPath);
+        }
+        
         return finalBook.copyWith(updatedAt: DateTime.now());
         
       } catch (e) {
@@ -421,6 +543,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           await _deleteFileByPath(newImagePath);
         }
         for (final path in newChapterPaths) {
+          await _deleteFileByPath(path);
+        }
+        for (final path in newAudioPaths) {
           await _deleteFileByPath(path);
         }
         rethrow;
@@ -530,6 +655,36 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     }
   }
 
+  Future<Map<String, String>> _uploadBookAudio(String bookId, File audioFile) async {
+    try {
+      if (!audioFile.existsSync()) {
+        throw Exception('Audio file does not exist at path: ${audioFile.path}');
+      }
+      
+      final extension = _getAudioExtension(audioFile.path);
+      final storagePath = 'books/$bookId/book_audio$extension';
+      final fileRef = storage.ref().child(storagePath);
+
+      final uploadTask = await fileRef.putFile(
+        audioFile,
+        SettableMetadata(contentType: _getAudioContentType(extension))
+      );
+      
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      
+      if (downloadUrl.isEmpty) {
+        throw Exception('Failed to get download URL for uploaded audio');
+      }
+      
+      return {
+        'url': downloadUrl,
+        'storagePath': storagePath
+      };
+    } catch (e) {
+      throw Exception('Audio upload failed: $e');
+    }
+  }
+
   Future<Map<String, String>> _uploadChapterPdf(String bookId, int chapterNumber, File pdfFile) async {
     try {
       if (!pdfFile.existsSync()) {
@@ -556,6 +711,36 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       };
     } catch (e) {
       throw Exception('Chapter PDF upload failed: $e');
+    }
+  }
+
+  Future<Map<String, String>> _uploadChapterAudio(String bookId, int chapterNumber, File audioFile) async {
+    try {
+      if (!audioFile.existsSync()) {
+        throw Exception('Chapter audio file does not exist at path: ${audioFile.path}');
+      }
+      
+      final extension = _getAudioExtension(audioFile.path);
+      final storagePath = 'books/$bookId/chapters/chapter_${chapterNumber}_audio$extension';
+      final fileRef = storage.ref().child(storagePath);
+
+      final uploadTask = await fileRef.putFile(
+        audioFile,
+        SettableMetadata(contentType: _getAudioContentType(extension))
+      );
+      
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      
+      if (downloadUrl.isEmpty) {
+        throw Exception('Failed to get download URL for uploaded chapter audio');
+      }
+      
+      return {
+        'url': downloadUrl,
+        'storagePath': storagePath
+      };
+    } catch (e) {
+      throw Exception('Chapter audio upload failed: $e');
     }
   }
   
@@ -588,6 +773,37 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     }
   }
 
+  String _getAudioExtension(String filePath) {
+    final extension = filePath.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'm4a':
+        return '.m4a';
+      case 'mp3':
+        return '.mp3';
+      case 'wav':
+        return '.wav';
+      case 'aac':
+        return '.aac';
+      default:
+        return '.m4a';
+    }
+  }
+
+  String _getAudioContentType(String extension) {
+    switch (extension) {
+      case '.m4a':
+        return 'audio/mp4';
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.wav':
+        return 'audio/wav';
+      case '.aac':
+        return 'audio/aac';
+      default:
+        return 'audio/mp4';
+    }
+  }
+
   Future<void> _deleteFileByPath(String storagePath) async {
     try {
       if (storagePath.isNotEmpty) {
@@ -606,6 +822,10 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       await _deleteFileByPath(data['pdfPath'] as String);
     }
     
+    if (data.containsKey('audioPath') && data['audioPath'] != null) {
+      await _deleteFileByPath(data['audioPath'] as String);
+    }
+    
     if (data.containsKey('bookImagePath') && data['bookImagePath'] != null) {
       await _deleteFileByPath(data['bookImagePath'] as String);
     }
@@ -619,6 +839,9 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         if (chapter.pdfPath != null && chapter.pdfPath!.isNotEmpty) {
           await _deleteFileByPath(chapter.pdfPath!);
         }
+        if (chapter.audioPath != null && chapter.audioPath!.isNotEmpty) {
+          await _deleteFileByPath(chapter.audioPath!);
+        }
       }
     }
     
@@ -629,6 +852,17 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       } catch (e) {
         if (kDebugMode) {
           print('Failed to delete PDF by URL: $e');
+        }
+      }
+    }
+
+    if (data.containsKey('audioUrl') && data['audioUrl'] != null) {
+      try {
+        final audioRef = storage.refFromURL(data['audioUrl'] as String);
+        await audioRef.delete();
+      } catch (e) {
+        if (kDebugMode) {
+          print('Failed to delete audio by URL: $e');
         }
       }
     }

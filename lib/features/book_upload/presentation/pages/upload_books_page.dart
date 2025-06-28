@@ -11,6 +11,8 @@ import 'package:korean_language_app/shared/enums/file_upload_type.dart';
 import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
+import 'package:korean_language_app/shared/widgets/audio_player.dart';
+import 'package:korean_language_app/shared/widgets/audio_recorder.dart';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/shared/models/book_item.dart';
@@ -44,17 +46,17 @@ class _BookUploadPageState extends State<BookUploadPage>
   String? _imageFileName;
   bool _imageSelected = false;
 
+  File? _selectedAudioFile;
+
   List<ChapterUploadData> _chapters = [];
   late TabController _tabController;
 
-  late KoreanBooksCubit _koreanBooksCubit;
   late FileUploadCubit _fileUploadCubit;
 
   @override
   void initState() {
     super.initState();
     _fileUploadCubit = context.read<FileUploadCubit>();
-    _koreanBooksCubit = context.read<KoreanBooksCubit>();
     _tabController = TabController(length: 2, vsync: this);
     initialize();
   }
@@ -94,6 +96,12 @@ class _BookUploadPageState extends State<BookUploadPage>
         _imageSelected = true;
       });
     }
+  }
+
+  void _onAudioSelected(File audioFile) {
+    setState(() {
+      _selectedAudioFile = audioFile;
+    });
   }
 
   Future<void> _addChapter() async {
@@ -233,6 +241,7 @@ class _BookUploadPageState extends State<BookUploadPage>
           book,
           _selectedPdfFile!,
           _selectedImageFile,
+          audioFile: _selectedAudioFile,
         );
       } else {
         success = await _fileUploadCubit.uploadBookWithChapters(
@@ -245,7 +254,7 @@ class _BookUploadPageState extends State<BookUploadPage>
       if (success) {
         final uploadState = _fileUploadCubit.state;
         if (uploadState is FileUploadSuccess && uploadState.book != null) {
-          _koreanBooksCubit.addBookToState(uploadState.book!);
+          context.read<KoreanBooksCubit>().addBookToState(uploadState.book!);
         }
 
         _resetForm();
@@ -277,6 +286,7 @@ class _BookUploadPageState extends State<BookUploadPage>
       _selectedImageFile = null;
       _imageFileName = null;
       _imageSelected = false;
+      _selectedAudioFile = null;
       _chapters.clear();
     });
     _fileUploadCubit.resetState();
@@ -309,7 +319,7 @@ class _BookUploadPageState extends State<BookUploadPage>
             );
 
             if (state.book != null) {
-              _koreanBooksCubit.addBookToState(state.book!);
+              context.read<KoreanBooksCubit>().addBookToState(state.book!);
             }
 
             _resetForm();
@@ -345,9 +355,11 @@ class _BookUploadPageState extends State<BookUploadPage>
                         _buildBookDetailsSection(context, theme, isUploading),
                         SizedBox(height: MediaQuery.of(context).size.height * 0.03),
 
-                        if (_uploadType == BookUploadType.singlePdf)
-                          _buildSinglePdfSection(context, theme, isUploading)
-                        else
+                        if (_uploadType == BookUploadType.singlePdf) ...[
+                          _buildSinglePdfSection(context, theme, isUploading),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.03),
+                          _buildAudioSection(context, theme, isUploading),
+                        ] else
                           _buildChapterWiseSection(context, theme, isUploading),
                         
                         SizedBox(height: MediaQuery.of(context).size.height * 0.03),
@@ -908,6 +920,111 @@ class _BookUploadPageState extends State<BookUploadPage>
     );
   }
 
+  Widget _buildAudioSection(BuildContext context, ThemeData theme, bool isUploading) {
+    return Container(
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.audiotrack_rounded,
+                color: theme.colorScheme.tertiary,
+                size: MediaQuery.of(context).size.width * 0.06,
+              ),
+              SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+              Text(
+                'Audio Track',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.02,
+                  vertical: MediaQuery.of(context).size.height * 0.005,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Optional',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.tertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+          
+          if (_selectedAudioFile != null) ...[
+            AudioPlayerWidget(
+              audioPath: _selectedAudioFile!.path,
+              label: 'Selected Audio Track',
+              onRemove: () => setState(() {
+                _selectedAudioFile = null;
+              }),
+            ),
+          ] else ...[
+            AudioRecorderWidget(
+              onAudioSelected: _onAudioSelected,
+              label: 'Record or select audio track for this book',
+            ),
+          ],
+          
+          BlocBuilder<FileUploadCubit, FileUploadState>(
+            builder: (context, fileState) {
+              if (fileState is FilePickerError && fileState.fileType == FileUploadType.audio) {
+                return Padding(
+                  padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.01),
+                  child: Container(
+                    padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: theme.colorScheme.error,
+                          size: MediaQuery.of(context).size.width * 0.04,
+                        ),
+                        SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                        Expanded(
+                          child: Text(
+                            fileState.message,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildChapterWiseSection(BuildContext context, ThemeData theme, bool isUploading) {
     return Container(
       padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
@@ -1079,11 +1196,35 @@ class _BookUploadPageState extends State<BookUploadPage>
                               ),
                             ],
                             SizedBox(height: MediaQuery.of(context).size.height * 0.005),
-                            Text(
-                              'File: ${chapter.pdfFile?.path.split('/').last}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  'PDF: ${chapter.pdfFile?.path.split('/').last ?? 'None'}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                  ),
+                                ),
+                                if (chapter.hasAudio) ...[
+                                  SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: MediaQuery.of(context).size.width * 0.02,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.tertiary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'AUDIO',
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        color: theme.colorScheme.tertiary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -1443,6 +1584,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
 
   File? _selectedFile;
   String? _fileName;
+  File? _selectedAudioFile;
 
   @override
   void initState() {
@@ -1460,6 +1602,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
     if (widget.existingChapter != null) {
       _selectedFile = widget.existingChapter!.pdfFile;
       _fileName = widget.existingChapter!.pdfFile?.path.split('/').last;
+      _selectedAudioFile = widget.existingChapter!.audioFile;
     }
   }
 
@@ -1481,6 +1624,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
     }
   }
 
+  void _onAudioSelected(File audioFile) {
+    setState(() {
+      _selectedAudioFile = audioFile;
+    });
+  }
+
   void _saveChapter() {
     if (_formKey.currentState?.validate() != true || _selectedFile == null) {
       return;
@@ -1491,6 +1640,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
       duration: _durationController.text.isEmpty ? null : _durationController.text,
       pdfFile: _selectedFile!,
+      audioFile: _selectedAudioFile,
       order: widget.chapterNumber,
     );
 
@@ -1676,6 +1826,62 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: mediaQuery.size.height * 0.02),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _selectedAudioFile != null
+                                ? theme.colorScheme.tertiary.withOpacity(0.5)
+                                : theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: _selectedAudioFile != null
+                              ? theme.colorScheme.tertiary.withOpacity(0.05)
+                              : theme.colorScheme.surface,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.audiotrack_rounded,
+                                  color: theme.colorScheme.tertiary,
+                                  size: mediaQuery.size.width * 0.05,
+                                ),
+                                SizedBox(width: mediaQuery.size.width * 0.02),
+                                Expanded(
+                                  child: Text(
+                                    'Chapter Audio (Optional)',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: mediaQuery.size.height * 0.015),
+                            if (_selectedAudioFile != null) ...[
+                              AudioPlayerWidget(
+                                audioPath: _selectedAudioFile!.path,
+                                label: 'Chapter Audio Track',
+                                height: 50,
+                                onRemove: () => setState(() {
+                                  _selectedAudioFile = null;
+                                }),
+                              ),
+                            ] else ...[
+                              AudioRecorderWidget(
+                                onAudioSelected: _onAudioSelected,
+                                label: 'Record or select audio for this chapter',
+                              ),
+                            ],
                           ],
                         ),
                       ),

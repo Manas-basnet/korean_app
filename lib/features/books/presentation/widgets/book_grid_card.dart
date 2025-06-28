@@ -1,10 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/models/book_item.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/favorite_button.dart';
 
 class BookGridCard extends StatelessWidget {
@@ -343,9 +341,10 @@ class BookGridCard extends StatelessWidget {
   }
 
   void _handleImageLoadError(BuildContext context) {
-    if (book.bookImagePath != null && book.bookImagePath!.isNotEmpty) {
-      context.read<KoreanBooksCubit>().regenerateBookImageUrl(book);
-    }
+    //TODO: Fix the multiple rebuild of widget 
+    // if (book.bookImagePath != null && book.bookImagePath!.isNotEmpty) {
+    //   context.read<KoreanBooksCubit>().regenerateBookImageUrl(book);
+    // }
   }
 
   Widget _buildImagePlaceholder(BuildContext context) {
