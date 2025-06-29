@@ -33,6 +33,11 @@ class TestsCubit extends Cubit<TestsState> {
   Timer? _loadMoreDebounceTimer;
   static const Duration _loadMoreDebounceDelay = Duration(milliseconds: 300);
   
+  // ✅ Permission cache for synchronous access
+  final Map<String, bool> _permissionCache = {};
+  final Map<String, DateTime> _permissionCacheTimestamps = {};
+  static const Duration _permissionCacheTimeout = Duration(minutes: 5);
+  
   TestsCubit({
     required this.loadTestsUseCase,
     required this.checkEditPermissionUseCase,
@@ -101,6 +106,9 @@ class TestsCubit extends Cubit<TestsState> {
             ),
             currentSortType: sortType,
           ));
+          
+          // ✅ Precompute permissions for loaded tests
+          _precomputePermissionsInBackground(loadResult.tests);
           
           _clearOperationAfterDelay();
         },
@@ -171,6 +179,9 @@ class TestsCubit extends Cubit<TestsState> {
             ),
             currentSortType: sortType,
           ));
+          
+          // ✅ Precompute permissions for loaded tests
+          _precomputePermissionsInBackground(loadResult.tests);
           
           _clearOperationAfterDelay();
         },
@@ -266,6 +277,9 @@ class TestsCubit extends Cubit<TestsState> {
                 status: TestsOperationStatus.completed,
               ),
             ));
+
+            // ✅ Precompute permissions for new tests
+            _precomputePermissionsInBackground(loadResult.tests);
           } else {
             emit(state.copyWith(
               hasMore: false,
@@ -319,6 +333,8 @@ class TestsCubit extends Cubit<TestsState> {
       ));
       
       _currentPage = 0;
+      // ✅ Clear permission cache on refresh
+      _clearPermissionCache();
 
       final result = await loadTestsUseCase.execute(LoadTestsParams(
         page: 0,
@@ -344,6 +360,10 @@ class TestsCubit extends Cubit<TestsState> {
             ),
             currentSortType: _currentSortType,
           ));
+
+          // ✅ Precompute permissions for refreshed tests
+          _precomputePermissionsInBackground(loadResult.tests);
+          
           _clearOperationAfterDelay();
         },
         onFailure: (message, type) {
@@ -422,27 +442,111 @@ class TestsCubit extends Cubit<TestsState> {
     }
   }
   
+  // ✅ Async method for initial permission checking
   Future<bool> canUserEditTest(TestItem test) async {
     try {
+      // Check cache first
+      if (_isPermissionCached(test.id)) {
+        return _permissionCache[test.id]!;
+      }
       
       final result = await checkEditPermissionUseCase.execute(
         CheckTestPermissionParams(testId: test.id, testCreatorUid: test.creatorUid)
       );
-      return result.fold(
+      
+      final canEdit = result.fold(
         onSuccess: (permissionResult) => permissionResult.canEdit,
         onFailure: (message, type) {
           debugPrint('Failed to check edit permission: $message');
           return false;
         },
       );
+      
+      // Cache the result
+      _cachePermission(test.id, canEdit);
+      return canEdit;
     } catch (e) {
       debugPrint('Error checking edit permission: $e');
       return false;
     }
   }
+
+  // ✅ Synchronous method for UI rendering (no async operations!)
+  bool canUserEditTestSync(TestItem test) {
+    // Only return cached results, never perform async operations
+    if (_isPermissionCached(test.id)) {
+      return _permissionCache[test.id]!;
+    }
+    
+    // Return false as default if not cached yet
+    // This will be updated once permissions are precomputed
+    return false;
+  }
   
   Future<bool> canUserDeleteTest(TestItem test) async {
     return canUserEditTest(test);
+  }
+
+  // ✅ Permission caching methods
+  void _cachePermission(String testId, bool canEdit) {
+    _permissionCache[testId] = canEdit;
+    _permissionCacheTimestamps[testId] = DateTime.now();
+  }
+
+  bool _isPermissionCached(String testId) {
+    if (!_permissionCache.containsKey(testId)) return false;
+    
+    final timestamp = _permissionCacheTimestamps[testId];
+    if (timestamp == null) return false;
+    
+    final isExpired = DateTime.now().difference(timestamp) > _permissionCacheTimeout;
+    if (isExpired) {
+      _permissionCache.remove(testId);
+      _permissionCacheTimestamps.remove(testId);
+      return false;
+    }
+    
+    return true;
+  }
+
+  void _clearPermissionCache() {
+    _permissionCache.clear();
+    _permissionCacheTimestamps.clear();
+    debugPrint('Permission cache cleared');
+  }
+
+  // ✅ Background permission precomputation
+  void _precomputePermissionsInBackground(List<TestItem> tests) {
+    if (tests.isEmpty) return;
+    
+    // Use microtask to avoid blocking UI
+    Future.microtask(() async {
+      try {
+        debugPrint('Precomputing permissions for ${tests.length} tests...');
+        
+        // Process in small batches to avoid blocking
+        const batchSize = 5;
+        for (int i = 0; i < tests.length; i += batchSize) {
+          final batch = tests.skip(i).take(batchSize);
+          
+          await Future.wait(batch.map((test) async {
+            if (!_isPermissionCached(test.id)) {
+              final canEdit = await canUserEditTest(test);
+              debugPrint('Cached permission for ${test.id}: $canEdit');
+            }
+          }));
+          
+          // Small delay between batches to keep UI responsive
+          if (i + batchSize < tests.length) {
+            await Future.delayed(const Duration(milliseconds: 10));
+          }
+        }
+        
+        debugPrint('Permission precomputation completed');
+      } catch (e) {
+        debugPrint('Error precomputing permissions: $e');
+      }
+    });
   }
   
   void _handleError(String message, TestsOperationType operationType, [String? testId]) {
@@ -474,6 +578,7 @@ class TestsCubit extends Cubit<TestsState> {
     debugPrint('Closing TestsCubit...');
     _connectivitySubscription?.cancel();
     _loadMoreDebounceTimer?.cancel();
+    _clearPermissionCache();
     return super.close();
   }
 }

@@ -29,7 +29,6 @@ class TestsPage extends StatefulWidget {
 class _TestsPageState extends State<TestsPage> {
   late ScrollController _scrollController;
   bool _isRefreshing = false;
-  final Map<String, bool> _editPermissionCache = {};
   bool _isInitialized = false;
   TestCategory _selectedCategory = TestCategory.all;
   TestSortType _selectedSortType = TestSortType.recent;
@@ -116,22 +115,10 @@ class _TestsPageState extends State<TestsPage> {
       } else {
         await _testsCubit.hardRefresh();
       }
-      _editPermissionCache.clear();
       _hasTriggeredLoadMore = false;
     } finally {
       setState(() => _isRefreshing = false);
     }
-  }
-
-  Future<bool> _checkEditPermission(TestItem test) async {
-    String testId = test.id;
-    if (_editPermissionCache.containsKey(testId)) {
-      return _editPermissionCache[testId]!;
-    }
-    
-    final hasPermission = await _testsCubit.canUserEditTest(test);
-    _editPermissionCache[testId] = hasPermission;
-    return hasPermission;
   }
 
   void _onCategoryChanged(TestCategory category) {
@@ -143,8 +130,6 @@ class _TestsPageState extends State<TestsPage> {
       _searchQuery = '';
       _hasTriggeredLoadMore = false;
     });
-    
-    _editPermissionCache.clear();
     
     if (category == TestCategory.all) {
       _testsCubit.loadInitialTests(sortType: _selectedSortType);
@@ -161,7 +146,6 @@ class _TestsPageState extends State<TestsPage> {
       _hasTriggeredLoadMore = false;
     });
     
-    _editPermissionCache.clear();
     _testsCubit.changeSortType(sortType);
   }
 
@@ -327,7 +311,9 @@ class _TestsPageState extends State<TestsPage> {
         testSearchCubit: _testSearchCubit,
         languageCubit: _languageCubit,
         onTestSelected: _startTest,
-        checkEditPermission: _checkEditPermission,
+        checkEditPermission: (test) async {
+          return await _testsCubit.canUserEditTest(test);
+        },
         onEditTest: _editTest,
         onDeleteTest: _deleteTest,
         onViewDetails: _viewTestDetails,
@@ -366,6 +352,7 @@ class _TestsPageState extends State<TestsPage> {
             child: CustomScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
+              cacheExtent: 600, // ✅ Cache off-screen items for performance
               slivers: [
                 if (isOffline)
                   SliverToBoxAdapter(
@@ -592,6 +579,7 @@ class _TestsPageState extends State<TestsPage> {
       ),
     );
   }
+  
   Widget _buildSliverContent(bool isOffline) {
     return BlocConsumer<TestsCubit, TestsState>(
       listener: (context, state) {
@@ -714,22 +702,18 @@ class _TestsPageState extends State<TestsPage> {
           (context, index) {
             if (index < state.tests.length) {
               final test = state.tests[index];
-              return FutureBuilder<bool>(
-                future: _checkEditPermission(test),
-                builder: (context, snapshot) {
-                  final canEdit = snapshot.data ?? false;
-                  
-                  return TestCard(
-                    key: ValueKey(test.id),
-                    test: test,
-                    canEdit: canEdit,
-                    onTap: () => _startTest(test),
-                    onEdit: canEdit ? () => _editTest(test) : null,
-                    onDelete: canEdit ? () => _deleteTest(test) : null,
-                    onViewDetails: () => _viewTestDetails(test),
-                    onLongPress: () => _viewTestDetails(test),
-                  );
-                },
+              
+              return RepaintBoundary( // ✅ Optimize repaints
+                child: TestCard(
+                  key: ValueKey(test.id), // ✅ Stable keys
+                  test: test,
+                  canEdit: _testsCubit.canUserEditTestSync(test), // ✅ Synchronous call
+                  onTap: () => _startTest(test),
+                  onEdit: () => _editTest(test),
+                  onDelete: () => _deleteTest(test),
+                  onViewDetails: () => _viewTestDetails(test),
+                  onLongPress: () => _viewTestDetails(test),
+                ),
               );
             } else if (isLoadingMore) {
               return Center(
@@ -1079,7 +1063,7 @@ class _TestsPageState extends State<TestsPage> {
       return;
     }
 
-    final hasPermission = await _testsCubit.canUserEditTest(test);
+    final hasPermission = _testsCubit.canUserEditTestSync(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 편집할 권한이 없습니다',
@@ -1096,7 +1080,7 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   void _deleteTest(TestItem test) async {
-    final hasPermission = await _testsCubit.canUserDeleteTest(test);
+    final hasPermission = _testsCubit.canUserEditTestSync(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 삭제할 권한이 없습니다',
