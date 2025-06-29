@@ -24,7 +24,7 @@ class TestsCubit extends Cubit<TestsState> {
   final NetworkInfo networkInfo;
   
   int _currentPage = 0;
-  static const int _pageSize = 5;
+  static const int _pageSize = 20;
   TestCategory _currentCategory = TestCategory.all;
   TestSortType _currentSortType = TestSortType.recent;
   

@@ -1,10 +1,10 @@
+
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/book_upload_type.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
-
+import 'package:korean_language_app/features/books/data/models/book_item.dart';
 class BookDetailsBottomSheet extends StatelessWidget {
   final BookItem book;
 
@@ -31,6 +31,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           ),
           child: Column(
             children: [
+              // Handle
               Container(
                 margin: const EdgeInsets.only(top: 10, bottom: 16),
                 width: 40,
@@ -41,16 +42,19 @@ class BookDetailsBottomSheet extends StatelessWidget {
                 ),
               ),
               
+              // Book header section
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: _buildBookHeader(context, theme),
               ),
               
+              // Details
               Expanded(
                 child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // Description
                     Text(
                       'Description',
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -64,12 +68,15 @@ class BookDetailsBottomSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     
+                    // Details grid
                     _buildDetailsGrid(context, theme),
                     const SizedBox(height: 24),
                     
+                    // Metadata
                     _buildMetadataSection(context, theme),
                     const SizedBox(height: 24),
                     
+                    // Action buttons
                     _buildActionButtons(context, colorScheme),
                     const SizedBox(height: 16),
                   ],
@@ -86,6 +93,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Book cover thumbnail
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: book.bookImage != null && book.bookImage!.isNotEmpty
@@ -101,6 +109,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         
+        // Book info
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,13 +144,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildLevelChip(context, theme),
-                  const SizedBox(width: 8),
-                  _buildBookTypeChip(context, theme),
-                ],
-              ),
+              _buildLevelChip(context, theme),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -159,17 +162,13 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Icon(
-                    book.uploadType == BookUploadType.chapterWise 
-                        ? Icons.auto_stories 
-                        : Icons.picture_as_pdf,
+                    Icons.menu_book_outlined,
                     size: 16,
                     color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    book.uploadType == BookUploadType.chapterWise
-                        ? '${book.chaptersCount} chapter${book.chaptersCount != 1 ? 's' : ''}'
-                        : 'Single PDF',
+                    '${book.chaptersCount} chapter${book.chaptersCount != 1 ? 's' : ''}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
                     ),
@@ -231,39 +230,6 @@ class BookDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildBookTypeChip(BuildContext context, ThemeData theme) {
-    final isChapterWise = book.uploadType == BookUploadType.chapterWise;
-    final chipColor = isChapterWise ? Colors.blue : Colors.orange;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withValues( alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: chipColor.withValues( alpha: 0.3), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isChapterWise ? Icons.auto_stories : Icons.picture_as_pdf,
-            size: 14,
-            color: chipColor,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            isChapterWise ? 'Chapters' : 'Single PDF',
-            style: TextStyle(
-              color: chipColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDetailsGrid(BuildContext context, ThemeData theme) {
     final List<Map<String, dynamic>> details = [
       {
@@ -282,13 +248,9 @@ class BookDetailsBottomSheet extends StatelessWidget {
         'value': book.duration,
       },
       {
-        'icon': book.uploadType == BookUploadType.chapterWise 
-            ? Icons.auto_stories 
-            : Icons.picture_as_pdf,
-        'label': 'Type',
-        'value': book.uploadType == BookUploadType.chapterWise 
-            ? '${book.chaptersCount} Chapters'
-            : 'Single PDF',
+        'icon': Icons.menu_book,
+        'label': 'Chapters',
+        'value': '${book.chaptersCount}',
       },
     ];
     
@@ -465,17 +427,10 @@ class BookDetailsBottomSheet extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(context);
+              // Implement view action
             },
-            icon: Icon(
-              book.uploadType == BookUploadType.chapterWise 
-                  ? Icons.auto_stories 
-                  : Icons.menu_book
-            ),
-            label: Text(
-              book.uploadType == BookUploadType.chapterWise 
-                  ? 'View Chapters' 
-                  : 'Read Now'
-            ),
+            icon: const Icon(Icons.menu_book),
+            label: const Text('Read Now'),
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
@@ -490,6 +445,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: () {
             Navigator.pop(context);
+            // Implement download action
           },
           icon: const Icon(Icons.download),
           label: const Text('Download'),

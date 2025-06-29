@@ -5,12 +5,11 @@ import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/shared/services/image_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/korean_books_local_datasource.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
-
+import 'package:korean_language_app/features/books/data/models/book_item.dart';
 import 'package:path_provider/path_provider.dart';
 
 class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepository {
@@ -264,27 +263,6 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
   }
 
   @override
-  Future<ApiResult<File?>> getChapterPdf(String bookId, String chapterId) async {
-    final result = await handleCacheFirstCall<File?>(
-      () async {
-        final cachedPdf = await localDataSource.getChapterPdfFile(bookId, chapterId);
-        if (cachedPdf != null) {
-          debugPrint('Returning cached chapter PDF for chapter: $chapterId');
-          return ApiResult.success(cachedPdf);
-        }
-        return ApiResult.failure('No cached chapter PDF', FailureType.cache);
-      },
-      () async {
-        debugPrint('Downloading chapter PDF for chapter: $chapterId');
-        final downloadedPdf = await _downloadAndCacheChapterPdf(bookId, chapterId);
-        return ApiResult.success(downloadedPdf);
-      },
-    );
-
-    return result;
-  }
-
-  @override
   Future<ApiResult<String?>> regenerateImageUrl(BookItem book) async {
     if (book.bookImagePath == null || book.bookImagePath!.isEmpty) {
       return ApiResult.success(null);
@@ -511,47 +489,6 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       return await localDataSource.getPdfFile(bookId);
     } catch (e) {
       throw Exception('Error downloading PDF: $e');
-    }
-  }
-
-  Future<File?> _downloadAndCacheChapterPdf(String bookId, String chapterId) async {
-    try {
-      final chapterPdfUrl = await remoteDataSource.getChapterPdfDownloadUrl(bookId, chapterId);
-      if (chapterPdfUrl == null || chapterPdfUrl.isEmpty) {
-        throw Exception('Chapter PDF URL not found for chapter: $chapterId');
-      }
-
-      final directory = await getApplicationDocumentsDirectory();
-      final tempPath = '${directory.path}/temp_${chapterId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      
-      final downloadedFile = await remoteDataSource.downloadChapterPdfToLocal(bookId, chapterId, tempPath);
-      if (downloadedFile == null) {
-        throw Exception('Failed to download chapter PDF');
-      }
-
-      if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
-        throw Exception('Downloaded chapter PDF is invalid');
-      }
-
-      if (!await _isValidPDF(downloadedFile)) {
-        throw Exception('Downloaded file is not a valid PDF');
-      }
-
-      try {
-        await localDataSource.saveChapterPdfFile(bookId, chapterId, downloadedFile);
-      } catch (e) {
-        debugPrint('Failed to cache chapter PDF: $e');
-      }
-
-      try {
-        await downloadedFile.delete();
-      } catch (e) {
-        debugPrint('Failed to delete temp chapter file: $e');
-      }
-
-      return await localDataSource.getChapterPdfFile(bookId, chapterId);
-    } catch (e) {
-      throw Exception('Error downloading chapter PDF: $e');
     }
   }
 

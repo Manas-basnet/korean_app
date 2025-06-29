@@ -2,18 +2,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
-import 'package:korean_language_app/features/books/domain/usecases/search_books_usecase.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/services/auth_service.dart';
+import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
+import 'package:korean_language_app/features/auth/domain/entities/user.dart';
+import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
 
 part 'book_search_state.dart';
 
 class BookSearchCubit extends Cubit<BookSearchState> {
-  final SearchBooksUseCase searchBooksUseCase;
-  final CheckBookEditPermissionUseCase checkBookEditPermissionUseCase;
+  final KoreanBookRepository repository;
+  final AuthService authService;
+  final AdminPermissionService adminService;
   
   Timer? _searchDebounceTimer;
   static const Duration _searchDebounceDelay = Duration(milliseconds: 500);
@@ -21,8 +24,9 @@ class BookSearchCubit extends Cubit<BookSearchState> {
   final Stopwatch _operationStopwatch = Stopwatch();
   
   BookSearchCubit({
-    required this.searchBooksUseCase,
-    required this.checkBookEditPermissionUseCase,
+    required this.repository,
+    required this.authService,
+    required this.adminService,
   }) : super(const BookSearchInitial());
 
   void searchBooks(String query) {
@@ -84,20 +88,17 @@ class BookSearchCubit extends Cubit<BookSearchState> {
         ),
       ));
       
-      final params = SearchBooksParams(
-        category: CourseCategory.korean,
-        query: query,
-      );
-      
-      final result = await searchBooksUseCase.execute(params);
+      final result = await repository.searchBooks(CourseCategory.korean, query);
       
       result.fold(
         onSuccess: (searchResults) {
+          final uniqueSearchResults = _removeDuplicates(searchResults);
+          
           _operationStopwatch.stop();
-          debugPrint('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${searchResults.length} results for query: "$query"');
+          debugPrint('Search completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueSearchResults.length} results for query: "$query"');
           
           emit(state.copyWith(
-            searchResults: searchResults,
+            searchResults: uniqueSearchResults,
             currentQuery: query,
             isSearching: true,
             isLoading: false,
@@ -157,6 +158,17 @@ class BookSearchCubit extends Cubit<BookSearchState> {
 
   Future<bool> canUserEditBook(String bookId) async {
     try {
+      final UserEntity? user = _getCurrentUser();
+      if (user == null) {
+        debugPrint('No authenticated user for edit permission check');
+        return false;
+      }
+      
+      if (await adminService.isUserAdmin(user.uid)) {
+        debugPrint('User is admin, granting edit permission for book: $bookId');
+        return true;
+      }
+      
       final book = state.searchResults.firstWhere(
         (b) => b.id == bookId,
         orElse: () => const BookItem(
@@ -173,23 +185,10 @@ class BookSearchCubit extends Cubit<BookSearchState> {
         ),
       );
       
-      final params = CheckBookEditPermissionParams(
-        bookId: bookId,
-        book: book.id.isNotEmpty ? book : null,
-      );
+      final canEdit = book.id.isNotEmpty && book.creatorUid == user.uid;
+      debugPrint('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
       
-      final result = await checkBookEditPermissionUseCase.execute(params);
-      
-      return result.fold(
-        onSuccess: (canEdit) {
-          debugPrint('Edit permission for book $bookId: $canEdit');
-          return canEdit;
-        },
-        onFailure: (_, __) {
-          debugPrint('Error checking edit permission for book $bookId');
-          return false;
-        },
-      );
+      return canEdit;
     } catch (e) {
       debugPrint('Error checking edit permission: $e');
       return false;
@@ -198,6 +197,23 @@ class BookSearchCubit extends Cubit<BookSearchState> {
   
   Future<bool> canUserDeleteBook(String bookId) async {
     return canUserEditBook(bookId);
+  }
+  
+  UserEntity? _getCurrentUser() {
+    return authService.getCurrentUser();
+  }
+  
+  List<BookItem> _removeDuplicates(List<BookItem> books) {
+    final uniqueIds = <String>{};
+    final uniqueBooks = <BookItem>[];
+    
+    for (final book in books) {
+      if (uniqueIds.add(book.id)) {
+        uniqueBooks.add(book);
+      }
+    }
+    
+    return uniqueBooks;
   }
 
   void _handleError(String message, BookSearchOperationType operationType, [String? query]) {

@@ -1,5 +1,1 @@
-enum FileUploadType {
-  pdf,
-  image,
-  audio,
-}
+enum FileUploadType { pdf, image, media }

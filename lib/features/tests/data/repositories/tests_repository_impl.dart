@@ -14,6 +14,129 @@ import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 
+// Data class for isolate communication
+class MediaProcessingData {
+  final List<TestItem> tests;
+  final Map<String, String> cachedImagePaths;
+  final Map<String, String> cachedAudioPaths;
+
+  MediaProcessingData({
+    required this.tests,
+    required this.cachedImagePaths,
+    required this.cachedAudioPaths,
+  });
+}
+
+// Top-level function for isolate processing
+Future<List<TestItem>> _processTestsInIsolate(MediaProcessingData data) async {
+  return _processTestsWithMediaSync(data.tests, data.cachedImagePaths, data.cachedAudioPaths);
+}
+
+// Synchronous processing function (runs in isolate)
+List<TestItem> _processTestsWithMediaSync(
+  List<TestItem> tests,
+  Map<String, String> cachedImagePaths,
+  Map<String, String> cachedAudioPaths,
+) {
+  final processedTests = <TestItem>[];
+  
+  for (final test in tests) {
+    TestItem updatedTest = test;
+    
+    // Process main test image
+    if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
+      final cacheKey = '${test.id}_main_${test.imageUrl!}';
+      final cachedPath = cachedImagePaths[cacheKey];
+      if (cachedPath != null) {
+        updatedTest = updatedTest.copyWith(
+          imagePath: cachedPath,
+          imageUrl: null
+        );
+      } else {
+        updatedTest = updatedTest.copyWith(imagePath: null);
+      }
+    }
+    
+    final updatedQuestions = <TestQuestion>[];
+    for (int i = 0; i < test.questions.length; i++) {
+      final question = test.questions[i];
+      TestQuestion updatedQuestion = question;
+      
+      // Process question image
+      if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
+        final cacheKey = '${test.id}_question_${i}_${question.questionImageUrl!}';
+        final cachedPath = cachedImagePaths[cacheKey];
+        if (cachedPath != null) {
+          updatedQuestion = updatedQuestion.copyWith(
+            questionImagePath: cachedPath,
+            questionImageUrl: null,
+          );
+        } else {
+          updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
+        }
+      }
+
+      // Process question audio
+      if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+        final cacheKey = '${test.id}_question_audio_${i}_${question.questionAudioUrl!}';
+        final cachedPath = cachedAudioPaths[cacheKey];
+        if (cachedPath != null) {
+          updatedQuestion = updatedQuestion.copyWith(
+            questionAudioPath: cachedPath,
+            questionAudioUrl: null,
+          );
+        } else {
+          updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
+        }
+      }
+      
+      final updatedOptions = <AnswerOption>[];
+      for (int j = 0; j < question.options.length; j++) {
+        final option = question.options[j];
+        AnswerOption updatedOption = option;
+        
+        // Process option image
+        if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
+          final cacheKey = '${test.id}_answer_${i}_${j}_${option.imageUrl!}';
+          final cachedPath = cachedImagePaths[cacheKey];
+          if (cachedPath != null) {
+            updatedOption = updatedOption.copyWith(
+              imagePath: cachedPath,
+              imageUrl: null,
+            );
+          } else {
+            updatedOption = updatedOption.copyWith(imagePath: null);
+          }
+        }
+        
+        // Process option audio
+        if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+          final cacheKey = '${test.id}_answer_audio_${i}_${j}_${option.audioUrl!}';
+          final cachedPath = cachedAudioPaths[cacheKey];
+          if (cachedPath != null) {
+            updatedOption = updatedOption.copyWith(
+              audioPath: cachedPath,
+              audioUrl: null,
+            );
+          } else {
+            updatedOption = updatedOption.copyWith(audioPath: null);
+          }
+        }
+        
+        updatedOptions.add(updatedOption);
+      }
+      
+      updatedQuestion = updatedQuestion.copyWith(options: updatedOptions);
+      updatedQuestions.add(updatedQuestion);
+    }
+    
+    updatedTest = updatedTest.copyWith(questions: updatedQuestions);
+    processedTests.add(updatedTest);
+  }
+  
+  return processedTests;
+}
+
 class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   final TestsRemoteDataSource remoteDataSource;
   final TestsLocalDataSource localDataSource;
@@ -43,7 +166,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final cachedTests = await localDataSource.getTestsPage(page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
           debugPrint('Returning ${cachedTests.length} tests from cache (page $page, sortType: ${sortType.name})');
-          final processedTests = await _processTestsWithMedia(cachedTests);
+          final processedTests = await _processTestsWithMediaOptimized(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -79,7 +202,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithMedia(result.data!);
+      final processedTests = await _processTestsWithMediaOptimized(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -103,7 +226,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, page, pageSize, sortType: sortType);
         if (cachedTests.isNotEmpty) {
           debugPrint('Returning ${cachedTests.length} category tests from cache (page $page, sortType: ${sortType.name})');
-          final processedTests = await _processTestsWithMedia(cachedTests);
+          final processedTests = await _processTestsWithMediaOptimized(cachedTests);
           return ApiResult.success(processedTests);
         }
         
@@ -136,7 +259,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithMedia(result.data!);
+      final processedTests = await _processTestsWithMediaOptimized(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -208,7 +331,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       cacheCall: () async {
         debugPrint('Hard refresh requested but offline - returning cached data with sortType: ${sortType.name}');
         final cachedTests = await localDataSource.getTestsPage(0, pageSize, sortType: sortType);
-        final processedTests = await _processTestsWithMedia(cachedTests);
+        final processedTests = await _processTestsWithMediaOptimized(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
@@ -218,7 +341,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithMedia(result.data!);
+      final processedTests = await _processTestsWithMediaOptimized(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -249,7 +372,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         debugPrint('Hard refresh category requested but offline - returning cached data with sortType: ${sortType.name}');
         final categoryString = category.toString().split('.').last;
         final cachedTests = await localDataSource.getTestsByCategoryPage(categoryString, 0, pageSize, sortType: sortType);
-        final processedTests = await _processTestsWithMedia(cachedTests);
+        final processedTests = await _processTestsWithMediaOptimized(cachedTests);
         return ApiResult.success(processedTests);
       },
       cacheData: (remoteTests) async {
@@ -259,7 +382,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     );
     
     if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithMedia(result.data!);
+      final processedTests = await _processTestsWithMediaOptimized(result.data!);
       return ApiResult.success(processedTests);
     }
     
@@ -288,20 +411,20 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
           debugPrint('Search returned ${combinedResults.length} combined results (${cachedResults.length} cached + ${remoteResults.length} remote)');
           
-          final processedResults = await _processTestsWithMedia(combinedResults);
+          final processedResults = await _processTestsWithMediaOptimized(combinedResults);
           return ApiResult.success(processedResults);
           
         } catch (e) {
           debugPrint('Remote search failed, returning ${cachedResults.length} cached results: $e');
           if (cachedResults.isNotEmpty) {
-            final processedResults = await _processTestsWithMedia(cachedResults);
+            final processedResults = await _processTestsWithMediaOptimized(cachedResults);
             return ApiResult.success(processedResults);
           }
           rethrow;
         }
       } else {
         debugPrint('Offline search returned ${cachedResults.length} cached results');
-        final processedResults = await _processTestsWithMedia(cachedResults);
+        final processedResults = await _processTestsWithMediaOptimized(cachedResults);
         return ApiResult.success(processedResults);
       }
       
@@ -309,7 +432,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       try {
         final cachedTests = await localDataSource.getAllTests();
         final cachedResults = _searchInTests(cachedTests, query);
-        final processedResults = await _processTestsWithMedia(cachedResults);
+        final processedResults = await _processTestsWithMediaOptimized(cachedResults);
         return ApiResult.success(processedResults);
       } catch (cacheError) {
         return ExceptionMapper.mapExceptionToApiResult(e as Exception);
@@ -332,7 +455,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           final hasAllMedia = await _hasAllMediaCached(cachedTest);
           
           if (await _isCacheValid() && hasAllMedia) {
-            final processedTests = await _processTestsWithMedia([cachedTest]);
+            final processedTests = await _processTestsWithMediaOptimized([cachedTest]);
             return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
           }
           
@@ -355,7 +478,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       );
       
       if (result.isSuccess && result.data != null) {
-        final processedTests = await _processTestsWithMedia([result.data!]);
+        final processedTests = await _processTestsWithMediaOptimized([result.data!]);
         return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
       }
       
@@ -433,6 +556,109 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         }
       },
     );
+  }
+
+  // OPTIMIZED: Process tests with media using isolate
+  Future<List<TestItem>> _processTestsWithMediaOptimized(List<TestItem> tests) async {
+    if (tests.isEmpty) return tests;
+
+    try {
+      debugPrint('🚀 Processing ${tests.length} tests with media using isolate');
+      
+      // Pre-collect all cached paths to avoid I/O in isolate
+      final cachedImagePaths = await _collectCachedImagePaths(tests);
+      final cachedAudioPaths = await _collectCachedAudioPaths(tests);
+      
+      final mediaData = MediaProcessingData(
+        tests: tests,
+        cachedImagePaths: cachedImagePaths,
+        cachedAudioPaths: cachedAudioPaths,
+      );
+      
+      // Process in isolate
+      final processedTests = await compute(_processTestsInIsolate, mediaData);
+      
+      debugPrint('✅ Processed ${processedTests.length} tests with media paths in isolate');
+      return processedTests;
+    } catch (e) {
+      debugPrint('❌ Error processing tests in isolate: $e');
+      return tests;
+    }
+  }
+
+  // Collect all cached image paths in batch
+  Future<Map<String, String>> _collectCachedImagePaths(List<TestItem> tests) async {
+    final cachedPaths = <String, String>{};
+    
+    for (final test in tests) {
+      // Main test image
+      if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
+        final cacheKey = '${test.id}_main_${test.imageUrl!}';
+        final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
+        if (cachedPath != null) {
+          cachedPaths[cacheKey] = cachedPath;
+        }
+      }
+      
+      // Question images
+      for (int i = 0; i < test.questions.length; i++) {
+        final question = test.questions[i];
+        if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
+          final cacheKey = '${test.id}_question_${i}_${question.questionImageUrl!}';
+          final cachedPath = await localDataSource.getCachedImagePath(question.questionImageUrl!, test.id, 'question_$i');
+          if (cachedPath != null) {
+            cachedPaths[cacheKey] = cachedPath;
+          }
+        }
+        
+        // Option images
+        for (int j = 0; j < question.options.length; j++) {
+          final option = question.options[j];
+          if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
+            final cacheKey = '${test.id}_answer_${i}_${j}_${option.imageUrl!}';
+            final cachedPath = await localDataSource.getCachedImagePath(option.imageUrl!, test.id, 'answer_${i}_$j');
+            if (cachedPath != null) {
+              cachedPaths[cacheKey] = cachedPath;
+            }
+          }
+        }
+      }
+    }
+    
+    return cachedPaths;
+  }
+
+  // Collect all cached audio paths in batch
+  Future<Map<String, String>> _collectCachedAudioPaths(List<TestItem> tests) async {
+    final cachedPaths = <String, String>{};
+    
+    for (final test in tests) {
+      // Question audio
+      for (int i = 0; i < test.questions.length; i++) {
+        final question = test.questions[i];
+        if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
+          final cacheKey = '${test.id}_question_audio_${i}_${question.questionAudioUrl!}';
+          final cachedPath = await localDataSource.getCachedAudioPath(question.questionAudioUrl!, test.id, 'question_audio_$i');
+          if (cachedPath != null) {
+            cachedPaths[cacheKey] = cachedPath;
+          }
+        }
+        
+        // Option audio
+        for (int j = 0; j < question.options.length; j++) {
+          final option = question.options[j];
+          if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
+            final cacheKey = '${test.id}_answer_audio_${i}_${j}_${option.audioUrl!}';
+            final cachedPath = await localDataSource.getCachedAudioPath(option.audioUrl!, test.id, 'answer_audio_${i}_$j');
+            if (cachedPath != null) {
+              cachedPaths[cacheKey] = cachedPath;
+            }
+          }
+        }
+      }
+    }
+    
+    return cachedPaths;
   }
 
   Future<bool> _isCacheValid() async {
@@ -655,124 +881,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   String _generateTestHash(TestItem test) {
     final content = '${test.title}_${test.description}_${test.questions.length}_${test.updatedAt?.millisecondsSinceEpoch ?? 0}';
     return content.hashCode.toString();
-  }
-
-  Future<List<TestItem>> _processTestsWithMedia(List<TestItem> tests) async {
-    try {
-      debugPrint('🏭 Processing ${tests.length} tests with media');
-      final processedTests = <TestItem>[];
-      
-      for (final test in tests) {
-         debugPrint('📝 Processing test: ${test.id} - ${test.title}');
-        TestItem updatedTest = test;
-        
-        if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
-          final cachedPath = await localDataSource.getCachedImagePath(test.imageUrl!, test.id, 'main');
-          if (cachedPath != null) {
-            debugPrint('Using cached image for test ${test.id}: $cachedPath');
-            updatedTest = updatedTest.copyWith(
-              imagePath: cachedPath,
-              imageUrl: null
-            );
-          } else {
-            debugPrint('No cached image found for test ${test.id}, will use network URL');
-            updatedTest = updatedTest.copyWith(imagePath: null);
-          }
-        }
-        
-        final updatedQuestions = <TestQuestion>[];
-        for (int i = 0; i < test.questions.length; i++) {
-          final question = test.questions[i];
-          debugPrint('❓ Processing question $i: hasImage=${question.questionImageUrl?.isNotEmpty}');
-          TestQuestion updatedQuestion = question;
-          
-          if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
-            final cachedPath = await localDataSource.getCachedImagePath(
-              question.questionImageUrl!, test.id, 'question_$i'
-            );
-            if (cachedPath != null) {
-              debugPrint('Using cached question image for test ${test.id}, question $i: $cachedPath');
-              updatedQuestion = updatedQuestion.copyWith(
-                questionImagePath: cachedPath,
-                questionImageUrl: null,
-              );
-            } else {
-              debugPrint('No cached question image found for test ${test.id}, question $i');
-              updatedQuestion = updatedQuestion.copyWith(questionImagePath: null);
-            }
-          }
-
-          if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
-            final cachedPath = await localDataSource.getCachedAudioPath(
-              question.questionAudioUrl!, test.id, 'question_audio_$i'
-            );
-            if (cachedPath != null) {
-              debugPrint('Using cached question audio for test ${test.id}, question $i: $cachedPath');
-              updatedQuestion = updatedQuestion.copyWith(
-                questionAudioPath: cachedPath,
-                questionAudioUrl: null,
-              );
-            } else {
-              debugPrint('No cached question audio found for test ${test.id}, question $i');
-              updatedQuestion = updatedQuestion.copyWith(questionAudioPath: null);
-            }
-          }
-          
-          final updatedOptions = <AnswerOption>[];
-          for (int j = 0; j < question.options.length; j++) {
-            final option = question.options[j];
-            debugPrint('🎯 Processing option $j: isImage=${option.isImage}, text="${option.text}"');
-            AnswerOption updatedOption = option;
-            
-            if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
-              debugPrint('   Original image URL: ${option.imageUrl!.substring(option.imageUrl!.length - 20)}');
-              final cachedPath = await localDataSource.getCachedImagePath(
-                option.imageUrl!, test.id, 'answer_${i}_$j'
-              );
-              if (cachedPath != null) {
-                debugPrint('   ✅ Using cached path: ${cachedPath.substring(cachedPath.length - 30)}');
-                updatedOption = updatedOption.copyWith(
-                  imagePath: cachedPath,
-                  imageUrl: null,
-                );
-              } else {
-                debugPrint('   🌐 Will use network URL: ${option.imageUrl!.substring(option.imageUrl!.length - 20)}');
-                updatedOption = updatedOption.copyWith(imagePath: null);
-              }
-            }
-            
-            if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
-              final cachedPath = await localDataSource.getCachedAudioPath(
-                option.audioUrl!, test.id, 'answer_audio_${i}_$j'
-              );
-              if (cachedPath != null) {
-                debugPrint('Using cached answer audio for test ${test.id}, question $i, option $j: $cachedPath');
-                updatedOption = updatedOption.copyWith(
-                  audioPath: cachedPath,
-                  audioUrl: null,
-                );
-              } else {
-                debugPrint('No cached answer audio found for test ${test.id}, question $i, option $j');
-                updatedOption = updatedOption.copyWith(audioPath: null);
-              }
-            }
-            
-            updatedOptions.add(updatedOption);
-          }
-          
-          updatedQuestion = updatedQuestion.copyWith(options: updatedOptions);
-          updatedQuestions.add(updatedQuestion);
-        }
-        
-        updatedTest = updatedTest.copyWith(questions: updatedQuestions);
-        processedTests.add(updatedTest);
-      }
-      
-      debugPrint('✅ Processed ${processedTests.length} tests with media paths');
-      return processedTests;
-    } catch (e) {
-      return tests;
-    }
   }
 
   List<TestItem> _combineAndDeduplicateResults(

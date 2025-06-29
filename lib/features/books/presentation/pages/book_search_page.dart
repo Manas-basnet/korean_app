@@ -4,7 +4,7 @@ import 'package:korean_language_app/shared/presentation/widgets/errors/error_wid
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/features/books/data/models/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_list_card.dart';
 
 class BookSearchDelegate extends SearchDelegate<BookItem?> {

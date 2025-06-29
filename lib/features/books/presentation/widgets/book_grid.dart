@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/features/books/data/models/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_grid_card.dart';
 
