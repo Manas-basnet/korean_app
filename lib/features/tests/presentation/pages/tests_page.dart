@@ -352,7 +352,7 @@ class _TestsPageState extends State<TestsPage> {
             child: CustomScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
-              cacheExtent: 600, // ✅ Cache off-screen items for performance
+              cacheExtent: 600,
               slivers: [
                 if (isOffline)
                   SliverToBoxAdapter(
@@ -703,11 +703,11 @@ class _TestsPageState extends State<TestsPage> {
             if (index < state.tests.length) {
               final test = state.tests[index];
               
-              return RepaintBoundary( // ✅ Optimize repaints
+              return RepaintBoundary(
                 child: TestCard(
-                  key: ValueKey(test.id), // ✅ Stable keys
+                  key: ValueKey(test.id),
                   test: test,
-                  canEdit: _testsCubit.canUserEditTestSync(test), // ✅ Synchronous call
+                  canEdit: true,
                   onTap: () => _startTest(test),
                   onEdit: () => _editTest(test),
                   onDelete: () => _deleteTest(test),
@@ -1063,7 +1063,7 @@ class _TestsPageState extends State<TestsPage> {
       return;
     }
 
-    final hasPermission = _testsCubit.canUserEditTestSync(test);
+    final hasPermission = await _testsCubit.canUserEditTest(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 편집할 권한이 없습니다',
@@ -1080,7 +1080,7 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   void _deleteTest(TestItem test) async {
-    final hasPermission = _testsCubit.canUserEditTestSync(test);
+    final hasPermission = await _testsCubit.canUserDeleteTest(test);
     if (!hasPermission) {
       _snackBarCubit.showErrorLocalized(
         korean: '이 시험을 삭제할 권한이 없습니다',
