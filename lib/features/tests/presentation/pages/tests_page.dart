@@ -675,69 +675,41 @@ class _TestsPageState extends State<TestsPage> {
   
   Widget _buildSliverTestsList(TestsState state, Size screenSize) {
     if (state.tests.isEmpty) {
-      return SliverToBoxAdapter(
-        child: _buildEmptyTestsView(),
-      );
+      return SliverToBoxAdapter(child: _buildEmptyTestsView());
     }
-    
-    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests && 
-                         state.currentOperation.isInProgress;
     
     final isTablet = screenSize.width > 600;
     final crossAxisCount = isTablet ? 3 : 2;
-    final childAspectRatio = isTablet ? 0.7 : 0.85;
-    final gridPadding = screenSize.width * 0.05;
-    final gridSpacing = screenSize.width * 0.04;
+    final childAspectRatio = isTablet ? 0.7 : 0.75; // Slightly adjusted
     
-    return SliverPadding(
-      padding: EdgeInsets.all(gridPadding),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: childAspectRatio,
-          crossAxisSpacing: gridSpacing,
-          mainAxisSpacing: gridSpacing,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index < state.tests.length) {
-              final test = state.tests[index];
-              
-              return RepaintBoundary(
-                child: TestCard(
-                  key: ValueKey(test.id),
-                  test: test,
-                  canEdit: true,
-                  onTap: () => _startTest(test),
-                  onEdit: () => _editTest(test),
-                  onDelete: () => _deleteTest(test),
-                  onViewDetails: () => _viewTestDetails(test),
-                  onLongPress: () => _viewTestDetails(test),
-                ),
-              );
-            } else if (isLoadingMore) {
-              return Center(
-                child: Container(
-                  padding: EdgeInsets.all(screenSize.width * 0.03),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const CircularProgressIndicator(),
-                ),
-              );
-            }
-            return null;
-          },
-          childCount: state.tests.length + (isLoadingMore ? 1 : 0),
-        ),
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          if (index >= state.tests.length) return null;
+          
+          final test = state.tests[index];
+          return TestCard(
+            key: ValueKey('test_${test.id}'),
+            test: test,
+            canEdit: true,
+            onTap: () => _startTest(test),
+            onEdit: () => _editTest(test),
+            onDelete: () => _deleteTest(test),
+            onViewDetails: () => _viewTestDetails(test),
+          );
+        },
+        childCount: state.tests.length,
+        findChildIndexCallback: (Key key) {
+          final valueKey = key as ValueKey<String>;
+          final testId = valueKey.value.substring(5);
+          return state.tests.indexWhere((test) => test.id == testId);
+        },
       ),
     );
   }
@@ -1052,8 +1024,7 @@ class _TestsPageState extends State<TestsPage> {
         ],
       ),
     );
-  }
-  
+  } 
   void _editTest(TestItem test) async {
     if (test.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
