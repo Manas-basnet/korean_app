@@ -18,6 +18,7 @@ import 'package:shorebird_code_push/shorebird_code_push.dart' as shorebird;
 import 'package:url_strategy/url_strategy.dart';
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
 
   if (kIsWeb) {

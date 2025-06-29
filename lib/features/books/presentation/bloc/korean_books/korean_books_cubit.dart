@@ -4,21 +4,28 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
+import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_books_usecase.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
-import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/services/auth_service.dart';
-import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
-import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_book_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_chapter_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/load_more_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/refresh_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/regenerate_book_image_url_usecase.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 part 'korean_books_state.dart';
 
 class KoreanBooksCubit extends Cubit<KoreanBooksState> {
-  final KoreanBookRepository repository;
-  final AuthService authService;
-  final AdminPermissionService adminService;
+  final LoadBooksUseCase loadBooksUseCase;
+  final LoadMoreBooksUseCase loadMoreBooksUseCase;
+  final RefreshBooksUseCase refreshBooksUseCase;
+  final GetBookPdfUseCase getBookPdfUseCase;
+  final GetChapterPdfUseCase getChapterPdfUseCase;
+  final CheckBookEditPermissionUseCase checkBookEditPermissionUseCase;
+  final RegenerateBookImageUrlUseCase regenerateBookImageUrlUseCase;
   
   static const int _pageSize = 5;
   bool _isConnected = true;
@@ -28,9 +35,13 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   final Stopwatch _operationStopwatch = Stopwatch();
   
   KoreanBooksCubit({
-    required this.repository,
-    required this.authService,
-    required this.adminService,
+    required this.loadBooksUseCase,
+    required this.loadMoreBooksUseCase,
+    required this.refreshBooksUseCase,
+    required this.getBookPdfUseCase,
+    required this.getChapterPdfUseCase,
+    required this.checkBookEditPermissionUseCase,
+    required this.regenerateBookImageUrlUseCase,
   }) : super(const KoreanBooksInitial()) {
     _initializeConnectivityListener();
   }
@@ -67,31 +78,24 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         ),
       ));
       
-      final result = await repository.getBooks(
-        CourseCategory.korean,
+      const params = LoadBooksParams(
+        category: CourseCategory.korean,
         page: 0,
-        pageSize: _pageSize
+        pageSize: _pageSize,
       );
       
-      await result.fold(
-        onSuccess: (books) async {
-          final hasMoreResult = await repository.hasMoreBooks(
-            CourseCategory.korean,
-            books.length
-          );
-
-
-          final uniqueBooks = _removeDuplicates(books);
+      final result = await loadBooksUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (loadResult) {
+          final uniqueBooks = _removeDuplicates(loadResult.books);
           
           _operationStopwatch.stop();
           debugPrint('loadInitialBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(KoreanBooksState(
             books: uniqueBooks,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            hasMore: loadResult.hasMore,
             currentOperation: const KoreanBooksOperation(
               type: KoreanBooksOperationType.loadBooks,
               status: KoreanBooksOperationStatus.completed,
@@ -131,8 +135,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     _operationStopwatch.reset();
     _operationStopwatch.start();
     
-    final currentPage = (state.books.length / _pageSize).ceil();
-    
     try {
       emit(state.copyWith(
         currentOperation: const KoreanBooksOperation(
@@ -141,37 +143,30 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         ),
       ));
       
-      final result = await repository.getBooks(
-        CourseCategory.korean,
-        page: currentPage,
+      final params = LoadMoreBooksParams(
+        category: CourseCategory.korean,
+        existingBooks: state.books,
         pageSize: _pageSize,
       );
       
-      await result.fold(
-        onSuccess: (moreBooks) async {
-          final existingIds = state.books.map((book) => book.id).toSet();
-          final uniqueNewBooks = moreBooks.where((book) => !existingIds.contains(book.id)).toList();
+      final result = await loadMoreBooksUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (loadResult) {
+          _operationStopwatch.stop();
           
-          if (uniqueNewBooks.isNotEmpty) {
-            final allBooks = [...state.books, ...uniqueNewBooks];
-            final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, allBooks.length);
-            
-            _operationStopwatch.stop();
-            debugPrint('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueNewBooks.length} new books');
+          if (loadResult.newBooks.isNotEmpty) {
+            debugPrint('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${loadResult.newBooks.length} new books');
             
             emit(state.copyWith(
-              books: allBooks,
-              hasMore: hasMoreResult.fold(
-                onSuccess: (hasMore) => hasMore,
-                onFailure: (_, __) => false,
-              ),
+              books: loadResult.allBooks,
+              hasMore: loadResult.hasMore,
               currentOperation: const KoreanBooksOperation(
                 type: KoreanBooksOperationType.loadMoreBooks,
                 status: KoreanBooksOperationStatus.completed,
               ),
             ));
           } else {
-            _operationStopwatch.stop();
             debugPrint('loadMoreBooks completed in ${_operationStopwatch.elapsedMilliseconds}ms with no new books');
             
             emit(state.copyWith(
@@ -225,25 +220,23 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         ),
       ));
       
-      final result = await repository.hardRefreshBooks(
-        CourseCategory.korean,
-        pageSize: _pageSize
+      const params = RefreshBooksParams(
+        category: CourseCategory.korean,
+        pageSize: _pageSize,
       );
       
-      await result.fold(
-        onSuccess: (books) async {
-          final uniqueBooks = _removeDuplicates(books);
-          final hasMoreResult = await repository.hasMoreBooks(CourseCategory.korean, uniqueBooks.length);
+      final result = await refreshBooksUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (refreshResult) {
+          final uniqueBooks = _removeDuplicates(refreshResult.books);
           
           _operationStopwatch.stop();
           debugPrint('hardRefresh completed in ${_operationStopwatch.elapsedMilliseconds}ms with ${uniqueBooks.length} books');
           
           emit(KoreanBooksState(
             books: uniqueBooks,
-            hasMore: hasMoreResult.fold(
-              onSuccess: (hasMore) => hasMore,
-              onFailure: (_, __) => false,
-            ),
+            hasMore: refreshResult.hasMore,
             currentOperation: const KoreanBooksOperation(
               type: KoreanBooksOperationType.refreshBooks,
               status: KoreanBooksOperationStatus.completed,
@@ -293,36 +286,23 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         ),
       ));
       
-      final result = await repository.getBookPdf(bookId);
+      final params = GetBookPdfParams(bookId: bookId);
+      final result = await getBookPdfUseCase.execute(params);
       
       result.fold(
         onSuccess: (pdfFile) {
           _operationStopwatch.stop();
+          debugPrint('PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
           
-          if (pdfFile != null) {
-            debugPrint('PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
-            
-            emit(state.copyWith(
-              loadedPdfFile: pdfFile,
-              loadedPdfBookId: bookId,
-              currentOperation: KoreanBooksOperation(
-                type: KoreanBooksOperationType.loadPdf,
-                status: KoreanBooksOperationStatus.completed,
-                bookId: bookId,
-              ),
-            ));
-          } else {
-            debugPrint('PDF file is null after ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
-            
-            emit(state.copyWith(
-              currentOperation: KoreanBooksOperation(
-                type: KoreanBooksOperationType.loadPdf,
-                status: KoreanBooksOperationStatus.failed,
-                bookId: bookId,
-                message: 'PDF file is empty or corrupted',
-              ),
-            ));
-          }
+          emit(state.copyWith(
+            loadedPdfFile: pdfFile,
+            loadedPdfBookId: bookId,
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadPdf,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: bookId,
+            ),
+          ));
           _clearOperationAfterDelay();
         },
         onFailure: (message, type) {
@@ -357,6 +337,78 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       _downloadsInProgress.remove(bookId);
     }
   }
+
+  Future<void> loadChapterPdf(String bookId, String chapterId) async {
+    if (_downloadsInProgress.contains(chapterId)) {
+      debugPrint('Chapter PDF download already in progress for chapter: $chapterId');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      _downloadsInProgress.add(chapterId);
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadPdf,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: chapterId,
+        ),
+      ));
+      
+      final params = GetChapterPdfParams(bookId: bookId, chapterId: chapterId);
+      final result = await getChapterPdfUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (pdfFile) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter PDF loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for chapter: $chapterId');
+          
+          emit(state.copyWith(
+            loadedPdfFile: pdfFile,
+            loadedPdfBookId: chapterId,
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadPdf,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: chapterId,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter PDF load failed after ${_operationStopwatch.elapsedMilliseconds}ms for chapter $chapterId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadPdf,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: chapterId,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error loading chapter PDF after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadPdf,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: chapterId,
+          message: 'Failed to load chapter PDF: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
+    } finally {
+      _downloadsInProgress.remove(chapterId);
+    }
+  }
   
   void addBookToState(BookItem book) {
     final updatedBooks = [book, ...state.books];
@@ -389,17 +441,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   
   Future<bool> canUserEditBook(String bookId) async {
     try {
-      final UserEntity? user = _getCurrentUser();
-      if (user == null) {
-        debugPrint('No authenticated user for edit permission check');
-        return false;
-      }
-      
-      if (await adminService.isUserAdmin(user.uid)) {
-        debugPrint('User is admin, granting edit permission for book: $bookId');
-        return true;
-      }
-      
       final book = state.books.firstWhere(
         (b) => b.id == bookId,
         orElse: () => const BookItem(
@@ -410,10 +451,17 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
         )
       );
       
-      final canEdit = book.id.isNotEmpty && book.creatorUid == user.uid;
-      debugPrint('Edit permission for book $bookId: $canEdit (user: ${user.uid}, creator: ${book.creatorUid})');
+      final params = CheckBookEditPermissionParams(
+        bookId: bookId,
+        book: book.id.isNotEmpty ? book : null,
+      );
       
-      return canEdit;
+      final result = await checkBookEditPermissionUseCase.execute(params);
+      
+      return result.fold(
+        onSuccess: (canEdit) => canEdit,
+        onFailure: (_, __) => false,
+      );
     } catch (e) {
       debugPrint('Error checking edit permission: $e');
       return false;
@@ -425,20 +473,16 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   }
   
   Future<void> regenerateBookImageUrl(BookItem book) async {
-    if (book.bookImagePath == null || book.bookImagePath!.isEmpty) {
-      debugPrint('No image path to regenerate for book: ${book.id}');
-      return;
-    }
-    
     try {
       debugPrint('Regenerating image URL for book: ${book.id}');
-      final result = await repository.regenerateImageUrl(book);
+      
+      final params = RegenerateBookImageUrlParams(book: book);
+      final result = await regenerateBookImageUrlUseCase.execute(params);
       
       result.fold(
-        onSuccess: (newImageUrl) {
-          if (newImageUrl != null) {
-            final updatedBook = book.copyWith(bookImage: newImageUrl);
-            updateBookInState(updatedBook);
+        onSuccess: (regenerateResult) {
+          if (regenerateResult != null) {
+            updateBookInState(regenerateResult.updatedBook);
             debugPrint('Successfully regenerated image URL for book: ${book.id}');
           } else {
             debugPrint('No new image URL generated for book: ${book.id}');
@@ -451,10 +495,6 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     } catch (e) {
       debugPrint('Error regenerating book image URL: $e');
     }
-  }
-  
-  UserEntity? _getCurrentUser() {
-    return authService.getCurrentUser();
   }
   
   List<BookItem> _removeDuplicates(List<BookItem> books) {

@@ -1,7 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/enums/book_upload_type.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/favorite_button.dart';
 
 class BookListCard extends StatelessWidget {
@@ -52,10 +53,8 @@ class BookListCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Book cover image section (left side)
               _buildCoverSection(context, theme),
               
-              // Book details section (right side)
               _buildDetailsSection(context, theme),
             ],
           ),
@@ -75,11 +74,9 @@ class BookListCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Book cover
             _buildCoverImage(context),
             
-            // Badges and indicators
-            _buildCoverBadges(theme),
+            _buildCoverBadges(context, theme),
           ],
         ),
       ),
@@ -141,10 +138,9 @@ class BookListCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCoverBadges(ThemeData theme) {
+  Widget _buildCoverBadges(BuildContext context, ThemeData theme) {
     return Stack(
       children: [
-        // Favorite button
         Positioned(
           top: 8,
           left: 8,
@@ -155,7 +151,6 @@ class BookListCard extends StatelessWidget {
           ),
         ),
         
-        // Admin/Edit indicator (if user has permission)
         if (canEdit)
           Positioned(
             top: 8,
@@ -181,46 +176,12 @@ class BookListCard extends StatelessWidget {
             ),
           ),
           
-        // PDF indicator
         Positioned(
-          bottom: 36,
+          bottom: 48,
           right: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues( alpha: 0.85),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.picture_as_pdf,
-                  size: 12,
-                  color: Colors.white,
-                ),
-                SizedBox(width: 2),
-                Text(
-                  'PDF',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: _buildBookTypeIndicator(context),
         ),
         
-        // Level indicator
         Positioned(
           bottom: 8,
           left: 8,
@@ -252,6 +213,46 @@ class BookListCard extends StatelessWidget {
     );
   }
 
+  Widget _buildBookTypeIndicator(BuildContext context) {
+    final isChapterWise = book.uploadType == BookUploadType.chapterWise;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isChapterWise 
+            ? Colors.blue.withValues(alpha: 0.85)
+            : Colors.orange.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isChapterWise ? Icons.auto_stories : Icons.picture_as_pdf,
+            size: 12,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            isChapterWise ? 'Chapters' : 'PDF',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDetailsSection(BuildContext context, ThemeData theme) {
     return Expanded(
       child: Padding(
@@ -259,7 +260,6 @@ class BookListCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title area with overflow handling
             Row(
               children: [
                 Expanded(
@@ -273,7 +273,6 @@ class BookListCard extends StatelessWidget {
                   ),
                 ),
                 
-                // Menu button
                 PopupMenuButton<String>(
                   icon: Icon(
                     Icons.more_vert,
@@ -289,7 +288,6 @@ class BookListCard extends StatelessWidget {
             
             const SizedBox(height: 4),
             
-            // Duration info - small and compact
             Row(
               children: [
                 Icon(
@@ -305,12 +303,13 @@ class BookListCard extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
+                const Spacer(),
+                _buildBookTypeChip(context),
               ],
             ),
             
             const SizedBox(height: 6),
             
-            // Description with flexible area
             Expanded(
               child: Text(
                 book.description,
@@ -323,10 +322,48 @@ class BookListCard extends StatelessWidget {
               ),
             ),
             
-            // Action buttons in a better layout
             _buildActionButtons(context, theme),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBookTypeChip(BuildContext context) {
+    final isChapterWise = book.uploadType == BookUploadType.chapterWise;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isChapterWise 
+            ? Colors.blue.withValues(alpha: 0.1)
+            : Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isChapterWise 
+              ? Colors.blue.withValues(alpha: 0.3)
+              : Colors.orange.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isChapterWise ? Icons.auto_stories : Icons.picture_as_pdf,
+            size: 10,
+            color: isChapterWise ? Colors.blue : Colors.orange,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isChapterWise ? 'Chapters' : 'PDF',
+            style: TextStyle(
+              color: isChapterWise ? Colors.blue : Colors.orange,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -375,7 +412,6 @@ class BookListCard extends StatelessWidget {
       ),
     ];
     
-    // Add edit/delete options if user has permission
     if (canEdit) {
       if (onEditBook != null) {
         menuItems.add(const PopupMenuItem<String>(
@@ -437,14 +473,18 @@ class BookListCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Primary button
         Expanded(
           flex: 2,
           child: ElevatedButton.icon(
-            icon: const Icon(Icons.menu_book, size: 14),
-            label: const Text(
-              'Read',
-              style: TextStyle(fontSize: 12),
+            icon: Icon(
+              book.uploadType == BookUploadType.chapterWise 
+                  ? Icons.auto_stories 
+                  : Icons.menu_book, 
+              size: 14
+            ),
+            label: Text(
+              book.uploadType == BookUploadType.chapterWise ? 'Chapters' : 'Read',
+              style: const TextStyle(fontSize: 12),
             ),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 6),
@@ -462,7 +502,6 @@ class BookListCard extends StatelessWidget {
         
         const SizedBox(width: 8),
         
-        // Secondary actions
         if (canEdit && onEditBook != null)
           Expanded(
             child: _buildIconButton(
@@ -486,7 +525,6 @@ class BookListCard extends StatelessWidget {
         
         const SizedBox(width: 8),
         
-        // Download button
         Expanded(
           child: _buildIconButton(
             context,

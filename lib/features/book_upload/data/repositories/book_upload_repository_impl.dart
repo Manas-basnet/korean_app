@@ -5,8 +5,9 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource.dart';
+import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 class BookUploadRepositoryImpl extends BaseRepository implements BookUploadRepository {
   final BookUploadRemoteDataSource remoteDataSource;
@@ -19,17 +20,51 @@ class BookUploadRepositoryImpl extends BaseRepository implements BookUploadRepos
   }) : super(networkInfo);
 
   @override
-  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile}) async {
+  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile, List<AudioTrackUploadData>? audioTracks}) async {
     return handleRepositoryCall(() async {
-      final createdBook = await remoteDataSource.uploadBook(book, pdfFile, coverImageFile: coverImageFile);
+      final createdBook = await remoteDataSource.uploadBook(book, pdfFile, coverImageFile: coverImageFile, audioTracks: audioTracks);
       return ApiResult.success(createdBook);
     });
   }
 
   @override
-  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile}) async {
+  Future<ApiResult<BookItem>> createBookWithChapters(
+    BookItem book, 
+    List<ChapterUploadData> chapters, 
+    {File? coverImageFile}
+  ) async {
     return handleRepositoryCall(() async {
-      final updatedBookResult = await remoteDataSource.updateBook(bookId, updatedBook, pdfFile: pdfFile, coverImageFile: coverImageFile);
+      final createdBook = await remoteDataSource.uploadBookWithChapters(
+        book, 
+        chapters, 
+        coverImageFile: coverImageFile
+      );
+      return ApiResult.success(createdBook);
+    });
+  }
+
+  @override
+  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, List<AudioTrackUploadData>? audioTracks}) async {
+    return handleRepositoryCall(() async {
+      final updatedBookResult = await remoteDataSource.updateBook(bookId, updatedBook, pdfFile: pdfFile, coverImageFile: coverImageFile, audioTracks: audioTracks);
+      return ApiResult.success(updatedBookResult);
+    });
+  }
+
+  @override
+  Future<ApiResult<BookItem>> updateBookWithChapters(
+    String bookId, 
+    BookItem updatedBook, 
+    List<ChapterUploadData>? chapters, 
+    {File? coverImageFile}
+  ) async {
+    return handleRepositoryCall(() async {
+      final updatedBookResult = await remoteDataSource.updateBookWithChapters(
+        bookId, 
+        updatedBook, 
+        chapters, 
+        coverImageFile: coverImageFile
+      );
       return ApiResult.success(updatedBookResult);
     });
   }

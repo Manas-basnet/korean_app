@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
+import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
-import 'package:korean_language_app/features/books/data/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_item.dart';
 
 class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
   final FirebaseFirestore firestore;
@@ -186,6 +187,76 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
       throw Exception('Failed to get PDF URL: $e');
+    }
+  }
+
+  @override
+  Future<File?> downloadChapterPdfToLocal(String bookId, String chapterId, String localPath) async {
+    try {
+      final chapterPdfUrl = await getChapterPdfDownloadUrl(bookId, chapterId);
+      
+      if (chapterPdfUrl == null || chapterPdfUrl.isEmpty) {
+        return null;
+      }
+      
+      final ref = storage.refFromURL(chapterPdfUrl);
+      final file = File(localPath);
+      
+      final dir = file.parent;
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      
+      final downloadTask = ref.writeToFile(file);
+      await downloadTask;
+      
+      if (await file.exists() && await file.length() > 0) {
+        return file;
+      } else {
+        return null;
+      }
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to download chapter PDF: $e');
+    }
+  }
+
+  @override
+  Future<String?> getChapterPdfDownloadUrl(String bookId, String chapterId) async {
+    try {
+      final docSnapshot = await firestore.collection(booksCollection).doc(bookId).get();
+      
+      if (!docSnapshot.exists) {
+        return null;
+      }
+      
+      final data = docSnapshot.data() as Map<String, dynamic>;
+      
+      if (data.containsKey('chapters') && data['chapters'] is List) {
+        final chapters = (data['chapters'] as List)
+            .map((chapterJson) => Chapter.fromJson(chapterJson))
+            .toList();
+        
+        final chapter = chapters.firstWhere(
+          (c) => c.id == chapterId,
+          orElse: () => const Chapter(
+            id: '',
+            title: '',
+            order: 0,
+          ),
+        );
+        
+        if (chapter.id.isNotEmpty && chapter.pdfUrl != null) {
+          return chapter.pdfUrl;
+        }
+      }
+      
+      return null;
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to get chapter PDF URL: $e');
     }
   }
 

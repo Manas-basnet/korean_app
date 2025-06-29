@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/models/audio_track.dart';
+import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 
@@ -10,6 +13,7 @@ class BookItem {
   final String? pdfUrl;
   final String? bookImagePath;
   final String? pdfPath;
+  final List<AudioTrack> audioTracks;
   final String duration;
   final int chaptersCount;
   final IconData icon;
@@ -20,6 +24,9 @@ class BookItem {
   final String? creatorUid;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  
+  final BookUploadType uploadType;
+  final List<Chapter> chapters;
 
   const BookItem({
     required this.id,
@@ -29,6 +36,7 @@ class BookItem {
     this.pdfUrl,
     this.bookImagePath,
     this.pdfPath,
+    this.audioTracks = const [],
     required this.duration,
     required this.chaptersCount,
     required this.icon,
@@ -39,6 +47,8 @@ class BookItem {
     this.creatorUid,
     this.createdAt,
     this.updatedAt,
+    this.uploadType = BookUploadType.singlePdf,
+    this.chapters = const [],
   });
 
   BookItem copyWith({
@@ -49,6 +59,7 @@ class BookItem {
     String? pdfUrl,
     String? bookImagePath,
     String? pdfPath,
+    List<AudioTrack>? audioTracks,
     String? duration,
     int? chaptersCount,
     IconData? icon,
@@ -59,6 +70,8 @@ class BookItem {
     String? creatorUid,
     DateTime? createdAt,
     DateTime? updatedAt,
+    BookUploadType? uploadType,
+    List<Chapter>? chapters,
   }) {
     return BookItem(
       id: id ?? this.id,
@@ -68,6 +81,7 @@ class BookItem {
       pdfUrl: pdfUrl ?? this.pdfUrl,
       bookImagePath: bookImagePath ?? this.bookImagePath,
       pdfPath: pdfPath ?? this.pdfPath,
+      audioTracks: audioTracks ?? this.audioTracks,
       duration: duration ?? this.duration,
       chaptersCount: chaptersCount ?? this.chaptersCount,
       icon: icon ?? this.icon,
@@ -78,8 +92,18 @@ class BookItem {
       creatorUid: creatorUid ?? this.creatorUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      uploadType: uploadType ?? this.uploadType,
+      chapters: chapters ?? this.chapters,
     );
   }
+
+  bool get hasAudio => audioTracks.isNotEmpty;
+  bool get hasChapterAudio => chapters.any((chapter) => chapter.hasAudio);
+  int get totalAudioTracks => audioTracks.length + chapters.fold(0, (sum, chapter) => sum + chapter.audioTrackCount);
+
+  // Legacy compatibility for old single audio fields
+  String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
+  String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
 
   @override
   bool operator ==(Object other) {
@@ -115,13 +139,47 @@ class BookItem {
     } else {
       courseCategory = CourseCategory.korean;
     }
+
+    BookUploadType uploadType = BookUploadType.singlePdf;
+    if (json['uploadType'] is String) {
+      uploadType = BookUploadType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['uploadType'],
+        orElse: () => BookUploadType.singlePdf,
+      );
+    }
+
+    List<Chapter> chapters = [];
+    if (json['chapters'] is List) {
+      chapters = (json['chapters'] as List)
+          .map((chapterJson) => Chapter.fromJson(chapterJson))
+          .toList();
+    }
+
+    List<AudioTrack> audioTracks = [];
     
-    // Fixed icon handling - only use constant IconData instances
+    // Handle new multiple audio tracks format
+    if (json['audioTracks'] is List) {
+      audioTracks = (json['audioTracks'] as List)
+          .map((trackJson) => AudioTrack.fromJson(trackJson))
+          .toList();
+    }
+    // Handle legacy single audio format for backward compatibility
+    else if (json['audioUrl'] != null || json['audioPath'] != null) {
+      audioTracks = [
+        AudioTrack(
+          id: '${json['id']}_legacy_audio',
+          name: 'Audio Track',
+          audioUrl: json['audioUrl'] as String?,
+          audioPath: json['audioPath'] as String?,
+          order: 0,
+        ),
+      ];
+    }
+    
     IconData icon;
     if (json['iconCodePoint'] != null) {
       icon = _iconMapping[json['iconCodePoint']] ?? Icons.book;
     } else if (json['icon'] is int) {
-      // Look up the icon in our mapping instead of creating dynamic IconData
       icon = _iconMapping[json['icon']] ?? Icons.book;
     } else {
       icon = Icons.book;
@@ -159,8 +217,9 @@ class BookItem {
       pdfUrl: json['pdfUrl'] as String?,
       bookImagePath: json['bookImagePath'] as String?,
       pdfPath: json['pdfPath'] as String?,
+      audioTracks: audioTracks,
       duration: json['duration'] as String? ?? '30 mins',
-      chaptersCount: json['chaptersCount'] as int? ?? 1,
+      chaptersCount: json['chaptersCount'] as int? ?? (chapters.isNotEmpty ? chapters.length : 1),
       icon: icon,
       level: level,
       courseCategory: courseCategory,
@@ -169,6 +228,8 @@ class BookItem {
       creatorUid: json['creatorUid'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      uploadType: uploadType,
+      chapters: chapters,
     );
   }
 
@@ -181,6 +242,7 @@ class BookItem {
       'pdfUrl': pdfUrl,
       'bookImagePath': bookImagePath,
       'pdfPath': pdfPath,
+      'audioTracks': audioTracks.map((track) => track.toJson()).toList(),
       'duration': duration,
       'chaptersCount': chaptersCount,
       'iconCodePoint': icon.codePoint,
@@ -193,11 +255,15 @@ class BookItem {
       'creatorUid': creatorUid,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
+      'uploadType': uploadType.toString().split('.').last,
+      'chapters': chapters.map((chapter) => chapter.toJson()).toList(),
+      // Legacy fields for backward compatibility
+      'audioUrl': audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null,
+      'audioPath': audioTracks.isNotEmpty ? audioTracks.first.audioPath : null,
     };
   }
 
-  static  final Map<int, IconData> _iconMapping = {
-    // Icons used in your Korean books list
+  static final Map<int, IconData> _iconMapping = {
     Icons.menu_book.codePoint: Icons.menu_book,
     Icons.quiz.codePoint: Icons.quiz,
     Icons.business.codePoint: Icons.business,

@@ -6,6 +6,7 @@ sealed class ApiResult<T> {
   
   T? get data => this is Success<T> ? (this as Success<T>).data : null;
   String? get error => this is Failure<T> ? (this as Failure<T>).message : null;
+  FailureType? get errorType => this is Failure<T> ? (this as Failure<T>).type : null;
 
   static ApiResult<T> success<T>(T data) => Success(data);
   static ApiResult<T> failure<T>(String message, [FailureType? type]) => 

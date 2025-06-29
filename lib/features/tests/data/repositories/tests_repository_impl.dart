@@ -15,17 +15,15 @@ import 'package:korean_language_app/shared/models/test_question.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 
-class CoverImageCheckData {
-  final String testId;
-  final String? imageUrl;
-  final TestsLocalDataSource localDataSource;
-  final RootIsolateToken token;
-
-  CoverImageCheckData({
-    required this.testId,
-    this.imageUrl,
-    required this.localDataSource,
-    required this.token,
+class MediaItem {
+  final String url;
+  final int questionIndex;
+  final int optionIndex;
+  
+  MediaItem({
+    required this.url,
+    required this.questionIndex,
+    required this.optionIndex,
   });
 }
 
@@ -33,8 +31,8 @@ class FullMediaCheckData {
   final String testId;
   final List<String> questionImageUrls;
   final List<String> questionAudioUrls;
-  final List<String> optionImageUrls;
-  final List<String> optionAudioUrls;
+  final List<MediaItem> optionImageItems;
+  final List<MediaItem> optionAudioItems;
   final TestsLocalDataSource localDataSource;
   final RootIsolateToken token;
 
@@ -42,8 +40,8 @@ class FullMediaCheckData {
     required this.testId,
     required this.questionImageUrls,
     required this.questionAudioUrls,
-    required this.optionImageUrls,
-    required this.optionAudioUrls,
+    required this.optionImageItems,
+    required this.optionAudioItems,
     required this.localDataSource,
     required this.token,
   });
@@ -88,25 +86,17 @@ Future<bool> _checkFullMediaCached(FullMediaCheckData data) async {
     }
   }
   
-  for (int i = 0; i < data.optionImageUrls.length; i++) {
-    final cachedPath = await data.localDataSource.getCachedImagePath(data.optionImageUrls[i], data.testId, 'answer_$i');
+  for (final item in data.optionImageItems) {
+    final cachedPath = await data.localDataSource.getCachedImagePath(item.url, data.testId, 'answer_${item.questionIndex}_${item.optionIndex}');
     if (cachedPath == null) {
       return false;
-    }
-    
-    if (i % 3 == 0 && i > 0) {
-      await Future.delayed(const Duration(milliseconds: 1));
     }
   }
 
-  for (int i = 0; i < data.optionAudioUrls.length; i++) {
-    final cachedPath = await data.localDataSource.getCachedAudioPath(data.optionAudioUrls[i], data.testId, 'answer_audio_$i');
+  for (final item in data.optionAudioItems) {
+    final cachedPath = await data.localDataSource.getCachedAudioPath(item.url, data.testId, 'answer_audio_${item.questionIndex}_${item.optionIndex}');
     if (cachedPath == null) {
       return false;
-    }
-    
-    if (i % 3 == 0 && i > 0) {
-      await Future.delayed(const Duration(milliseconds: 1));
     }
   }
   
@@ -399,7 +389,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
 
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
-        await localDataSource.clearAllTests();
+        await _clearTestsDataOnly();
         
         final remoteTests = await remoteDataSource.getTests(
           page: 0, 
@@ -438,7 +428,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     
     final result = await handleRepositoryCall<List<TestItem>>(
       () async {
-        await localDataSource.clearAllTests();
+        await _clearTestsDataOnly();
 
         final remoteTests = await remoteDataSource.getTestsByCategory(
           category, 
@@ -667,10 +657,12 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     try {
       final questionImageUrls = <String>[];
       final questionAudioUrls = <String>[];
-      final optionImageUrls = <String>[];
-      final optionAudioUrls = <String>[];
+      final optionImageItems = <MediaItem>[];
+      final optionAudioItems = <MediaItem>[];
 
-      for (final question in test.questions) {
+      for (int i = 0; i < test.questions.length; i++) {
+        final question = test.questions[i];
+        
         if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
           questionImageUrls.add(question.questionImageUrl!);
         }
@@ -678,12 +670,21 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           questionAudioUrls.add(question.questionAudioUrl!);
         }
         
-        for (final option in question.options) {
+        for (int j = 0; j < question.options.length; j++) {
+          final option = question.options[j];
           if (option.isImage && option.imageUrl != null && option.imageUrl!.isNotEmpty) {
-            optionImageUrls.add(option.imageUrl!);
+            optionImageItems.add(MediaItem(
+              url: option.imageUrl!,
+              questionIndex: i,
+              optionIndex: j,
+            ));
           }
           if (option.isAudio && option.audioUrl != null && option.audioUrl!.isNotEmpty) {
-            optionAudioUrls.add(option.audioUrl!);
+            optionAudioItems.add(MediaItem(
+              url: option.audioUrl!,
+              questionIndex: i,
+              optionIndex: j,
+            ));
           }
         }
       }
@@ -692,8 +693,8 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         testId: test.id,
         questionImageUrls: questionImageUrls,
         questionAudioUrls: questionAudioUrls,
-        optionImageUrls: optionImageUrls,
-        optionAudioUrls: optionAudioUrls,
+        optionImageItems: optionImageItems,
+        optionAudioItems: optionAudioItems,
         localDataSource: localDataSource,
         token: RootIsolateToken.instance!,
       );
@@ -737,8 +738,8 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       final isValid = await _isCacheValid();
       if (!isValid) {
         if (await networkInfo.isConnected) {
-          debugPrint('Cache expired and online, clearing cache');
-          await localDataSource.clearAllTests();
+          debugPrint('Cache expired and online, clearing test data only (keeping media files for reuse)');
+          await _clearTestsDataOnly();
         } else {
           debugPrint('Cache expired but offline, keeping expired cache for offline access');
         }
@@ -754,7 +755,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       await localDataSource.setLastSyncTime(DateTime.now());
       await _updateTestsHashes(tests);
       
-      debugPrint('Cached ${tests.length} tests data only (media will be cached on-demand)');
+      debugPrint('Cached ${tests.length} tests data only (media cached separately based on URLs)');
     } catch (e) {
       debugPrint('Failed to cache tests data: $e');
     }
@@ -767,7 +768,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         await _updateTestHash(test);
       }
       
-      debugPrint('Added ${newTests.length} new tests data to cache (media will be cached on-demand)');
+      debugPrint('Added ${newTests.length} new tests data to cache (media cached separately based on URLs)');
     } catch (e) {
       debugPrint('Failed to update cache with new tests data: $e');
     }
@@ -882,6 +883,39 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
     } catch (e) {
       debugPrint('Error caching full test media: $e');
     }
+  }
+
+  Future<void> _clearTestsDataOnly() async {
+    try {
+      await localDataSource.saveTests([]);
+      await localDataSource.setTestHashes({});
+      await localDataSource.setTotalTestsCount(0);
+      
+      final allKeys = await _getAllCategoryKeys();
+      for (final key in allKeys) {
+        await localDataSource.setCategoryTestsCount(key, 0);
+      }
+      
+      debugPrint('Cleared test data only, preserving media files for URL-based reuse');
+    } catch (e) {
+      debugPrint('Failed to clear test data: $e');
+      try {
+        await localDataSource.clearAllTests();
+        debugPrint('Fallback: cleared all tests including media');
+      } catch (fallbackError) {
+        debugPrint('Fallback clear also failed: $fallbackError');
+      }
+    }
+  }
+
+  Future<List<String>> _getAllCategoryKeys() async {
+    final categoryKeys = <String>[];
+    for (final category in TestCategory.values) {
+      if (category != TestCategory.all) {
+        categoryKeys.add(category.toString().split('.').last);
+      }
+    }
+    return categoryKeys;
   }
 
   Future<void> _updateTestsHashes(List<TestItem> tests) async {
