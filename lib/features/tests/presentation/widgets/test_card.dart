@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
@@ -25,19 +26,16 @@ class TestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.sizeOf(context);
-    
-    return _TestCardContainer(
-      test: test,
-      canEdit: canEdit,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      onEdit: onEdit,
-      onDelete: onDelete,
-      onViewDetails: onViewDetails,
-      theme: theme,
-      screenSize: screenSize,
+    return RepaintBoundary(
+      child: _TestCardContainer(
+        test: test,
+        canEdit: canEdit,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        onEdit: onEdit,
+        onDelete: onDelete,
+        onViewDetails: onViewDetails,
+      ),
     );
   }
 }
@@ -50,8 +48,6 @@ class _TestCardContainer extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onViewDetails;
-  final ThemeData theme;
-  final Size screenSize;
 
   const _TestCardContainer({
     required this.test,
@@ -61,21 +57,20 @@ class _TestCardContainer extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onViewDetails,
-    required this.theme,
-    required this.screenSize,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
     return Card(
-      elevation: 2,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.1),
+      elevation: 1,
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           width: 0.5,
         ),
       ),
@@ -95,8 +90,7 @@ class _TestCardContainer extends StatelessWidget {
                 onDelete: onDelete,
                 onViewDetails: onViewDetails,
                 onTap: onTap,
-                theme: theme,
-                screenSize: screenSize,
+                colorScheme: colorScheme,
               ),
             ),
             Expanded(
@@ -104,7 +98,6 @@ class _TestCardContainer extends StatelessWidget {
               child: _TestCardContent(
                 test: test,
                 theme: theme,
-                screenSize: screenSize,
               ),
             ),
           ],
@@ -114,7 +107,6 @@ class _TestCardContainer extends StatelessWidget {
   }
 }
 
-// Optimized header section
 class _TestCardHeader extends StatelessWidget {
   final TestItem test;
   final bool canEdit;
@@ -122,8 +114,7 @@ class _TestCardHeader extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onViewDetails;
   final VoidCallback onTap;
-  final ThemeData theme;
-  final Size screenSize;
+  final ColorScheme colorScheme;
 
   const _TestCardHeader({
     required this.test,
@@ -132,8 +123,7 @@ class _TestCardHeader extends StatelessWidget {
     this.onDelete,
     this.onViewDetails,
     required this.onTap,
-    required this.theme,
-    required this.screenSize,
+    required this.colorScheme,
   });
 
   @override
@@ -141,21 +131,7 @@ class _TestCardHeader extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Background image or placeholder
-        if (test.imageUrl != null && test.imageUrl!.isNotEmpty)
-          _OptimizedImage(
-            imageUrl: test.imageUrl!,
-            imagePath: test.imagePath,
-            icon: test.icon,
-            theme: theme,
-          )
-        else
-          _ImagePlaceholder(
-            icon: test.icon,
-            theme: theme,
-          ),
-        
-        // Menu button overlay
+        _buildImageSection(context),
         if (canEdit)
           Positioned(
             top: 8,
@@ -165,102 +141,172 @@ class _TestCardHeader extends StatelessWidget {
               onDelete: onDelete,
               onViewDetails: onViewDetails,
               onTap: onTap,
-              theme: theme,
+              colorScheme: colorScheme,
             ),
           ),
       ],
     );
   }
+
+  Widget _buildImageSection(BuildContext context) {
+    if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
+      return _OptimizedTestImage(
+        imageUrl: test.imageUrl!,
+        imagePath: test.imagePath,
+        icon: test.icon,
+        colorScheme: colorScheme,
+      );
+    } else if (test.imagePath != null && test.imagePath!.isNotEmpty) {
+      return _OptimizedTestImage(
+        imagePath: test.imagePath,
+        icon: test.icon,
+        colorScheme: colorScheme,
+      );
+    } else {
+      return _ImagePlaceholder(
+        icon: test.icon,
+        colorScheme: colorScheme,
+      );
+    }
+  }
 }
 
-// Optimized image widget with better caching
-class _OptimizedImage extends StatelessWidget {
-  final String imageUrl;
+class _OptimizedTestImage extends StatelessWidget {
+  final String? imageUrl;
   final String? imagePath;
   final IconData icon;
-  final ThemeData theme;
+  final ColorScheme colorScheme;
 
-  const _OptimizedImage({
-    required this.imageUrl,
+  const _OptimizedTestImage({
+    this.imageUrl,
     this.imagePath,
     required this.icon,
-    required this.theme,
+    required this.colorScheme,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Use local image if available, otherwise network
     if (imagePath != null && imagePath!.isNotEmpty) {
-      return Image.asset(
-        imagePath!,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildNetworkImage(),
-      );
+      return _buildLocalImage();
     }
     
-    return _buildNetworkImage();
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return _buildNetworkImage();
+    }
+    
+    return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+  }
+
+  Widget _buildLocalImage() {
+    return Image.file(
+      File(imagePath!),
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded) return child;
+        return AnimatedOpacity(
+          opacity: frame == null ? 0 : 1,
+          duration: const Duration(milliseconds: 150),
+          child: child,
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        if (imageUrl != null && imageUrl!.isNotEmpty) {
+          return _buildNetworkImage();
+        }
+        return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+      },
+    );
   }
 
   Widget _buildNetworkImage() {
     return CachedNetworkImage(
-      imageUrl: imageUrl,
+      imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      // Optimize memory usage
       memCacheWidth: 400,
       memCacheHeight: 300,
+      maxWidthDiskCache: 400,
+      maxHeightDiskCache: 300,
       placeholder: (context, url) => _ImagePlaceholder(
         icon: icon,
-        theme: theme,
+        colorScheme: colorScheme,
+        showLoading: true,
       ),
       errorWidget: (context, url, error) => _ImagePlaceholder(
         icon: icon,
-        theme: theme,
+        colorScheme: colorScheme,
       ),
+      fadeInDuration: const Duration(milliseconds: 200),
+      fadeOutDuration: const Duration(milliseconds: 100),
     );
   }
 }
 
-// Simplified image placeholder
 class _ImagePlaceholder extends StatelessWidget {
   final IconData icon;
-  final ThemeData theme;
+  final ColorScheme colorScheme;
+  final bool showLoading;
 
   const _ImagePlaceholder({
     required this.icon,
-    required this.theme,
+    required this.colorScheme,
+    this.showLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.8),
-      ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 32,
-          color: Colors.white.withValues(alpha: 0.9),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.8),
+            colorScheme.primary.withValues(alpha: 0.6),
+          ],
         ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Icon(
+              icon,
+              size: 28,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          if (showLoading)
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-// Optimized menu button
 class _MenuButton extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onViewDetails;
   final VoidCallback onTap;
-  final ThemeData theme;
+  final ColorScheme colorScheme;
 
   const _MenuButton({
     this.onEdit,
     this.onDelete,
     this.onViewDetails,
     required this.onTap,
-    required this.theme,
+    required this.colorScheme,
   });
 
   @override
@@ -282,69 +328,59 @@ class _MenuButton extends StatelessWidget {
           ),
         ),
         onSelected: (value) => _handleMenuAction(context, value),
-        itemBuilder: (context) => _buildMenuItems(context),
+        itemBuilder: (context) => [
+          const PopupMenuItem<String>(
+            value: 'start',
+            child: Row(
+              children: [
+                Icon(Icons.play_arrow_rounded, size: 18),
+                SizedBox(width: 8),
+                Text('Start Test'),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'details',
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 18),
+                SizedBox(width: 8),
+                Text('View Details'),
+              ],
+            ),
+          ),
+          if (onEdit != null)
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Edit'),
+                ],
+              ),
+            ),
+          if (onDelete != null)
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline_rounded, 
+                    size: 18, 
+                    color: colorScheme.error
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Delete',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
-  }
-
-  List<PopupMenuItem<String>> _buildMenuItems(BuildContext context) {
-    final items = <PopupMenuItem<String>>[
-      const PopupMenuItem<String>(
-        value: 'start',
-        child: Row(
-          children: [
-            Icon(Icons.play_arrow_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('Start Test'),
-          ],
-        ),
-      ),
-      const PopupMenuItem<String>(
-        value: 'details',
-        child: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('View Details'),
-          ],
-        ),
-      ),
-    ];
-    
-    if (onEdit != null) {
-      items.add(const PopupMenuItem<String>(
-        value: 'edit',
-        child: Row(
-          children: [
-            Icon(Icons.edit_rounded, size: 18),
-            SizedBox(width: 8),
-            Text('Edit'),
-          ],
-        ),
-      ));
-    }
-    
-    if (onDelete != null) {
-      items.add(PopupMenuItem<String>(
-        value: 'delete',
-        child: Row(
-          children: [
-            Icon(
-              Icons.delete_outline_rounded, 
-              size: 18, 
-              color: theme.colorScheme.error
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Delete',
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-          ],
-        ),
-      ));
-    }
-    
-    return items;
   }
 
   void _handleMenuAction(BuildContext context, String value) {
@@ -365,16 +401,13 @@ class _MenuButton extends StatelessWidget {
   }
 }
 
-// Optimized content section
 class _TestCardContent extends StatelessWidget {
   final TestItem test;
   final ThemeData theme;
-  final Size screenSize;
 
   const _TestCardContent({
     required this.test,
     required this.theme,
-    required this.screenSize,
   });
 
   @override
@@ -405,53 +438,13 @@ class _TestCardContent extends StatelessWidget {
             child: Column(
               children: [
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 7,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _StatRow(
-                              icon: Icons.schedule_rounded,
-                              text: _formatTimeLimit(test.formattedTimeLimit),
-                              color: colorScheme.onSurfaceVariant,
-                              theme: theme,
-                            ),
-                            
-                            if (test.rating > 0)
-                              _StatRow(
-                                icon: Icons.star_rounded,
-                                text: test.formattedRating,
-                                color: Colors.amber[600]!,
-                                theme: theme,
-                              ),
-                          ],
-                        ),
-                      ),
-                      
-                      Expanded(
-                        flex: 3,
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: _StatRow(
-                            icon: Icons.visibility_rounded,
-                            text: test.formattedViewCount,
-                            color: colorScheme.onSurfaceVariant,
-                            theme: theme,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _buildStatsSection(colorScheme),
                 ),
-                
                 Align(
                   alignment: Alignment.bottomLeft,
                   child: _CategoryChip(
                     category: test.category,
+                    colorScheme: colorScheme,
                     theme: theme,
                   ),
                 ),
@@ -460,6 +453,48 @@ class _TestCardContent extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsSection(ColorScheme colorScheme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _StatRow(
+                icon: Icons.schedule_rounded,
+                text: _formatTimeLimit(test.formattedTimeLimit),
+                color: colorScheme.onSurfaceVariant,
+                theme: theme,
+              ),
+              if (test.rating > 0)
+                _StatRow(
+                  icon: Icons.star_rounded,
+                  text: test.formattedRating,
+                  color: Colors.amber[600]!,
+                  theme: theme,
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Align(
+            alignment: Alignment.topRight,
+            child: _StatRow(
+              icon: Icons.visibility_rounded,
+              text: test.formattedViewCount,
+              color: colorScheme.onSurfaceVariant,
+              theme: theme,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -515,27 +550,26 @@ class _StatRow extends StatelessWidget {
   }
 }
 
-// Optimized category chip
 class _CategoryChip extends StatelessWidget {
   final TestCategory category;
+  final ColorScheme colorScheme;
   final ThemeData theme;
 
   const _CategoryChip({
     required this.category,
+    required this.colorScheme,
     required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = theme.colorScheme;
-    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 8,
         vertical: 4,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
