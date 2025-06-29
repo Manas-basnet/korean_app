@@ -28,23 +28,20 @@ class TestCard extends StatelessWidget {
     final theme = Theme.of(context);
     final screenSize = MediaQuery.sizeOf(context);
     
-    return RepaintBoundary(
-      child: _TestCardContainer(
-        test: test,
-        canEdit: canEdit,
-        onTap: onTap,
-        onLongPress: onLongPress,
-        onEdit: onEdit,
-        onDelete: onDelete,
-        onViewDetails: onViewDetails,
-        theme: theme,
-        screenSize: screenSize,
-      ),
+    return _TestCardContainer(
+      test: test,
+      canEdit: canEdit,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onEdit: onEdit,
+      onDelete: onDelete,
+      onViewDetails: onViewDetails,
+      theme: theme,
+      screenSize: screenSize,
     );
   }
 }
 
-// Separate container to avoid rebuilding the entire card
 class _TestCardContainer extends StatelessWidget {
   final TestItem test;
   final bool canEdit;

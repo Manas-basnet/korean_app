@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/di/di.dart' as di;
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
@@ -19,8 +18,6 @@ import 'package:shorebird_code_push/shorebird_code_push.dart' as shorebird;
 import 'package:url_strategy/url_strategy.dart';
 
 void main() async {
-
-  // debugRepaintRainbowEnabled = true;
 
   WidgetsFlutterBinding.ensureInitialized();
 

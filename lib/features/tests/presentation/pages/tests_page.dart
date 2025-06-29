@@ -680,7 +680,7 @@ class _TestsPageState extends State<TestsPage> {
     
     final isTablet = screenSize.width > 600;
     final crossAxisCount = isTablet ? 3 : 2;
-    final childAspectRatio = isTablet ? 0.7 : 0.75; // Slightly adjusted
+    final childAspectRatio = isTablet ? 0.7 : 0.75;
     
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -695,7 +695,6 @@ class _TestsPageState extends State<TestsPage> {
           
           final test = state.tests[index];
           return TestCard(
-            key: ValueKey('test_${test.id}'),
             test: test,
             canEdit: true,
             onTap: () => _startTest(test),
@@ -705,11 +704,6 @@ class _TestsPageState extends State<TestsPage> {
           );
         },
         childCount: state.tests.length,
-        findChildIndexCallback: (Key key) {
-          final valueKey = key as ValueKey<String>;
-          final testId = valueKey.value.substring(5);
-          return state.tests.indexWhere((test) => test.id == testId);
-        },
       ),
     );
   }
