@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/models/audio_track.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
@@ -12,8 +13,7 @@ class BookItem {
   final String? pdfUrl;
   final String? bookImagePath;
   final String? pdfPath;
-  final String? audioUrl;
-  final String? audioPath;
+  final List<AudioTrack> audioTracks;
   final String duration;
   final int chaptersCount;
   final IconData icon;
@@ -36,8 +36,7 @@ class BookItem {
     this.pdfUrl,
     this.bookImagePath,
     this.pdfPath,
-    this.audioUrl,
-    this.audioPath,
+    this.audioTracks = const [],
     required this.duration,
     required this.chaptersCount,
     required this.icon,
@@ -60,8 +59,7 @@ class BookItem {
     String? pdfUrl,
     String? bookImagePath,
     String? pdfPath,
-    String? audioUrl,
-    String? audioPath,
+    List<AudioTrack>? audioTracks,
     String? duration,
     int? chaptersCount,
     IconData? icon,
@@ -83,8 +81,7 @@ class BookItem {
       pdfUrl: pdfUrl ?? this.pdfUrl,
       bookImagePath: bookImagePath ?? this.bookImagePath,
       pdfPath: pdfPath ?? this.pdfPath,
-      audioUrl: audioUrl ?? this.audioUrl,
-      audioPath: audioPath ?? this.audioPath,
+      audioTracks: audioTracks ?? this.audioTracks,
       duration: duration ?? this.duration,
       chaptersCount: chaptersCount ?? this.chaptersCount,
       icon: icon ?? this.icon,
@@ -100,10 +97,13 @@ class BookItem {
     );
   }
 
-  bool get hasAudio => (audioUrl != null && audioUrl!.isNotEmpty) || 
-                      (audioPath != null && audioPath!.isNotEmpty);
-
+  bool get hasAudio => audioTracks.isNotEmpty;
   bool get hasChapterAudio => chapters.any((chapter) => chapter.hasAudio);
+  int get totalAudioTracks => audioTracks.length + chapters.fold(0, (sum, chapter) => sum + chapter.audioTrackCount);
+
+  // Legacy compatibility for old single audio fields
+  String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
+  String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
 
   @override
   bool operator ==(Object other) {
@@ -154,6 +154,27 @@ class BookItem {
           .map((chapterJson) => Chapter.fromJson(chapterJson))
           .toList();
     }
+
+    List<AudioTrack> audioTracks = [];
+    
+    // Handle new multiple audio tracks format
+    if (json['audioTracks'] is List) {
+      audioTracks = (json['audioTracks'] as List)
+          .map((trackJson) => AudioTrack.fromJson(trackJson))
+          .toList();
+    }
+    // Handle legacy single audio format for backward compatibility
+    else if (json['audioUrl'] != null || json['audioPath'] != null) {
+      audioTracks = [
+        AudioTrack(
+          id: '${json['id']}_legacy_audio',
+          name: 'Audio Track',
+          audioUrl: json['audioUrl'] as String?,
+          audioPath: json['audioPath'] as String?,
+          order: 0,
+        ),
+      ];
+    }
     
     IconData icon;
     if (json['iconCodePoint'] != null) {
@@ -196,8 +217,7 @@ class BookItem {
       pdfUrl: json['pdfUrl'] as String?,
       bookImagePath: json['bookImagePath'] as String?,
       pdfPath: json['pdfPath'] as String?,
-      audioUrl: json['audioUrl'] as String?,
-      audioPath: json['audioPath'] as String?,
+      audioTracks: audioTracks,
       duration: json['duration'] as String? ?? '30 mins',
       chaptersCount: json['chaptersCount'] as int? ?? (chapters.isNotEmpty ? chapters.length : 1),
       icon: icon,
@@ -222,8 +242,7 @@ class BookItem {
       'pdfUrl': pdfUrl,
       'bookImagePath': bookImagePath,
       'pdfPath': pdfPath,
-      'audioUrl': audioUrl,
-      'audioPath': audioPath,
+      'audioTracks': audioTracks.map((track) => track.toJson()).toList(),
       'duration': duration,
       'chaptersCount': chaptersCount,
       'iconCodePoint': icon.codePoint,
@@ -238,6 +257,9 @@ class BookItem {
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
       'uploadType': uploadType.toString().split('.').last,
       'chapters': chapters.map((chapter) => chapter.toJson()).toList(),
+      // Legacy fields for backward compatibility
+      'audioUrl': audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null,
+      'audioPath': audioTracks.isNotEmpty ? audioTracks.first.audioPath : null,
     };
   }
 

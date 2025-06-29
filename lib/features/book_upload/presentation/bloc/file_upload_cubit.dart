@@ -133,7 +133,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     }
   }
   
-  Future<bool> uploadBook(BookItem book, File pdfFile, File? imageFile, {File? audioFile}) async {
+  Future<bool> uploadBook(BookItem book, File pdfFile, File? imageFile, {List<AudioTrackUploadData>? audioTracks}) async {
     final isConnected = await _checkConnectivity();
     if (!isConnected) {
       emit(const FileUploadError('No internet connection', FileUploadType.pdf));
@@ -149,7 +149,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
         book: book,
         pdfFile: pdfFile,
         coverImageFile: imageFile,
-        audioFile: audioFile,
+        audioTracks: audioTracks,
       );
       
       final result = await createBookUseCase.execute(params);
@@ -206,7 +206,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     }
   }
   
-  Future<bool> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? imageFile, File? audioFile}) async {
+  Future<bool> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? imageFile, List<AudioTrackUploadData>? audioTracks}) async {
     final isConnected = await _checkConnectivity();
     if (!isConnected) {
       emit(const FileUploadError('No internet connection', FileUploadType.pdf));
@@ -223,7 +223,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
         updatedBook: updatedBook,
         pdfFile: pdfFile,
         coverImageFile: imageFile,
-        audioFile: audioFile,
+        audioTracks: audioTracks,
       );
       
       final result = await updateBookUseCase.execute(params);

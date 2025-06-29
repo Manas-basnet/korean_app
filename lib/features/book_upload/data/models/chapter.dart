@@ -1,11 +1,12 @@
+import 'package:korean_language_app/shared/models/audio_track.dart';
+
 class Chapter {
   final String id;
   final String title;
   final String? description;
   final String? pdfUrl;
   final String? pdfPath;
-  final String? audioUrl;
-  final String? audioPath;
+  final List<AudioTrack> audioTracks;
   final int order;
   final String? duration;
   final DateTime? createdAt;
@@ -17,8 +18,7 @@ class Chapter {
     this.description,
     this.pdfUrl,
     this.pdfPath,
-    this.audioUrl,
-    this.audioPath,
+    this.audioTracks = const [],
     required this.order,
     this.duration,
     this.createdAt,
@@ -31,8 +31,7 @@ class Chapter {
     String? description,
     String? pdfUrl,
     String? pdfPath,
-    String? audioUrl,
-    String? audioPath,
+    List<AudioTrack>? audioTracks,
     int? order,
     String? duration,
     DateTime? createdAt,
@@ -44,8 +43,7 @@ class Chapter {
       description: description ?? this.description,
       pdfUrl: pdfUrl ?? this.pdfUrl,
       pdfPath: pdfPath ?? this.pdfPath,
-      audioUrl: audioUrl ?? this.audioUrl,
-      audioPath: audioPath ?? this.audioPath,
+      audioTracks: audioTracks ?? this.audioTracks,
       order: order ?? this.order,
       duration: duration ?? this.duration,
       createdAt: createdAt ?? this.createdAt,
@@ -53,8 +51,12 @@ class Chapter {
     );
   }
 
-  bool get hasAudio => (audioUrl != null && audioUrl!.isNotEmpty) || 
-                      (audioPath != null && audioPath!.isNotEmpty);
+  bool get hasAudio => audioTracks.isNotEmpty;
+  int get audioTrackCount => audioTracks.length;
+
+  // Legacy compatibility for old single audio fields
+  String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
+  String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
 
   @override
   bool operator ==(Object other) {
@@ -91,14 +93,36 @@ class Chapter {
       }
     }
 
+    List<AudioTrack> audioTracks = [];
+    
+    // Handle new multiple audio tracks format
+    if (json['audioTracks'] is List) {
+      audioTracks = (json['audioTracks'] as List)
+          .map((trackJson) => AudioTrack.fromJson(trackJson))
+          .toList();
+    }
+    // Handle legacy single audio format for backward compatibility
+    else if (json['audioUrl'] != null || json['audioPath'] != null) {
+      audioTracks = [
+        AudioTrack(
+          id: '${json['id']}_legacy_audio',
+          name: 'Audio Track',
+          audioUrl: json['audioUrl'] as String?,
+          audioPath: json['audioPath'] as String?,
+          order: 0,
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+        ),
+      ];
+    }
+
     return Chapter(
       id: json['id'] as String,
       title: json['title'] as String,
       description: json['description'] as String?,
       pdfUrl: json['pdfUrl'] as String?,
       pdfPath: json['pdfPath'] as String?,
-      audioUrl: json['audioUrl'] as String?,
-      audioPath: json['audioPath'] as String?,
+      audioTracks: audioTracks,
       order: json['order'] as int,
       duration: json['duration'] as String?,
       createdAt: createdAt,
@@ -113,12 +137,14 @@ class Chapter {
       'description': description,
       'pdfUrl': pdfUrl,
       'pdfPath': pdfPath,
-      'audioUrl': audioUrl,
-      'audioPath': audioPath,
+      'audioTracks': audioTracks.map((track) => track.toJson()).toList(),
       'order': order,
       'duration': duration,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
+      // Legacy fields for backward compatibility
+      'audioUrl': audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null,
+      'audioPath': audioTracks.isNotEmpty ? audioTracks.first.audioPath : null,
     };
   }
 }

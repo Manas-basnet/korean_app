@@ -5,7 +5,7 @@ import 'package:korean_language_app/features/book_upload/domain/entities/chapter
 import 'package:korean_language_app/shared/models/book_item.dart';
 
 abstract class BookUploadRepository {
-  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile, File? audioFile});
+  Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
   
   Future<ApiResult<BookItem>> createBookWithChapters(
     BookItem book, 
@@ -13,7 +13,7 @@ abstract class BookUploadRepository {
     {File? coverImageFile}
   );
   
-  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, File? audioFile});
+  Future<ApiResult<BookItem>> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
   
   Future<ApiResult<BookItem>> updateBookWithChapters(
     String bookId, 

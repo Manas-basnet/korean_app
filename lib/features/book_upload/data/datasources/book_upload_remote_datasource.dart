@@ -4,7 +4,7 @@ import 'package:korean_language_app/features/book_upload/domain/entities/chapter
 import 'package:korean_language_app/shared/models/book_item.dart';
 
 abstract class BookUploadRemoteDataSource {
-  Future<BookItem> uploadBook(BookItem book, File pdfFile, {File? coverImageFile, File? audioFile});
+  Future<BookItem> uploadBook(BookItem book, File pdfFile, {File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
   
   Future<BookItem> uploadBookWithChapters(
     BookItem book, 
@@ -12,7 +12,7 @@ abstract class BookUploadRemoteDataSource {
     {File? coverImageFile}
   );
   
-  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, File? audioFile});
+  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
   
   Future<BookItem> updateBookWithChapters(
     String bookId, 

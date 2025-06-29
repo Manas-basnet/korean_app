@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/features/book_upload/presentation/widgets/multi_audio_player_widget.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/file_upload_type.dart';
@@ -47,6 +48,9 @@ class _BookEditPageState extends State<BookEditPage> {
   String? _imageFileName;
   bool _imageSelected = false;
 
+  List<AudioTrackUploadData> _audioTracks = [];
+  bool _audioTracksChanged = false;
+
   List<ChapterUploadData> _chapters = [];
   bool _hasChapterChanges = false;
   
@@ -76,6 +80,7 @@ class _BookEditPageState extends State<BookEditPage> {
         description: chapter.description,
         duration: chapter.duration,
         pdfFile: null,
+        audioTracks: [],
         order: chapter.order,
         isNewOrModified: false,
         existingId: chapter.id,
@@ -114,6 +119,13 @@ class _BookEditPageState extends State<BookEditPage> {
         _imageSelected = true;
       });
     }
+  }
+
+  void _onAudioTracksChanged(List<AudioTrackUploadData> audioTracks) {
+    setState(() {
+      _audioTracks = audioTracks;
+      _audioTracksChanged = true;
+    });
   }
 
   Future<void> _addChapter() async {
@@ -161,7 +173,8 @@ class _BookEditPageState extends State<BookEditPage> {
             existingChapter.title != result.title ||
             existingChapter.description != result.description ||
             existingChapter.duration != result.duration ||
-            result.pdfFile != null) {
+            result.pdfFile != null ||
+            result.audioTracks.length != existingChapter.audioTracks.length) {
           _hasChapterChanges = true;
         }
       });
@@ -196,6 +209,7 @@ class _BookEditPageState extends State<BookEditPage> {
           updatedBook,
           pdfFile: _selectedPdfFile,
           imageFile: _selectedImageFile,
+          audioTracks: _audioTracksChanged ? _audioTracks : null,
         );
       } else {
         final chaptersToUpdate = _hasChapterChanges ? _chapters : null;
@@ -277,9 +291,11 @@ class _BookEditPageState extends State<BookEditPage> {
                         _buildBookDetailsSection(context, theme, isUploading),
                         SizedBox(height: MediaQuery.sizeOf(context).height * 0.03),
 
-                        if (_uploadType == BookUploadType.singlePdf)
-                          _buildSinglePdfSection(context, theme, isUploading)
-                        else
+                        if (_uploadType == BookUploadType.singlePdf) ...[
+                          _buildSinglePdfSection(context, theme, isUploading),
+                          SizedBox(height: MediaQuery.sizeOf(context).height * 0.03),
+                          _buildAudioSection(context, theme, isUploading),
+                        ] else
                           _buildChapterWiseSection(context, theme, isUploading),
                         
                         SizedBox(height: MediaQuery.sizeOf(context).height * 0.03),
@@ -918,6 +934,35 @@ class _BookEditPageState extends State<BookEditPage> {
     );
   }
 
+  Widget _buildAudioSection(BuildContext context, ThemeData theme, bool isUploading) {
+    if (isUploading) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        if (widget.book.audioTracks.isNotEmpty && !_audioTracksChanged) ...[
+          MultiAudioPlayerWidget(
+            audioTracks: widget.book.audioTracks,
+            label: 'Current Audio Tracks (${widget.book.audioTracks.length})',
+            onEdit: () {
+              setState(() {
+                _audioTracksChanged = true;
+              });
+            },
+          ),
+          SizedBox(height: MediaQuery.sizeOf(context).height * 0.02),
+        ],
+        if (_audioTracksChanged || widget.book.audioTracks.isEmpty)
+          MultiAudioTrackManagerWidget(
+            audioTracks: _audioTracks,
+            onAudioTracksChanged: _onAudioTracksChanged,
+            label: 'Update Audio Tracks',
+          ),
+      ],
+    );
+  }
+
   Widget _buildChapterWiseSection(BuildContext context, ThemeData theme, bool isUploading) {
     return Container(
       padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.04),
@@ -1103,13 +1148,37 @@ class _BookEditPageState extends State<BookEditPage> {
                               ),
                             ],
                             SizedBox(height: MediaQuery.sizeOf(context).height * 0.005),
-                            Text(
-                              chapter.pdfFile != null && chapter.pdfFile!.path.isNotEmpty
-                                  ? 'File: ${chapter.pdfFile!.path.split('/').last}'
-                                  : 'Using existing chapter file',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  chapter.pdfFile != null && chapter.pdfFile!.path.isNotEmpty
+                                      ? 'File: ${chapter.pdfFile!.path.split('/').last}'
+                                      : 'Using existing chapter file',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                  ),
+                                ),
+                                if (chapter.hasAudio) ...[
+                                  SizedBox(width: MediaQuery.sizeOf(context).width * 0.02),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: MediaQuery.sizeOf(context).width * 0.02,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.tertiary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '${chapter.audioTrackCount} AUDIO',
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        color: theme.colorScheme.tertiary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -1508,6 +1577,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
   File? _selectedFile;
   String? _fileName;
   bool _fileChanged = false;
+  List<AudioTrackUploadData> _audioTracks = [];
 
   @override
   void initState() {
@@ -1527,6 +1597,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
       if (_selectedFile != null && _selectedFile!.path.isNotEmpty) {
         _fileName = _selectedFile!.path.split('/').last;
       }
+      _audioTracks = List.from(widget.existingChapter!.audioTracks);
     }
   }
 
@@ -1549,6 +1620,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
     }
   }
 
+  void _onAudioTracksChanged(List<AudioTrackUploadData> audioTracks) {
+    setState(() {
+      _audioTracks = audioTracks;
+    });
+  }
+
   void _saveChapter() {
     if (_formKey.currentState?.validate() != true) {
       return;
@@ -1558,13 +1635,15 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
         widget.existingChapter!.title != _titleController.text ||
         widget.existingChapter!.description != _descriptionController.text ||
         widget.existingChapter!.duration != _durationController.text ||
-        _fileChanged;
+        _fileChanged ||
+        _audioTracks.length != widget.existingChapter!.audioTracks.length;
 
     final chapter = ChapterUploadData(
       title: _titleController.text,
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
       duration: _durationController.text.isEmpty ? null : _durationController.text,
       pdfFile: _fileChanged ? _selectedFile : null,
+      audioTracks: _audioTracks,
       order: widget.chapterNumber,
       isNewOrModified: isModified,
       existingId: widget.existingChapter?.existingId,
@@ -1582,7 +1661,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: mediaQuery.height * 0.8,
+          maxHeight: mediaQuery.height * 0.9,
           maxWidth: mediaQuery.width * 0.9,
         ),
         child: Column(
@@ -1758,6 +1837,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                             ),
                           ],
                         ),
+                      ),
+                      SizedBox(height: mediaQuery.height * 0.02),
+                      MultiAudioTrackManagerWidget(
+                        audioTracks: _audioTracks,
+                        onAudioTracksChanged: _onAudioTracksChanged,
+                        label: 'Chapter Audio Tracks',
                       ),
                     ],
                   ),
