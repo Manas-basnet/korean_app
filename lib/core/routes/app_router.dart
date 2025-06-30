@@ -57,10 +57,10 @@ class AppRouter {
   }
 
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
-  static final _shellNavigatorKey = GlobalKey<NavigatorState>();
-  static final _booksShellNavigatorKey = GlobalKey<NavigatorState>();
-  static final _testsShellNavigatorKey = GlobalKey<NavigatorState>();
-  static final _profileShellNavigatorKey = GlobalKey<NavigatorState>();
+  static final _homeNavigatorKey = GlobalKey<NavigatorState>();
+  static final _testsNavigatorKey = GlobalKey<NavigatorState>();
+  static final _booksNavigatorKey = GlobalKey<NavigatorState>();
+  static final _profileNavigatorKey = GlobalKey<NavigatorState>();
 
   static final GoRouter router = GoRouter(
     initialLocation: '/',
@@ -194,182 +194,212 @@ class AppRouter {
         },
       ),
 
-      // Main shell with bottom navigation
-      ShellRoute(
-        navigatorKey: _shellNavigatorKey,
-        builder: (context, state, child) {
-          return MultiBlocProvider(
-            providers: [
-              BlocProvider<TestsCubit>(
-                create: (context) => sl<TestsCubit>(),
-              ),
-              BlocProvider<KoreanBooksCubit>(
-                create: (context) => sl<KoreanBooksCubit>(),
-              ),
-              BlocProvider<FavoriteBooksCubit>(
-                create: (context) => sl<FavoriteBooksCubit>(),
-              ),
-              BlocProvider<ProfileCubit>(
-                create: (context) => sl<ProfileCubit>(),
-              ),
-              BlocProvider<TestUploadCubit>(
-                create: (context) => sl<TestUploadCubit>(),
-              )
-            ],
-            child: ScaffoldWithBottomNavBar(child: child),
-          );
+      // Main stateful shell with bottom navigation
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return ScaffoldWithBottomNavBar(navigationShell: navigationShell);
         },
-        routes: [
-          // Home route
-          GoRoute(
-            path: '/home',
-            name: 'home',
-            builder: (context, state) => const HomePage(),
-          ),
-
-          // Tests shell route with shared TestsCubit
-          ShellRoute(
-            navigatorKey: _testsShellNavigatorKey,
-            builder: (context, state, child) => TestsShell(child: child),
+        branches: [
+          // Home branch
+          StatefulShellBranch(
+            navigatorKey: _homeNavigatorKey,
             routes: [
               GoRoute(
-                path: '/tests',
-                name: 'tests',
-                builder: (context, state) => BlocProvider<TestSearchCubit>(
-                  create: (context) => sl<TestSearchCubit>(),
-                  child: const TestsPage(),
-                ),
-              ),
-              GoRoute(
-                path: '${Routes.testTakingBase}/:testId',
-                name: 'testTaking',
-                builder: (context, state) {
-                  final testId = state.pathParameters['testId']!;
-                  return BlocProvider<TestSessionCubit>(
-                    create: (context) => sl<TestSessionCubit>(),
-                    child: TestTakingPage(testId: testId),
-                  );
-                },
-              ),
-              GoRoute(
-                path: '/tests/upload',
-                name: 'testUpload',
-                builder: (context, state) => const TestUploadPage(),
-              ),
-              GoRoute(
-                path: '/tests/edit/:testId',
-                name: 'testEdit',
-                builder: (context, state) {
-                  final testId = state.pathParameters['testId']!;
-                  return TestEditPage(testId: testId);
-                },
-              ),
-              GoRoute(
-                path: '/tests/results',
-                name: 'testResults',
-                builder: (context, state) => BlocProvider<TestResultsCubit>(
-                  create: (context) => sl<TestResultsCubit>(),
-                  child: const TestResultsHistoryPage(),
-                ),
-              ),
-              GoRoute(
-                path: '/tests/unpublished',
-                name: 'unpublishedTests',
-                builder: (context, state) =>
-                    BlocProvider<UnpublishedTestsCubit>(
-                  create: (context) => sl<UnpublishedTestsCubit>(),
-                  child: const UnpublishedTestsPage(),
-                ),
+                path: '/home',
+                name: 'home',
+                builder: (context, state) => const HomePage(),
               ),
             ],
           ),
 
-          // Books shell route with shared cubits
-          ShellRoute(
-            navigatorKey: _booksShellNavigatorKey,
-            builder: (context, state, child) => BooksShell(child: child),
+          // Tests branch
+          StatefulShellBranch(
+            navigatorKey: _testsNavigatorKey,
             routes: [
-              GoRoute(
-                path: '/books',
-                name: 'books',
-                builder: (context, state) => BlocProvider<BookSearchCubit>(
-                  create: (context) => sl<BookSearchCubit>(),
-                  child: const BooksPage(),
+              ShellRoute(
+                builder: (context, state, child) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider<TestsCubit>(
+                      create: (context) => sl<TestsCubit>(),
+                    ),
+                    BlocProvider<TestSearchCubit>(
+                      create: (context) => sl<TestSearchCubit>(),
+                    ),
+                    BlocProvider<TestUploadCubit>(
+                      create: (context) => sl<TestUploadCubit>(),
+                    ),
+                  ],
+                  child: child,
                 ),
+                routes: [
+                  GoRoute(
+                    path: '/tests',
+                    name: 'tests',
+                    builder: (context, state) => const TestsPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'taking/:testId',
+                        name: 'testTaking',
+                        builder: (context, state) {
+                          final testId = state.pathParameters['testId']!;
+                          return BlocProvider<TestSessionCubit>(
+                            create: (context) => sl<TestSessionCubit>(),
+                            child: TestTakingPage(testId: testId),
+                          );
+                        },
+                      ),
+                      GoRoute(
+                        path: 'upload',
+                        name: 'testUpload',
+                        builder: (context, state) => const TestUploadPage(),
+                      ),
+                      GoRoute(
+                        path: 'edit/:testId',
+                        name: 'testEdit',
+                        builder: (context, state) {
+                          final testId = state.pathParameters['testId']!;
+                          return TestEditPage(testId: testId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'results',
+                        name: 'testResults',
+                        builder: (context, state) => BlocProvider<TestResultsCubit>(
+                          create: (context) => sl<TestResultsCubit>(),
+                          child: const TestResultsHistoryPage(),
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'unpublished',
+                        name: 'unpublishedTests',
+                        builder: (context, state) =>
+                            BlocProvider<UnpublishedTestsCubit>(
+                          create: (context) => sl<UnpublishedTestsCubit>(),
+                          child: const UnpublishedTestsPage(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              GoRoute(
-                path: '/books/upload-books',
-                name: 'uploadBooks',
-                builder: (context, state) => const BookUploadPage(),
-              ),
-              GoRoute(
-                path: '/books/edit-books',
-                name: 'editBooks',
-                builder: (context, state) {
-                  final extra = state.extra as BookEditPage;
-                  return BookEditPage(book: extra.book);
-                },
-              ),
-              GoRoute(
-                path: '/books/favorite-books',
-                name: 'favoriteBooks',
-                builder: (context, state) => const FavoriteBooksPage(),
-              ),
-              GoRoute(
-                  path: Routes.chapters,
-                  name: 'chapters',
-                  builder: (context, state) {
-                    final extra = state.extra as ChaptersPage;
-                    return ChaptersPage(
-                      book: extra.book,
-                    );
-                  }),
             ],
           ),
 
-          // Profile shell route with shared ProfileCubit
-          ShellRoute(
-            navigatorKey: _profileShellNavigatorKey,
-            builder: (context, state, child) => ProfileShell(child: child),
+          // Books branch
+          StatefulShellBranch(
+            navigatorKey: _booksNavigatorKey,
             routes: [
-              GoRoute(
-                path: '/profile',
-                name: 'profile',
-                builder: (context, state) => const ProfilePage(),
-              ),
-              GoRoute(
-                path: '/profile/language-preferences',
-                name: 'languagePreferences',
-                builder: (context, state) => const LanguagePreferencePage(),
-              ),
-              GoRoute(
-                path: '/profile/admin-management',
-                name: 'adminManagement',
-                builder: (context, state) => BlocProvider<AdminPermissionCubit>(
-                  create: (context) => sl<AdminPermissionCubit>(),
-                  child: const AdminManagementPage(),
+              ShellRoute(
+                builder: (context, state, child) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider<KoreanBooksCubit>(
+                      create: (context) => sl<KoreanBooksCubit>(),
+                    ),
+                    BlocProvider<FavoriteBooksCubit>(
+                      create: (context) => sl<FavoriteBooksCubit>(),
+                    ),
+                    BlocProvider<BookSearchCubit>(
+                      create: (context) => sl<BookSearchCubit>(),
+                    ),
+                  ],
+                  child: child,
                 ),
+                routes: [
+                  GoRoute(
+                    path: '/books',
+                    name: 'books',
+                    builder: (context, state) => const BooksPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'upload-books',
+                        name: 'uploadBooks',
+                        builder: (context, state) => const BookUploadPage(),
+                      ),
+                      GoRoute(
+                        path: 'edit-books',
+                        name: 'editBooks',
+                        builder: (context, state) {
+                          final extra = state.extra as BookEditPage;
+                          return BookEditPage(book: extra.book);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'favorite-books',
+                        name: 'favoriteBooks',
+                        builder: (context, state) => const FavoriteBooksPage(),
+                      ),
+                      GoRoute(
+                        path: 'chapters',
+                        name: 'chapters',
+                        builder: (context, state) {
+                          final extra = state.extra as ChaptersPage;
+                          return ChaptersPage(book: extra.book);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              GoRoute(
-                path: '/profile/admin-management/admin-signup',
-                name: 'adminSignup',
-                builder: (context, state) => BlocProvider<AdminPermissionCubit>(
-                  create: (context) => sl<AdminPermissionCubit>(),
-                  child: const AdminSignupPage(),
+            ],
+          ),
+
+          // Profile branch
+          StatefulShellBranch(
+            navigatorKey: _profileNavigatorKey,
+            routes: [
+              ShellRoute(
+                builder: (context, state, child) => BlocProvider<ProfileCubit>(
+                  create: (context) => sl<ProfileCubit>(),
+                  child: child,
                 ),
-              ),
-              GoRoute(
-                path: '/profile/admin-management/migration-page',
-                name: 'migrationPage',
-                builder: (context, state) => const MigrationPage(),
-              ),
-              GoRoute(
-                path: '/profile/user-management',
-                name: 'userManagement',
-                builder: (context, state) => BlocProvider<UserManagementCubit>(
-                  create: (context) => sl<UserManagementCubit>(),
-                  child: const UserManagementPage(),
-                ),
+                routes: [
+                  GoRoute(
+                    path: '/profile',
+                    name: 'profile',
+                    builder: (context, state) => const ProfilePage(),
+                    routes: [
+                      GoRoute(
+                        path: 'language-preferences',
+                        name: 'languagePreferences',
+                        builder: (context, state) => const LanguagePreferencePage(),
+                      ),
+                      GoRoute(
+                        path: 'admin-management',
+                        name: 'adminManagement',
+                        builder: (context, state) =>
+                            BlocProvider<AdminPermissionCubit>(
+                          create: (context) => sl<AdminPermissionCubit>(),
+                          child: const AdminManagementPage(),
+                        ),
+                        routes: [
+                          GoRoute(
+                            path: 'admin-signup',
+                            name: 'adminSignup',
+                            builder: (context, state) =>
+                                BlocProvider<AdminPermissionCubit>(
+                              create: (context) => sl<AdminPermissionCubit>(),
+                              child: const AdminSignupPage(),
+                            ),
+                          ),
+                          GoRoute(
+                            path: 'migration-page',
+                            name: 'migrationPage',
+                            builder: (context, state) => const MigrationPage(),
+                          ),
+                        ],
+                      ),
+                      GoRoute(
+                        path: 'user-management',
+                        name: 'userManagement',
+                        builder: (context, state) =>
+                            BlocProvider<UserManagementCubit>(
+                          create: (context) => sl<UserManagementCubit>(),
+                          child: const UserManagementPage(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -393,7 +423,7 @@ class Routes {
   static const testResult = '/test-result';
   static const testReview = '/test-review';
   static const unpublishedTests = '/tests/unpublished';
-  static const testTakingBase = '/test-taking';
+  static const testTakingBase = '/tests/taking';
 
   static const books = '/books';
   static const pdfViewer = '/pdf-viewer';
@@ -409,16 +439,16 @@ class Routes {
   static const adminSignup = '/profile/admin-management/admin-signup';
   static const userManagement = '/profile/user-management';
 
-  static String testTaking(String testId) => '$testTakingBase/$testId';
+  static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
   const ScaffoldWithBottomNavBar({
     super.key,
-    required this.child,
+    required this.navigationShell,
   });
 
   @override
@@ -427,7 +457,7 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final location = GoRouterState.of(context).uri.path;
 
-    final shouldHideBottomNav = location.startsWith(Routes.testTakingBase);
+    final shouldHideBottomNav = location.startsWith('/tests/taking');
 
     return BlocListener<UpdateCubit, UpdateState>(
       listener: (context, state) {
@@ -436,7 +466,7 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
         }
       },
       child: Scaffold(
-        body: child,
+        body: navigationShell,
         bottomNavigationBar: shouldHideBottomNav
             ? null
             : BottomNavigationBar(
@@ -446,7 +476,7 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
                 unselectedItemColor:
                     colorScheme.onSurface.withValues(alpha: 0.6),
                 showUnselectedLabels: true,
-                currentIndex: _calculateSelectedIndex(context),
+                currentIndex: navigationShell.currentIndex,
                 onTap: (index) => _onItemTapped(index, context),
                 items: const [
                   BottomNavigationBarItem(
@@ -471,37 +501,10 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
     );
   }
 
-  int _calculateSelectedIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/home')) {
-      return 0;
-    }
-    if (location.startsWith('/tests')) {
-      return 1;
-    }
-    if (location.startsWith('/books')) {
-      return 2;
-    }
-    if (location.startsWith('/profile')) {
-      return 3;
-    }
-    return 0;
-  }
-
   void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        GoRouter.of(context).go('/home');
-        break;
-      case 1:
-        GoRouter.of(context).go('/tests');
-        break;
-      case 2:
-        GoRouter.of(context).go('/books');
-        break;
-      case 3:
-        GoRouter.of(context).go('/profile');
-        break;
-    }
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
 }

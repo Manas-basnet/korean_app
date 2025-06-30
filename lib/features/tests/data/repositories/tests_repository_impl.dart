@@ -29,8 +29,8 @@ class MediaItem {
 
 class FullMediaCheckData {
   final String testId;
-  final List<String> questionImageUrls;
-  final List<String> questionAudioUrls;
+  final List<MediaItem> questionImageItems;
+  final List<MediaItem> questionAudioItems;
   final List<MediaItem> optionImageItems;
   final List<MediaItem> optionAudioItems;
   final TestsLocalDataSource localDataSource;
@@ -38,14 +38,15 @@ class FullMediaCheckData {
 
   FullMediaCheckData({
     required this.testId,
-    required this.questionImageUrls,
-    required this.questionAudioUrls,
+    required this.questionImageItems,
+    required this.questionAudioItems,
     required this.optionImageItems,
     required this.optionAudioItems,
     required this.localDataSource,
     required this.token,
   });
 }
+
 
 class MediaProcessingData {
   final List<TestItem> tests;
@@ -64,25 +65,17 @@ class MediaProcessingData {
 Future<bool> _checkFullMediaCached(FullMediaCheckData data) async {
   BackgroundIsolateBinaryMessenger.ensureInitialized(data.token);
   
-  for (int i = 0; i < data.questionImageUrls.length; i++) {
-    final cachedPath = await data.localDataSource.getCachedImagePath(data.questionImageUrls[i], data.testId, 'question_$i');
+  for (final item in data.questionImageItems) {
+    final cachedPath = await data.localDataSource.getCachedImagePath(item.url, data.testId, 'question_${item.questionIndex}');
     if (cachedPath == null) {
       return false;
-    }
-    
-    if (i % 3 == 0 && i > 0) {
-      await Future.delayed(const Duration(milliseconds: 1));
     }
   }
   
-  for (int i = 0; i < data.questionAudioUrls.length; i++) {
-    final cachedPath = await data.localDataSource.getCachedAudioPath(data.questionAudioUrls[i], data.testId, 'question_audio_$i');
+  for (final item in data.questionAudioItems) {
+    final cachedPath = await data.localDataSource.getCachedAudioPath(item.url, data.testId, 'question_audio_${item.questionIndex}');
     if (cachedPath == null) {
       return false;
-    }
-    
-    if (i % 3 == 0 && i > 0) {
-      await Future.delayed(const Duration(milliseconds: 1));
     }
   }
   
@@ -212,7 +205,7 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
   final TestsLocalDataSource localDataSource;
   final AuthService authService;
   
-  static const Duration cacheValidityDuration = Duration(hours: 1, minutes: 30);
+  static const Duration cacheValidityDuration = Duration(days: 3);
 
   TestsRepositoryImpl({
     required this.remoteDataSource,
@@ -271,11 +264,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       },
     );
     
-    if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithCoverImages(result.data!);
-      return ApiResult.success(processedTests);
-    }
-    
     return result;
   }
 
@@ -327,11 +315,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         _cacheCoverImagesInBackground(remoteTests);
       },
     );
-    
-    if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithCoverImages(result.data!);
-      return ApiResult.success(processedTests);
-    }
     
     return result;
   }
@@ -410,11 +393,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
       },
     );
     
-    if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithCoverImages(result.data!);
-      return ApiResult.success(processedTests);
-    }
-    
     return result;
   }
 
@@ -450,11 +428,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         _cacheCoverImagesInBackground(remoteTests);
       },
     );
-    
-    if (result.isSuccess && result.data != null) {
-      final processedTests = await _processTestsWithCoverImages(result.data!);
-      return ApiResult.success(processedTests);
-    }
     
     return result;
   }
@@ -545,11 +518,6 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
           }
         },
       );
-      
-      if (result.isSuccess && result.data != null) {
-        final processedTests = await _processTestWithAllMedia([result.data!]);
-        return ApiResult.success(processedTests.isNotEmpty ? processedTests.first : null);
-      }
       
       return result;
     } catch (e) {
@@ -655,8 +623,8 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
 
   Future<bool> _hasAllMediaCachedForTest(TestItem test) async {
     try {
-      final questionImageUrls = <String>[];
-      final questionAudioUrls = <String>[];
+      final questionImageItems = <MediaItem>[];
+      final questionAudioItems = <MediaItem>[];
       final optionImageItems = <MediaItem>[];
       final optionAudioItems = <MediaItem>[];
 
@@ -664,10 +632,18 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
         final question = test.questions[i];
         
         if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty) {
-          questionImageUrls.add(question.questionImageUrl!);
+          questionImageItems.add(MediaItem(
+            url: question.questionImageUrl!,
+            questionIndex: i,
+            optionIndex: -1,
+          ));
         }
         if (question.questionAudioUrl != null && question.questionAudioUrl!.isNotEmpty) {
-          questionAudioUrls.add(question.questionAudioUrl!);
+          questionAudioItems.add(MediaItem(
+            url: question.questionAudioUrl!,
+            questionIndex: i,
+            optionIndex: -1,
+          ));
         }
         
         for (int j = 0; j < question.options.length; j++) {
@@ -691,8 +667,8 @@ class TestsRepositoryImpl extends BaseRepository implements TestsRepository {
 
       final mediaCheckData = FullMediaCheckData(
         testId: test.id,
-        questionImageUrls: questionImageUrls,
-        questionAudioUrls: questionAudioUrls,
+        questionImageItems: questionImageItems,
+        questionAudioItems: questionAudioItems,
         optionImageItems: optionImageItems,
         optionAudioItems: optionAudioItems,
         localDataSource: localDataSource,
