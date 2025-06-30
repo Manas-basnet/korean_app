@@ -288,6 +288,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       List<AudioTrack> processedAudioTracks = List.from(updatedBook.audioTracks);
       
       try {
+        // Handle PDF update
         if (pdfFile != null) {
           final pdfResult = await _uploadPdfFile(bookId, pdfFile);
           newPdfPath = pdfResult['storagePath'];
@@ -297,6 +298,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           );
         }
         
+        // Handle cover image update
         if (coverImageFile != null) {
           try {
             final imageResult = await _uploadCoverImage(bookId, coverImageFile);
@@ -313,9 +315,10 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           }
         }
 
+        // Handle audio tracks update - only if explicitly provided
         if (audioTracks != null) {
           try {
-            // Mark old audio tracks for deletion
+            // Mark old audio tracks for deletion ONLY if we're replacing them
             if (existingData['audioTracks'] is List) {
               final existingAudioTracks = (existingData['audioTracks'] as List)
                   .map((trackJson) => AudioTrack.fromJson(trackJson))
@@ -349,6 +352,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
             
             finalBook = finalBook.copyWith(audioTracks: processedAudioTracks);
           } catch (e) {
+            // Clean up on audio upload failure
             if (newPdfPath != null) {
               await _deleteFileByPath(newPdfPath);
             }
@@ -362,6 +366,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           }
         }
         
+        // Update the document
         final updateData = finalBook.toJson();
         updateData['titleLowerCase'] = finalBook.title.toLowerCase();
         updateData['descriptionLowerCase'] = finalBook.description.toLowerCase();
@@ -369,6 +374,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         
         await docRef.update(updateData);
         
+        // Clean up old files ONLY after successful update
         if (newPdfPath != null && oldPdfPath != null && oldPdfPath != newPdfPath) {
           await _deleteFileByPath(oldPdfPath);
         }
@@ -382,6 +388,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         return finalBook.copyWith(updatedAt: DateTime.now());
         
       } catch (e) {
+        // Clean up any newly uploaded files on failure
         if (newPdfPath != null) {
           await _deleteFileByPath(newPdfPath);
         }
@@ -424,11 +431,11 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       String? oldImagePath = existingData['bookImagePath'] as String?;
       List<String> newChapterPaths = [];
       List<String> newAudioPaths = [];
-      List<String> oldChapterPathsToDelete = [];
-      List<String> oldAudioPathsToDelete = [];
+      List<String> oldPathsToDelete = [];
       List<Chapter> processedChapters = List.from(updatedBook.chapters);
       
       try {
+        // Handle cover image update
         if (coverImageFile != null) {
           final imageResult = await _uploadCoverImage(bookId, coverImageFile);
           newImagePath = imageResult['storagePath'];
@@ -438,6 +445,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           );
         }
         
+        // Handle chapters update
         if (chaptersData != null && chaptersData.isNotEmpty) {
           final existingChapters = existingData['chapters'] as List?;
           Map<String, Chapter> existingChapterMap = {};
@@ -454,6 +462,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           for (int i = 0; i < chaptersData.length; i++) {
             final chapterData = chaptersData[i];
             
+            // Only upload new files if the chapter is actually modified and has a new PDF
             if (chapterData.isNewOrModified && chapterData.pdfFile != null && chapterData.pdfFile!.existsSync()) {
               try {
                 final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
@@ -461,6 +470,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 
                 List<AudioTrack> chapterAudioTracks = [];
                 
+                // Upload new audio tracks if provided
                 if (chapterData.audioTracks.isNotEmpty) {
                   for (int j = 0; j < chapterData.audioTracks.length; j++) {
                     final audioTrackData = chapterData.audioTracks[j];
@@ -479,17 +489,29 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                     
                     chapterAudioTracks.add(audioTrack);
                   }
+                  
+                  // Mark old audio tracks for deletion ONLY if we have new ones to replace them
+                  if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
+                    final existingChapter = existingChapterMap[chapterData.existingId!];
+                    for (final track in existingChapter?.audioTracks ?? []) {
+                      if (track.audioPath != null && track.audioPath!.isNotEmpty) {
+                        oldPathsToDelete.add(track.audioPath!);
+                      }
+                    }
+                  }
+                } else {
+                  // Keep existing audio tracks if no new ones are provided
+                  if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
+                    final existingChapter = existingChapterMap[chapterData.existingId!];
+                    chapterAudioTracks = List.from(existingChapter?.audioTracks ?? []);
+                  }
                 }
                 
+                // Mark old chapter PDF for deletion ONLY if we have a new one
                 if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
                   final existingChapter = existingChapterMap[chapterData.existingId!];
                   if (existingChapter?.pdfPath != null && existingChapter!.pdfPath!.isNotEmpty) {
-                    oldChapterPathsToDelete.add(existingChapter.pdfPath!);
-                  }
-                  for (final track in existingChapter?.audioTracks ?? []) {
-                    if (track.audioPath != null && track.audioPath!.isNotEmpty) {
-                      oldAudioPathsToDelete.add(track.audioPath!);
-                    }
+                    oldPathsToDelete.add(existingChapter.pdfPath!);
                   }
                 }
                 
@@ -508,6 +530,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 
                 processedChapters.add(chapter);
               } catch (e) {
+                // Clean up any uploaded files if chapter processing fails
                 if (newImagePath != null) {
                   await _deleteFileByPath(newImagePath);
                 }
@@ -520,11 +543,13 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 throw Exception('Failed to upload chapter ${i + 1}: $e');
               }
             } else {
+              // Chapter is not modified or no new PDF - keep existing data but update metadata
               Chapter existingChapter;
               
               if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
                 existingChapter = existingChapterMap[chapterData.existingId!]!;
               } else {
+                // Fallback to finding by order
                 existingChapter = updatedBook.chapters.firstWhere(
                   (ch) => ch.order == chapterData.order,
                   orElse: () => Chapter(
@@ -544,12 +569,13 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
               
               List<AudioTrack> updatedAudioTracks = List.from(existingChapter.audioTracks);
               
+              // Only handle audio tracks if new ones are provided
               if (chapterData.audioTracks.isNotEmpty) {
                 try {
-                  // Mark old audio tracks for deletion
+                  // Mark old audio tracks for deletion only if we're replacing them
                   for (final track in existingChapter.audioTracks) {
                     if (track.audioPath != null && track.audioPath!.isNotEmpty) {
-                      oldAudioPathsToDelete.add(track.audioPath!);
+                      oldPathsToDelete.add(track.audioPath!);
                     }
                   }
                   
@@ -573,6 +599,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                     updatedAudioTracks.add(audioTrack);
                   }
                 } catch (e) {
+                  // Clean up on audio upload failure
                   if (newImagePath != null) {
                     await _deleteFileByPath(newImagePath);
                   }
@@ -586,6 +613,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 }
               }
               
+              // Update chapter with new metadata but keep existing files if no new ones
               final updatedChapter = existingChapter.copyWith(
                 title: chapterData.title,
                 description: chapterData.description,
@@ -605,6 +633,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           );
         }
         
+        // Update the document
         final updateData = finalBook.toJson();
         updateData['titleLowerCase'] = finalBook.title.toLowerCase();
         updateData['descriptionLowerCase'] = finalBook.description.toLowerCase();
@@ -612,21 +641,20 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         
         await docRef.update(updateData);
         
+        // Clean up old files ONLY after successful update
         if (newImagePath != null && oldImagePath != null && oldImagePath != newImagePath) {
           await _deleteFileByPath(oldImagePath);
         }
         
-        for (final oldPath in oldChapterPathsToDelete) {
-          await _deleteFileByPath(oldPath);
-        }
-        
-        for (final oldPath in oldAudioPathsToDelete) {
+        // Delete old files that were explicitly marked for deletion
+        for (final oldPath in oldPathsToDelete) {
           await _deleteFileByPath(oldPath);
         }
         
         return finalBook.copyWith(updatedAt: DateTime.now());
         
       } catch (e) {
+        // Clean up any newly uploaded files on failure
         if (newImagePath != null) {
           await _deleteFileByPath(newImagePath);
         }

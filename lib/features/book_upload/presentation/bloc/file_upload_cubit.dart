@@ -143,14 +143,14 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     try {
       emit(const FileUploading(0.1, FileUploadType.pdf));
       
-      emit(const FileUploading(0.5, FileUploadType.pdf));
-      
       final params = CreateBookParams(
         book: book,
         pdfFile: pdfFile,
         coverImageFile: imageFile,
         audioTracks: audioTracks,
       );
+      
+      emit(const FileUploading(0.5, FileUploadType.pdf));
       
       final result = await createBookUseCase.execute(params);
       
@@ -160,6 +160,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
       }
       
       final createdBook = result.data!;
+      emit(const FileUploading(1.0, FileUploadType.pdf));
       emit(FileUploadSuccess(createdBook.id, FileUploadType.pdf, book: createdBook));
       return true;
     } catch (e) {
@@ -182,13 +183,13 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     try {
       emit(const FileUploading(0.1, FileUploadType.pdf));
       
-      emit(const FileUploading(0.3, FileUploadType.pdf));
-      
       final params = CreateBookWithChaptersParams(
         book: book,
         chapters: chapters,
         coverImageFile: imageFile,
       );
+      
+      emit(const FileUploading(0.3, FileUploadType.pdf));
       
       final result = await createBookWithChaptersUseCase.execute(params);
       
@@ -198,6 +199,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
       }
       
       final createdBook = result.data!;
+      emit(const FileUploading(1.0, FileUploadType.pdf));
       emit(FileUploadSuccess(createdBook.id, FileUploadType.pdf, book: createdBook));
       return true;
     } catch (e) {
@@ -216,8 +218,6 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     try {
       emit(const FileUploading(0.1, FileUploadType.pdf));
       
-      emit(const FileUploading(0.5, FileUploadType.pdf));
-      
       final params = UpdateBookParams(
         bookId: bookId,
         updatedBook: updatedBook,
@@ -225,6 +225,8 @@ class FileUploadCubit extends Cubit<FileUploadState> {
         coverImageFile: imageFile,
         audioTracks: audioTracks,
       );
+      
+      emit(const FileUploading(0.5, FileUploadType.pdf));
       
       final result = await updateBookUseCase.execute(params);
       
@@ -234,6 +236,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
       }
       
       final finalBook = result.data!;
+      emit(const FileUploading(1.0, FileUploadType.pdf));
       emit(FileUploadSuccess(bookId, FileUploadType.pdf, book: finalBook));
       return true;
     } catch (e) {
@@ -257,14 +260,14 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     try {
       emit(const FileUploading(0.1, FileUploadType.pdf));
       
-      emit(const FileUploading(0.5, FileUploadType.pdf));
-      
       final params = UpdateBookWithChaptersParams(
         bookId: bookId,
         updatedBook: updatedBook,
         chapters: chapters,
         coverImageFile: imageFile,
       );
+      
+      emit(const FileUploading(0.5, FileUploadType.pdf));
       
       final result = await updateBookWithChaptersUseCase.execute(params);
       
@@ -274,6 +277,7 @@ class FileUploadCubit extends Cubit<FileUploadState> {
       }
       
       final finalBook = result.data!;
+      emit(const FileUploading(1.0, FileUploadType.pdf));
       emit(FileUploadSuccess(bookId, FileUploadType.pdf, book: finalBook));
       return true;
     } catch (e) {

@@ -54,7 +54,7 @@ class Chapter {
   bool get hasAudio => audioTracks.isNotEmpty;
   int get audioTrackCount => audioTracks.length;
 
-  // Legacy compatibility for old single audio fields
+  // Legacy compatibility getters for reading old data
   String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
   String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
 
@@ -142,9 +142,6 @@ class Chapter {
       'duration': duration,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
-      // Legacy fields for backward compatibility
-      'audioUrl': audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null,
-      'audioPath': audioTracks.isNotEmpty ? audioTracks.first.audioPath : null,
     };
   }
 }
