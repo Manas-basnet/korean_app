@@ -33,22 +33,22 @@ class MultiAudioPlayerWidget extends StatelessWidget {
         width: double.infinity,
         padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha:0.3),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+          border: Border.all(color: colorScheme.outline.withValues(alpha:0.3)),
         ),
         child: Column(
           children: [
             Icon(
               Icons.audiotrack_rounded, //TODO: audio track off icon
               size: MediaQuery.of(context).size.width * 0.08,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withValues(alpha:0.5),
             ),
             const SizedBox(height: 8),
             Text(
               'No audio tracks',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: colorScheme.onSurfaceVariant.withValues(alpha:0.7),
               ),
             ),
           ],
@@ -60,9 +60,9 @@ class MultiAudioPlayerWidget extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha:0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.outline.withValues(alpha:0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +84,7 @@ class MultiAudioPlayerWidget extends StatelessWidget {
                 if (onEdit != null)
                   IconButton(
                     onPressed: onEdit,
-                    icon: Icon(Icons.edit, size: 18),
+                    icon: const Icon(Icons.edit, size: 18),
                     constraints: const BoxConstraints(
                       minWidth: 24,
                       minHeight: 24,
@@ -97,7 +97,7 @@ class MultiAudioPlayerWidget extends StatelessWidget {
                 if (onRemove != null)
                   IconButton(
                     onPressed: onRemove,
-                    icon: Icon(Icons.close, size: 18),
+                    icon: const Icon(Icons.close, size: 18),
                     constraints: const BoxConstraints(
                       minWidth: 24,
                       minHeight: 24,
@@ -224,7 +224,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -274,7 +274,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
               padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.06),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: colorScheme.outline.withOpacity(0.2),
+                  color: colorScheme.outline.withValues(alpha:0.2),
                   style: BorderStyle.solid,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -285,13 +285,13 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
                   Icon(
                     Icons.audiotrack_rounded, //TODO: audio track off 
                     size: MediaQuery.of(context).size.width * 0.1,
-                    color: colorScheme.onSurface.withOpacity(0.4),
+                    color: colorScheme.onSurface.withValues(alpha:0.4),
                   ),
                   SizedBox(height: MediaQuery.of(context).size.height * 0.01),
                   Text(
                     'No audio tracks added',
                     style: theme.textTheme.titleSmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha:0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -299,7 +299,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
                   Text(
                     'Add audio tracks to enhance the reading experience',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.5),
+                      color: colorScheme.onSurface.withValues(alpha:0.5),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -320,7 +320,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
                   padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: colorScheme.outline.withOpacity(0.2),
+                      color: colorScheme.outline.withValues(alpha:0.2),
                     ),
                     borderRadius: BorderRadius.circular(12),
                     color: colorScheme.surface,
@@ -360,7 +360,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
                             Text(
                               'File: ${track.audioFile.path.split('/').last}',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.6),
+                                color: colorScheme.onSurface.withValues(alpha:0.6),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -371,7 +371,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
                       PopupMenuButton<String>(
                         icon: Icon(
                           Icons.more_vert_rounded,
-                          color: colorScheme.onSurface.withOpacity(0.6),
+                          color: colorScheme.onSurface.withValues(alpha:0.6),
                         ),
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -507,7 +507,7 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
             Container(
               padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
               decoration: BoxDecoration(
-                color: theme.colorScheme.tertiary.withOpacity(0.05),
+                color: theme.colorScheme.tertiary.withValues(alpha:0.05),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -534,7 +534,7 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.outline.withOpacity(0.1),
+                      backgroundColor: theme.colorScheme.outline.withValues(alpha:0.1),
                     ),
                   ),
                 ],
@@ -580,7 +580,7 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.2),
+                    color: theme.colorScheme.outline.withValues(alpha:0.2),
                   ),
                 ),
               ),
@@ -589,13 +589,13 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(
                         horizontal: mediaQuery.size.width * 0.04,
                         vertical: mediaQuery.size.height * 0.015,
                       ),
                     ),
+                    child: const Text('Cancel'),
                   ),
                   SizedBox(width: mediaQuery.size.width * 0.02),
                   ElevatedButton(

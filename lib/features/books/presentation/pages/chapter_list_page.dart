@@ -206,7 +206,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
               color: colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: colorScheme.outlineVariant.withOpacity(0.3),
+                  color: colorScheme.outlineVariant.withValues(alpha:0.3),
                   width: 0.5,
                 ),
               ),
@@ -219,10 +219,10 @@ class _ChaptersPageState extends State<ChaptersPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: widget.book.level.getColor().withOpacity(0.1),
+                        color: widget.book.level.getColor().withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: widget.book.level.getColor().withOpacity(0.3),
+                          color: widget.book.level.getColor().withValues(alpha:0.3),
                           width: 1,
                         ),
                       ),
@@ -250,7 +250,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
+                        color: colorScheme.primary.withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -282,7 +282,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
                 Text(
                   widget.book.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.7),
+                    color: colorScheme.onSurface.withValues(alpha:0.7),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -291,7 +291,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
                     Icon(
                       Icons.menu_book_outlined,
                       size: 16,
-                      color: colorScheme.onSurface.withOpacity(0.5),
+                      color: colorScheme.onSurface.withValues(alpha:0.5),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -300,20 +300,20 @@ class _ChaptersPageState extends State<ChaptersPage> {
                         english: '${sortedChapters.length} chapters',
                       ),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.5),
+                        color: colorScheme.onSurface.withValues(alpha:0.5),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Icon(
                       Icons.timer_outlined,
                       size: 16,
-                      color: colorScheme.onSurface.withOpacity(0.5),
+                      color: colorScheme.onSurface.withValues(alpha:0.5),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       widget.book.duration,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.5),
+                        color: colorScheme.onSurface.withValues(alpha:0.5),
                       ),
                     ),
                   ],
@@ -385,11 +385,11 @@ class _ChaptersPageState extends State<ChaptersPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shadowColor: colorScheme.shadow.withOpacity(0.1),
+      shadowColor: colorScheme.shadow.withValues(alpha:0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha:0.1),
           width: 0.5,
         ),
       ),
@@ -404,10 +404,10 @@ class _ChaptersPageState extends State<ChaptersPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.2),
+                    color: colorScheme.primary.withValues(alpha:0.2),
                     width: 1,
                   ),
                 ),
@@ -453,7 +453,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
                         child: Text(
                           chapter.description!,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withOpacity(0.6),
+                            color: colorScheme.onSurface.withValues(alpha:0.6),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -480,13 +480,13 @@ class _ChaptersPageState extends State<ChaptersPage> {
                           Icon(
                             Icons.timer_outlined,
                             size: 14,
-                            color: colorScheme.onSurface.withOpacity(0.5),
+                            color: colorScheme.onSurface.withValues(alpha:0.5),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             chapter.duration!,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.5),
+                              color: colorScheme.onSurface.withValues(alpha:0.5),
                             ),
                           ),
                         ],
@@ -500,14 +500,14 @@ class _ChaptersPageState extends State<ChaptersPage> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: isLoading 
-                      ? colorScheme.primary.withOpacity(0.05)
-                      : colorScheme.primary.withOpacity(0.1),
+                      ? colorScheme.primary.withValues(alpha:0.05)
+                      : colorScheme.primary.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   isLoading ? Icons.hourglass_empty : Icons.play_arrow,
                   color: isLoading 
-                      ? colorScheme.primary.withOpacity(0.5)
+                      ? colorScheme.primary.withValues(alpha:0.5)
                       : colorScheme.primary,
                   size: 20,
                 ),

@@ -47,7 +47,7 @@ class _BookUploadPageState extends State<BookUploadPage>
 
   List<AudioTrackUploadData> _audioTracks = [];
 
-  List<ChapterUploadData> _chapters = [];
+  List<ChapterUploadData> chapters = [];
   late TabController _tabController;
 
   late FileUploadCubit _fileUploadCubit;
@@ -107,14 +107,14 @@ class _BookUploadPageState extends State<BookUploadPage>
     final result = await showDialog<ChapterUploadData>(
       context: context,
       builder: (context) => _ChapterUploadDialog(
-        chapterNumber: _chapters.length + 1,
+        chapterNumber: chapters.length + 1,
         fileUploadCubit: _fileUploadCubit,
       ),
     );
 
     if (result != null) {
       setState(() {
-        _chapters.add(result);
+        chapters.add(result);
       });
     }
   }
@@ -138,12 +138,12 @@ class _BookUploadPageState extends State<BookUploadPage>
 
   void _handleChaptersFromEditor(List<File> chapterFiles, List<ChapterInfo> chapterInfos) {
     setState(() {
-      _chapters.clear();
+      chapters.clear();
       for (int i = 0; i < chapterFiles.length && i < chapterInfos.length; i++) {
         final chapterInfo = chapterInfos[i];
         final chapterFile = chapterFiles[i];
         
-        _chapters.add(ChapterUploadData(
+        chapters.add(ChapterUploadData(
           title: chapterInfo.title,
           description: chapterInfo.description,
           duration: chapterInfo.duration,
@@ -163,9 +163,9 @@ class _BookUploadPageState extends State<BookUploadPage>
 
   void _removeChapter(int index) {
     setState(() {
-      _chapters.removeAt(index);
-      for (int i = 0; i < _chapters.length; i++) {
-        _chapters[i] = _chapters[i].copyWith(order: i + 1);
+      chapters.removeAt(index);
+      for (int i = 0; i < chapters.length; i++) {
+        chapters[i] = chapters[i].copyWith(order: i + 1);
       }
     });
   }
@@ -176,13 +176,13 @@ class _BookUploadPageState extends State<BookUploadPage>
       builder: (context) => _ChapterUploadDialog(
         chapterNumber: index + 1,
         fileUploadCubit: _fileUploadCubit,
-        existingChapter: _chapters[index],
+        existingChapter: chapters[index],
       ),
     );
 
     if (result != null) {
       setState(() {
-        _chapters[index] = result;
+        chapters[index] = result;
       });
     }
   }
@@ -199,7 +199,7 @@ class _BookUploadPageState extends State<BookUploadPage>
       return;
     }
 
-    if (_uploadType == BookUploadType.chapterWise && _chapters.isEmpty) {
+    if (_uploadType == BookUploadType.chapterWise && chapters.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add at least one chapter')),
       );
@@ -221,7 +221,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         bookImage: null,
         pdfUrl: null,
         duration: _durationController.text,
-        chaptersCount: _uploadType == BookUploadType.singlePdf ? 1 : _chapters.length,
+        chaptersCount: _uploadType == BookUploadType.singlePdf ? 1 : chapters.length,
         icon: _selectedIcon,
         level: _selectedLevel,
         courseCategory: _selectedCategory,
@@ -245,7 +245,7 @@ class _BookUploadPageState extends State<BookUploadPage>
       } else {
         success = await _fileUploadCubit.uploadBookWithChapters(
           book,
-          _chapters,
+          chapters,
           _selectedImageFile,
         );
       }
@@ -286,7 +286,7 @@ class _BookUploadPageState extends State<BookUploadPage>
       _imageFileName = null;
       _imageSelected = false;
       _audioTracks.clear();
-      _chapters.clear();
+      chapters.clear();
     });
     _fileUploadCubit.resetState();
   }
@@ -387,7 +387,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -420,12 +420,12 @@ class _BookUploadPageState extends State<BookUploadPage>
                         border: Border.all(
                           color: isSelected
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.outline.withOpacity(0.3),
+                              : theme.colorScheme.outline.withValues(alpha:0.3),
                           width: 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
                         color: isSelected
-                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            ? theme.colorScheme.primary.withValues(alpha:0.08)
                             : Colors.transparent,
                       ),
                       child: Column(
@@ -438,7 +438,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                             size: MediaQuery.of(context).size.width * 0.08,
                             color: isSelected
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                           ),
                           SizedBox(height: MediaQuery.of(context).size.height * 0.01),
                           Text(
@@ -454,7 +454,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                           Text(
                             type.description,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -478,7 +478,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -501,13 +501,13 @@ class _BookUploadPageState extends State<BookUploadPage>
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -539,13 +539,13 @@ class _BookUploadPageState extends State<BookUploadPage>
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -579,7 +579,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -742,7 +742,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -770,7 +770,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                   vertical: MediaQuery.of(context).size.height * 0.005,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.1),
+                  color: theme.colorScheme.error.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -795,13 +795,13 @@ class _BookUploadPageState extends State<BookUploadPage>
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: _pdfSelected 
-                        ? theme.colorScheme.primary.withOpacity(0.5)
-                        : theme.colorScheme.outline.withOpacity(0.3),
+                        ? theme.colorScheme.primary.withValues(alpha:0.5)
+                        : theme.colorScheme.outline.withValues(alpha:0.3),
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   color: _pdfSelected 
-                      ? theme.colorScheme.primary.withOpacity(0.05)
+                      ? theme.colorScheme.primary.withValues(alpha:0.05)
                       : theme.colorScheme.surface,
                 ),
                 child: Column(
@@ -812,15 +812,15 @@ class _BookUploadPageState extends State<BookUploadPage>
                           padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.02),
                           decoration: BoxDecoration(
                             color: _pdfSelected 
-                                ? theme.colorScheme.primary.withOpacity(0.1)
-                                : theme.colorScheme.outline.withOpacity(0.1),
+                                ? theme.colorScheme.primary.withValues(alpha:0.1)
+                                : theme.colorScheme.outline.withValues(alpha:0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             _pdfSelected ? Icons.check_circle_rounded : Icons.upload_file_rounded,
                             color: _pdfSelected 
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                             size: MediaQuery.of(context).size.width * 0.05,
                           ),
                         ),
@@ -834,7 +834,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: _pdfSelected 
                                       ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                      : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                   fontWeight: _pdfSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
                                 maxLines: 1,
@@ -844,7 +844,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                 Text(
                                   'PDF file ready for upload',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.primary.withOpacity(0.8),
+                                    color: theme.colorScheme.primary.withValues(alpha:0.8),
                                   ),
                                 ),
                             ],
@@ -857,7 +857,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                       Container(
                         padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withOpacity(0.1),
+                          color: theme.colorScheme.error.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -938,7 +938,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -954,14 +954,14 @@ class _BookUploadPageState extends State<BookUploadPage>
               SizedBox(width: MediaQuery.of(context).size.width * 0.02),
               Expanded(
                 child: Text(
-                  'Chapters (${_chapters.length})',
+                  'Chapters (${chapters.length})',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),
-              if (_chapters.isEmpty) ...[
+              if (chapters.isEmpty) ...[
                 ElevatedButton.icon(
                   onPressed: isUploading ? null : _showBookEditingMode,
                   icon: const Icon(Icons.auto_fix_high_rounded),
@@ -984,7 +984,7 @@ class _BookUploadPageState extends State<BookUploadPage>
               ElevatedButton.icon(
                 onPressed: isUploading ? null : _addChapter,
                 icon: const Icon(Icons.add_rounded),
-                label: Text(_chapters.isEmpty ? 'Manual' : 'Add'),
+                label: Text(chapters.isEmpty ? 'Manual' : 'Add'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.secondary,
                   foregroundColor: theme.colorScheme.onSecondary,
@@ -1002,13 +1002,13 @@ class _BookUploadPageState extends State<BookUploadPage>
           ),
           SizedBox(height: MediaQuery.of(context).size.height * 0.02),
           
-          if (_chapters.isEmpty)
+          if (chapters.isEmpty)
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.08),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha:0.2),
                   style: BorderStyle.solid,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -1019,13 +1019,13 @@ class _BookUploadPageState extends State<BookUploadPage>
                   Icon(
                     Icons.auto_stories_outlined,
                     size: MediaQuery.of(context).size.width * 0.12,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha:0.4),
                   ),
                   SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                   Text(
                     'No chapters added yet',
                     style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1033,7 +1033,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                   Text(
                     'Use Smart Editor for automatic extraction\nor add chapters manually',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha:0.5),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1044,17 +1044,17 @@ class _BookUploadPageState extends State<BookUploadPage>
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _chapters.length,
+              itemCount: chapters.length,
               separatorBuilder: (context, index) => SizedBox(
                 height: MediaQuery.of(context).size.height * 0.01,
               ),
               itemBuilder: (context, index) {
-                final chapter = _chapters[index];
+                final chapter = chapters[index];
                 return Container(
                   padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
+                      color: theme.colorScheme.outline.withValues(alpha:0.2),
                     ),
                     borderRadius: BorderRadius.circular(12),
                     color: theme.colorScheme.surface,
@@ -1095,7 +1095,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                               Text(
                                 chapter.description!,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -1107,7 +1107,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                 Text(
                                   'PDF: ${chapter.pdfFile?.path.split('/').last ?? 'None'}',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                    color: theme.colorScheme.onSurface.withValues(alpha:0.5),
                                   ),
                                 ),
                                 if (chapter.hasAudio) ...[
@@ -1118,7 +1118,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: theme.colorScheme.tertiary.withOpacity(0.1),
+                                      color: theme.colorScheme.tertiary.withValues(alpha:0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -1139,7 +1139,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                         enabled: !isUploading,
                         icon: Icon(
                           Icons.more_vert_rounded,
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                         ),
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -1188,7 +1188,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -1216,7 +1216,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                   vertical: MediaQuery.of(context).size.height * 0.005,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                  color: theme.colorScheme.secondary.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1241,13 +1241,13 @@ class _BookUploadPageState extends State<BookUploadPage>
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: _imageSelected 
-                        ? theme.colorScheme.secondary.withOpacity(0.5)
-                        : theme.colorScheme.outline.withOpacity(0.3),
+                        ? theme.colorScheme.secondary.withValues(alpha:0.5)
+                        : theme.colorScheme.outline.withValues(alpha:0.3),
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   color: _imageSelected 
-                      ? theme.colorScheme.secondary.withOpacity(0.05)
+                      ? theme.colorScheme.secondary.withValues(alpha:0.05)
                       : theme.colorScheme.surface,
                 ),
                 child: Column(
@@ -1270,15 +1270,15 @@ class _BookUploadPageState extends State<BookUploadPage>
                           padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.02),
                           decoration: BoxDecoration(
                             color: _imageSelected 
-                                ? theme.colorScheme.secondary.withOpacity(0.1)
-                                : theme.colorScheme.outline.withOpacity(0.1),
+                                ? theme.colorScheme.secondary.withValues(alpha:0.1)
+                                : theme.colorScheme.outline.withValues(alpha:0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             _imageSelected ? Icons.check_circle_rounded : Icons.image_rounded,
                             color: _imageSelected 
                                 ? theme.colorScheme.secondary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                             size: MediaQuery.of(context).size.width * 0.05,
                           ),
                         ),
@@ -1292,7 +1292,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: _imageSelected 
                                       ? theme.colorScheme.secondary
-                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                      : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                   fontWeight: _imageSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
                                 maxLines: 1,
@@ -1302,7 +1302,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                                 Text(
                                   'Image ready for upload',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.secondary.withOpacity(0.8),
+                                    color: theme.colorScheme.secondary.withValues(alpha:0.8),
                                   ),
                                 ),
                             ],
@@ -1315,7 +1315,7 @@ class _BookUploadPageState extends State<BookUploadPage>
                       Container(
                         padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withOpacity(0.1),
+                          color: theme.colorScheme.error.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -1381,10 +1381,10 @@ class _BookUploadPageState extends State<BookUploadPage>
     return Container(
       padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.05),
+        color: colorScheme.primary.withValues(alpha:0.05),
         border: Border(
           top: BorderSide(
-            color: colorScheme.outline.withOpacity(0.2),
+            color: colorScheme.outline.withValues(alpha:0.2),
           ),
         ),
       ),
@@ -1412,7 +1412,7 @@ class _BookUploadPageState extends State<BookUploadPage>
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: uploadProgress,
-              backgroundColor: colorScheme.outline.withOpacity(0.2),
+              backgroundColor: colorScheme.outline.withValues(alpha:0.2),
               valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
               minHeight: MediaQuery.of(context).size.height * 0.008,
             ),
@@ -1424,7 +1424,7 @@ class _BookUploadPageState extends State<BookUploadPage>
 
   Widget _buildBottomUploadButton(BuildContext context, ThemeData theme, ColorScheme colorScheme, bool isUploading) {
     final canUpload = (_uploadType == BookUploadType.singlePdf && _pdfSelected) ||
-        (_uploadType == BookUploadType.chapterWise && _chapters.isNotEmpty);
+        (_uploadType == BookUploadType.chapterWise && chapters.isNotEmpty);
 
     return Container(
       padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
@@ -1432,7 +1432,7 @@ class _BookUploadPageState extends State<BookUploadPage>
         color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.2),
+            color: theme.colorScheme.outline.withValues(alpha:0.2),
           ),
         ),
       ),
@@ -1453,8 +1453,8 @@ class _BookUploadPageState extends State<BookUploadPage>
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: canUpload ? colorScheme.primary : colorScheme.outline.withOpacity(0.3),
-              foregroundColor: canUpload ? colorScheme.onPrimary : colorScheme.onSurface.withOpacity(0.5),
+              backgroundColor: canUpload ? colorScheme.primary : colorScheme.outline.withValues(alpha:0.3),
+              foregroundColor: canUpload ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha:0.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1571,7 +1571,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
             Container(
               padding: EdgeInsets.all(mediaQuery.size.width * 0.04),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.05),
+                color: theme.colorScheme.primary.withValues(alpha:0.05),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -1598,7 +1598,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.outline.withOpacity(0.1),
+                      backgroundColor: theme.colorScheme.outline.withValues(alpha:0.1),
                     ),
                   ),
                 ],
@@ -1669,12 +1669,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: _selectedFile != null
-                                ? theme.colorScheme.primary.withOpacity(0.5)
-                                : theme.colorScheme.outline.withOpacity(0.3),
+                                ? theme.colorScheme.primary.withValues(alpha:0.5)
+                                : theme.colorScheme.outline.withValues(alpha:0.3),
                           ),
                           borderRadius: BorderRadius.circular(12),
                           color: _selectedFile != null
-                              ? theme.colorScheme.primary.withOpacity(0.05)
+                              ? theme.colorScheme.primary.withValues(alpha:0.05)
                               : theme.colorScheme.surface,
                         ),
                         child: Column(
@@ -1686,15 +1686,15 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                   padding: EdgeInsets.all(mediaQuery.size.width * 0.02),
                                   decoration: BoxDecoration(
                                     color: _selectedFile != null
-                                        ? theme.colorScheme.primary.withOpacity(0.1)
-                                        : theme.colorScheme.outline.withOpacity(0.1),
+                                        ? theme.colorScheme.primary.withValues(alpha:0.1)
+                                        : theme.colorScheme.outline.withValues(alpha:0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     _selectedFile != null ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
                                     color: _selectedFile != null
                                         ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        : theme.colorScheme.onSurface.withValues(alpha:0.6),
                                     size: mediaQuery.size.width * 0.05,
                                   ),
                                 ),
@@ -1705,7 +1705,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: _selectedFile != null
                                           ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface.withOpacity(0.7),
+                                          : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                       fontWeight: _selectedFile != null ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
@@ -1757,7 +1757,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.2),
+                    color: theme.colorScheme.outline.withValues(alpha:0.2),
                   ),
                 ),
               ),

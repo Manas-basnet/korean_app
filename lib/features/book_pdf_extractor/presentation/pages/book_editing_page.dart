@@ -296,7 +296,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
       decoration: BoxDecoration(
         color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -606,7 +606,7 @@ class _ChapterManagementSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.outline.withValues(alpha:0.2)),
       ),
       child: Column(
         children: [
@@ -615,7 +615,7 @@ class _ChapterManagementSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: colorScheme.onSurfaceVariant.withValues(alpha:0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -659,7 +659,7 @@ class _ChapterManagementSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+              border: Border.all(color: colorScheme.primary.withValues(alpha:0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -740,7 +740,7 @@ class _ChapterManagementSheet extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+            color: colorScheme.onPrimaryContainer.withValues(alpha:0.8),
           ),
           textAlign: TextAlign.center,
         ),
@@ -802,7 +802,7 @@ class _ChapterManagementSheet extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+          side: BorderSide(color: colorScheme.outline.withValues(alpha:0.2)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),

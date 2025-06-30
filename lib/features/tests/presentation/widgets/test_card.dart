@@ -26,16 +26,14 @@ class TestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: _TestCardContainer(
-        test: test,
-        canEdit: canEdit,
-        onTap: onTap,
-        onLongPress: onLongPress,
-        onEdit: onEdit,
-        onDelete: onDelete,
-        onViewDetails: onViewDetails,
-      ),
+    return _TestCardContainer(
+      test: test,
+      canEdit: canEdit,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onEdit: onEdit,
+      onDelete: onDelete,
+      onViewDetails: onViewDetails,
     );
   }
 }
@@ -198,46 +196,59 @@ class _OptimizedTestImage extends StatelessWidget {
   }
 
   Widget _buildLocalImage() {
-    return Image.file(
-      File(imagePath!),
-      fit: BoxFit.cover,
-      gaplessPlayback: true,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        return AnimatedOpacity(
-          opacity: frame == null ? 0 : 1,
-          duration: const Duration(milliseconds: 150),
-          child: child,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Image.file(
+          File(imagePath!),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          cacheWidth: (constraints.maxWidth * 2).toInt(),
+          cacheHeight: (constraints.maxHeight * 2).toInt(),
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (wasSynchronouslyLoaded) return child;
+            return AnimatedOpacity(
+              opacity: frame == null ? 0 : 1,
+              duration: const Duration(milliseconds: 150),
+              child: child,
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            if (imageUrl != null && imageUrl!.isNotEmpty) {
+              return _buildNetworkImage();
+            }
+            return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+          },
         );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        if (imageUrl != null && imageUrl!.isNotEmpty) {
-          return _buildNetworkImage();
-        }
-        return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
       },
     );
   }
 
   Widget _buildNetworkImage() {
-    return CachedNetworkImage(
-      imageUrl: imageUrl!,
-      fit: BoxFit.cover,
-      memCacheWidth: 400,
-      memCacheHeight: 300,
-      maxWidthDiskCache: 400,
-      maxHeightDiskCache: 300,
-      placeholder: (context, url) => _ImagePlaceholder(
-        icon: icon,
-        colorScheme: colorScheme,
-        showLoading: true,
-      ),
-      errorWidget: (context, url, error) => _ImagePlaceholder(
-        icon: icon,
-        colorScheme: colorScheme,
-      ),
-      fadeInDuration: const Duration(milliseconds: 200),
-      fadeOutDuration: const Duration(milliseconds: 100),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final targetWidth = (constraints.maxWidth * 2).toInt();
+        final targetHeight = (constraints.maxHeight * 2).toInt();
+        
+        return CachedNetworkImage(
+          imageUrl: imageUrl!,
+          fit: BoxFit.cover,
+          memCacheWidth: targetWidth.clamp(100, 200),
+          memCacheHeight: targetHeight.clamp(100, 200),
+          maxWidthDiskCache: targetWidth.clamp(100, 200),
+          maxHeightDiskCache: targetHeight.clamp(100, 200),
+          placeholder: (context, url) => _ImagePlaceholder(
+            icon: icon,
+            colorScheme: colorScheme,
+            showLoading: true,
+          ),
+          errorWidget: (context, url, error) => _ImagePlaceholder(
+            icon: icon,
+            colorScheme: colorScheme,
+          ),
+          fadeInDuration: const Duration(milliseconds: 200),
+          fadeOutDuration: const Duration(milliseconds: 100),
+        );
+      },
     );
   }
 }
@@ -413,50 +424,110 @@ class _TestCardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = theme.colorScheme;
+    final screenSize = MediaQuery.sizeOf(context);
+    final isSmallScreen = screenSize.height < 700;
     
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-            child: Text(
-              test.title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+    // Dynamic padding based on screen size
+    final horizontalPadding = screenSize.width * 0.025; // 2.5% of screen width
+    final verticalPadding = screenSize.height * 0.008;  // 0.8% of screen height
+    final titleToContentGap = screenSize.height * 0.004; // 0.4% of screen height
+    final statsToChipGap = screenSize.height * 0.002;    // 0.2% of screen height
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final availableWidth = constraints.maxWidth;
+        
+        // Allocate height dynamically
+        final paddingHeight = verticalPadding * 2;
+        final gapsHeight = titleToContentGap + statsToChipGap;
+        final contentHeight = availableHeight - paddingHeight - gapsHeight;
+        
+        // Dynamic text size based on available space
+        final titleFontSize = isSmallScreen 
+            ? (availableWidth * 0.035).clamp(10.0, 14.0)
+            : (availableWidth * 0.04).clamp(12.0, 16.0);
+            
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
           ),
-          
-          const SizedBox(height: 8),
-          
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: _buildStatsSection(colorScheme),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title section - flexible height
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: contentHeight * 0.45, // Max 45% of content height
+                  minHeight: contentHeight * 0.25, // Min 25% of content height
                 ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: _CategoryChip(
-                    category: test.category,
-                    colorScheme: colorScheme,
-                    theme: theme,
+                child: Text(
+                  test.title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                    fontSize: titleFontSize,
+                    height: 1.1,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+              ),
+              
+              SizedBox(height: titleToContentGap),
+              
+              // Content section - remaining height
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, contentConstraints) {
+                    final remainingHeight = contentConstraints.maxHeight;
+                    
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Stats section - flexible
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: remainingHeight - statsToChipGap - (screenSize.height * 0.022), // Reserve space for chip
+                            ),
+                            child: _buildStatsSection(colorScheme, availableWidth, isSmallScreen),
+                          ),
+                        ),
+                        
+                        SizedBox(height: statsToChipGap),
+                        
+                        // Category chip - fixed height
+                        _CategoryChip(
+                          category: test.category,
+                          colorScheme: colorScheme,
+                          theme: theme,
+                          screenWidth: availableWidth,
+                          isSmallScreen: isSmallScreen,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStatsSection(ColorScheme colorScheme) {
+  Widget _buildStatsSection(ColorScheme colorScheme, double availableWidth, bool isSmallScreen) {
+    final iconSize = isSmallScreen 
+        ? (availableWidth * 0.035).clamp(10.0, 12.0)
+        : (availableWidth * 0.04).clamp(12.0, 14.0);
+    final fontSize = isSmallScreen 
+        ? (availableWidth * 0.028).clamp(9.0, 11.0)
+        : (availableWidth * 0.032).clamp(10.0, 12.0);
+        
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -464,21 +535,28 @@ class _TestCardContent extends StatelessWidget {
           flex: 7,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               _StatRow(
                 icon: Icons.schedule_rounded,
                 text: _formatTimeLimit(test.formattedTimeLimit),
                 color: colorScheme.onSurfaceVariant,
                 theme: theme,
+                iconSize: iconSize,
+                fontSize: fontSize,
               ),
-              if (test.rating > 0)
+              if (test.rating > 0) ...[
+                SizedBox(height: availableWidth * 0.008), // Dynamic spacing
                 _StatRow(
                   icon: Icons.star_rounded,
                   text: test.formattedRating,
                   color: Colors.amber[600]!,
                   theme: theme,
+                  iconSize: iconSize,
+                  fontSize: fontSize,
                 ),
+              ],
             ],
           ),
         ),
@@ -491,6 +569,8 @@ class _TestCardContent extends StatelessWidget {
               text: test.formattedViewCount,
               color: colorScheme.onSurfaceVariant,
               theme: theme,
+              iconSize: iconSize,
+              fontSize: fontSize,
             ),
           ),
         ),
@@ -512,12 +592,16 @@ class _StatRow extends StatelessWidget {
   final String text;
   final Color color;
   final ThemeData theme;
+  final double iconSize;
+  final double fontSize;
 
   const _StatRow({
     required this.icon,
     required this.text,
     required this.color,
     required this.theme,
+    required this.iconSize,
+    required this.fontSize,
   });
 
   @override
@@ -528,17 +612,17 @@ class _StatRow extends StatelessWidget {
       children: [
         Icon(
           icon,
-          size: 14,
+          size: iconSize,
           color: color,
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: iconSize * 0.3), // Dynamic spacing based on icon size
         Flexible(
           child: Text(
             text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
+              fontSize: fontSize,
               height: 1.1,
             ),
             overflow: TextOverflow.ellipsis,
@@ -554,30 +638,41 @@ class _CategoryChip extends StatelessWidget {
   final TestCategory category;
   final ColorScheme colorScheme;
   final ThemeData theme;
+  final double screenWidth;
+  final bool isSmallScreen;
 
   const _CategoryChip({
     required this.category,
     required this.colorScheme,
     required this.theme,
+    required this.screenWidth,
+    required this.isSmallScreen,
   });
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = screenWidth * 0.02; // 2% of screen width
+    final verticalPadding = screenWidth * 0.008;  // 0.8% of screen width
+    final fontSize = isSmallScreen 
+        ? (screenWidth * 0.025).clamp(8.0, 10.0)
+        : (screenWidth * 0.028).clamp(9.0, 11.0);
+    
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
       ),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03), // Dynamic border radius
       ),
       child: Text(
         category.displayName,
         style: theme.textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w500,
-          fontSize: 11,
+          fontSize: fontSize,
+          height: 1.0,
         ),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,

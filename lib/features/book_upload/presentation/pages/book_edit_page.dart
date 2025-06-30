@@ -324,7 +324,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -357,12 +357,12 @@ class _BookEditPageState extends State<BookEditPage> {
                         border: Border.all(
                           color: isSelected
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.outline.withOpacity(0.3),
+                              : theme.colorScheme.outline.withValues(alpha:0.3),
                           width: 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
                         color: isSelected
-                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            ? theme.colorScheme.primary.withValues(alpha:0.08)
                             : Colors.transparent,
                       ),
                       child: Column(
@@ -375,7 +375,7 @@ class _BookEditPageState extends State<BookEditPage> {
                             size: MediaQuery.sizeOf(context).width * 0.08,
                             color: isSelected
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                           ),
                           SizedBox(height: MediaQuery.sizeOf(context).height * 0.01),
                           Text(
@@ -391,7 +391,7 @@ class _BookEditPageState extends State<BookEditPage> {
                           Text(
                             type.description,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -415,7 +415,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -438,13 +438,13 @@ class _BookEditPageState extends State<BookEditPage> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -476,13 +476,13 @@ class _BookEditPageState extends State<BookEditPage> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha:0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -516,7 +516,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -591,7 +591,7 @@ class _BookEditPageState extends State<BookEditPage> {
                     ),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: theme.colorScheme.outline.withOpacity(0.3),
+                        color: theme.colorScheme.outline.withValues(alpha:0.3),
                       ),
                       borderRadius: BorderRadius.circular(12),
                       color: theme.colorScheme.surface,
@@ -600,7 +600,7 @@ class _BookEditPageState extends State<BookEditPage> {
                       children: [
                         Icon(
                           Icons.format_list_numbered_rounded,
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                         ),
                         SizedBox(width: MediaQuery.sizeOf(context).width * 0.03),
                         Expanded(
@@ -747,7 +747,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -775,7 +775,7 @@ class _BookEditPageState extends State<BookEditPage> {
                   vertical: MediaQuery.sizeOf(context).height * 0.005,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                  color: theme.colorScheme.secondary.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -800,13 +800,13 @@ class _BookEditPageState extends State<BookEditPage> {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: _pdfSelected 
-                        ? theme.colorScheme.primary.withOpacity(0.5)
-                        : theme.colorScheme.outline.withOpacity(0.3),
+                        ? theme.colorScheme.primary.withValues(alpha:0.5)
+                        : theme.colorScheme.outline.withValues(alpha:0.3),
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   color: _pdfSelected 
-                      ? theme.colorScheme.primary.withOpacity(0.05)
+                      ? theme.colorScheme.primary.withValues(alpha:0.05)
                       : theme.colorScheme.surface,
                 ),
                 child: Column(
@@ -817,15 +817,15 @@ class _BookEditPageState extends State<BookEditPage> {
                           padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.02),
                           decoration: BoxDecoration(
                             color: _pdfSelected 
-                                ? theme.colorScheme.primary.withOpacity(0.1)
-                                : theme.colorScheme.outline.withOpacity(0.1),
+                                ? theme.colorScheme.primary.withValues(alpha:0.1)
+                                : theme.colorScheme.outline.withValues(alpha:0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             _pdfSelected ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
                             color: _pdfSelected 
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                             size: MediaQuery.sizeOf(context).width * 0.05,
                           ),
                         ),
@@ -842,7 +842,7 @@ class _BookEditPageState extends State<BookEditPage> {
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: _pdfSelected 
                                       ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                      : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                   fontWeight: _pdfSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
                                 maxLines: 1,
@@ -852,14 +852,14 @@ class _BookEditPageState extends State<BookEditPage> {
                                 Text(
                                   'New PDF file ready for upload',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.primary.withOpacity(0.8),
+                                    color: theme.colorScheme.primary.withValues(alpha:0.8),
                                   ),
                                 )
                               else if (widget.book.pdfUrl != null)
                                 Text(
                                   'Keep current PDF or select new one',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                                   ),
                                 ),
                             ],
@@ -872,7 +872,7 @@ class _BookEditPageState extends State<BookEditPage> {
                       Container(
                         padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.03),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withOpacity(0.1),
+                          color: theme.colorScheme.error.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -970,7 +970,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -1020,7 +1020,7 @@ class _BookEditPageState extends State<BookEditPage> {
               padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.08),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha:0.2),
                   style: BorderStyle.solid,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -1031,13 +1031,13 @@ class _BookEditPageState extends State<BookEditPage> {
                   Icon(
                     Icons.auto_stories_outlined,
                     size: MediaQuery.sizeOf(context).width * 0.12,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha:0.4),
                   ),
                   SizedBox(height: MediaQuery.sizeOf(context).height * 0.02),
                   Text(
                     'No chapters available',
                     style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1045,7 +1045,7 @@ class _BookEditPageState extends State<BookEditPage> {
                   Text(
                     'Add chapters to update this book',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha:0.5),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1069,12 +1069,12 @@ class _BookEditPageState extends State<BookEditPage> {
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: isModified
-                          ? theme.colorScheme.secondary.withOpacity(0.3)
-                          : theme.colorScheme.outline.withOpacity(0.2),
+                          ? theme.colorScheme.secondary.withValues(alpha:0.3)
+                          : theme.colorScheme.outline.withValues(alpha:0.2),
                     ),
                     borderRadius: BorderRadius.circular(12),
                     color: isModified
-                        ? theme.colorScheme.secondary.withOpacity(0.05)
+                        ? theme.colorScheme.secondary.withValues(alpha:0.05)
                         : theme.colorScheme.surface,
                   ),
                   child: Row(
@@ -1085,7 +1085,7 @@ class _BookEditPageState extends State<BookEditPage> {
                         decoration: BoxDecoration(
                           color: isModified
                               ? theme.colorScheme.secondary
-                              : theme.colorScheme.outline.withOpacity(0.2),
+                              : theme.colorScheme.outline.withValues(alpha:0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Center(
@@ -1094,7 +1094,7 @@ class _BookEditPageState extends State<BookEditPage> {
                             style: theme.textTheme.labelLarge?.copyWith(
                               color: isModified
                                   ? theme.colorScheme.onSecondary
-                                  : theme.colorScheme.onSurface.withOpacity(0.7),
+                                  : theme.colorScheme.onSurface.withValues(alpha:0.7),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1141,7 +1141,7 @@ class _BookEditPageState extends State<BookEditPage> {
                               Text(
                                 chapter.description!,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -1155,7 +1155,7 @@ class _BookEditPageState extends State<BookEditPage> {
                                       ? 'File: ${chapter.pdfFile!.path.split('/').last}'
                                       : 'Using existing chapter file',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                    color: theme.colorScheme.onSurface.withValues(alpha:0.5),
                                   ),
                                 ),
                                 if (chapter.hasAudio) ...[
@@ -1166,7 +1166,7 @@ class _BookEditPageState extends State<BookEditPage> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: theme.colorScheme.tertiary.withOpacity(0.1),
+                                      color: theme.colorScheme.tertiary.withValues(alpha:0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -1187,7 +1187,7 @@ class _BookEditPageState extends State<BookEditPage> {
                         enabled: !isUploading,
                         icon: Icon(
                           Icons.more_vert_rounded,
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                         ),
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -1236,7 +1236,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -1264,7 +1264,7 @@ class _BookEditPageState extends State<BookEditPage> {
                   vertical: MediaQuery.sizeOf(context).height * 0.005,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                  color: theme.colorScheme.secondary.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1289,13 +1289,13 @@ class _BookEditPageState extends State<BookEditPage> {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: _imageSelected 
-                        ? theme.colorScheme.secondary.withOpacity(0.5)
-                        : theme.colorScheme.outline.withOpacity(0.3),
+                        ? theme.colorScheme.secondary.withValues(alpha:0.5)
+                        : theme.colorScheme.outline.withValues(alpha:0.3),
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   color: _imageSelected 
-                      ? theme.colorScheme.secondary.withOpacity(0.05)
+                      ? theme.colorScheme.secondary.withValues(alpha:0.05)
                       : theme.colorScheme.surface,
                 ),
                 child: Column(
@@ -1321,18 +1321,18 @@ class _BookEditPageState extends State<BookEditPage> {
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             height: MediaQuery.sizeOf(context).height * 0.2,
-                            color: theme.colorScheme.outline.withOpacity(0.1),
+                            color: theme.colorScheme.outline.withValues(alpha:0.1),
                             child: const Center(
                               child: CircularProgressIndicator(),
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(
                             height: MediaQuery.sizeOf(context).height * 0.2,
-                            color: theme.colorScheme.outline.withOpacity(0.1),
+                            color: theme.colorScheme.outline.withValues(alpha:0.1),
                             child: Center(
                               child: Icon(
                                 Icons.image_not_supported_rounded,
-                                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                color: theme.colorScheme.onSurface.withValues(alpha:0.4),
                                 size: MediaQuery.sizeOf(context).width * 0.12,
                               ),
                             ),
@@ -1347,15 +1347,15 @@ class _BookEditPageState extends State<BookEditPage> {
                           padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.02),
                           decoration: BoxDecoration(
                             color: _imageSelected 
-                                ? theme.colorScheme.secondary.withOpacity(0.1)
-                                : theme.colorScheme.outline.withOpacity(0.1),
+                                ? theme.colorScheme.secondary.withValues(alpha:0.1)
+                                : theme.colorScheme.outline.withValues(alpha:0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             _imageSelected ? Icons.check_circle_rounded : Icons.image_rounded,
                             color: _imageSelected 
                                 ? theme.colorScheme.secondary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha:0.6),
                             size: MediaQuery.sizeOf(context).width * 0.05,
                           ),
                         ),
@@ -1372,7 +1372,7 @@ class _BookEditPageState extends State<BookEditPage> {
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: _imageSelected 
                                       ? theme.colorScheme.secondary
-                                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                                      : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                   fontWeight: _imageSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
                                 maxLines: 1,
@@ -1382,14 +1382,14 @@ class _BookEditPageState extends State<BookEditPage> {
                                 Text(
                                   'New image ready for upload',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.secondary.withOpacity(0.8),
+                                    color: theme.colorScheme.secondary.withValues(alpha:0.8),
                                   ),
                                 )
                               else if (widget.book.bookImage != null)
                                 Text(
                                   'Keep current image or select new one',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                                   ),
                                 ),
                             ],
@@ -1402,7 +1402,7 @@ class _BookEditPageState extends State<BookEditPage> {
                       Container(
                         padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.03),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withOpacity(0.1),
+                          color: theme.colorScheme.error.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -1468,10 +1468,10 @@ class _BookEditPageState extends State<BookEditPage> {
     return Container(
       padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.04),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.05),
+        color: colorScheme.primary.withValues(alpha:0.05),
         border: Border(
           top: BorderSide(
-            color: colorScheme.outline.withOpacity(0.2),
+            color: colorScheme.outline.withValues(alpha:0.2),
           ),
         ),
       ),
@@ -1499,7 +1499,7 @@ class _BookEditPageState extends State<BookEditPage> {
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: uploadProgress,
-              backgroundColor: colorScheme.outline.withOpacity(0.2),
+              backgroundColor: colorScheme.outline.withValues(alpha:0.2),
               valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
               minHeight: MediaQuery.sizeOf(context).height * 0.008,
             ),
@@ -1516,7 +1516,7 @@ class _BookEditPageState extends State<BookEditPage> {
         color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.2),
+            color: theme.colorScheme.outline.withValues(alpha:0.2),
           ),
         ),
       ),
@@ -1539,8 +1539,8 @@ class _BookEditPageState extends State<BookEditPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
-              disabledBackgroundColor: colorScheme.outline.withOpacity(0.3),
-              disabledForegroundColor: colorScheme.onSurface.withOpacity(0.5),
+              disabledBackgroundColor: colorScheme.outline.withValues(alpha:0.3),
+              disabledForegroundColor: colorScheme.onSurface.withValues(alpha:0.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1670,7 +1670,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
             Container(
               padding: EdgeInsets.all(mediaQuery.width * 0.04),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.05),
+                color: theme.colorScheme.primary.withValues(alpha:0.05),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -1697,7 +1697,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.outline.withOpacity(0.1),
+                      backgroundColor: theme.colorScheme.outline.withValues(alpha:0.1),
                     ),
                   ),
                 ],
@@ -1768,12 +1768,12 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: _fileChanged
-                                ? theme.colorScheme.primary.withOpacity(0.5)
-                                : theme.colorScheme.outline.withOpacity(0.3),
+                                ? theme.colorScheme.primary.withValues(alpha:0.5)
+                                : theme.colorScheme.outline.withValues(alpha:0.3),
                           ),
                           borderRadius: BorderRadius.circular(12),
                           color: _fileChanged
-                              ? theme.colorScheme.primary.withOpacity(0.05)
+                              ? theme.colorScheme.primary.withValues(alpha:0.05)
                               : theme.colorScheme.surface,
                         ),
                         child: Column(
@@ -1785,15 +1785,15 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                   padding: EdgeInsets.all(mediaQuery.width * 0.02),
                                   decoration: BoxDecoration(
                                     color: _fileChanged
-                                        ? theme.colorScheme.primary.withOpacity(0.1)
-                                        : theme.colorScheme.outline.withOpacity(0.1),
+                                        ? theme.colorScheme.primary.withValues(alpha:0.1)
+                                        : theme.colorScheme.outline.withValues(alpha:0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     _fileChanged ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
                                     color: _fileChanged
                                         ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        : theme.colorScheme.onSurface.withValues(alpha:0.6),
                                     size: mediaQuery.width * 0.05,
                                   ),
                                 ),
@@ -1806,7 +1806,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: _fileChanged
                                           ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface.withOpacity(0.7),
+                                          : theme.colorScheme.onSurface.withValues(alpha:0.7),
                                       fontWeight: _fileChanged ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
@@ -1860,7 +1860,7 @@ class _ChapterUploadDialogState extends State<_ChapterUploadDialog> {
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.2),
+                    color: theme.colorScheme.outline.withValues(alpha:0.2),
                   ),
                 ),
               ),

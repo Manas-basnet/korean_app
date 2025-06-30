@@ -43,7 +43,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final params = LoadFavoriteBooksParams(
+      const params = LoadFavoriteBooksParams(
         category: CourseCategory.favorite,
         page: 0,
         pageSize: 50, // Load all favorites since it's local
@@ -109,7 +109,7 @@ class FavoriteBooksCubit extends Cubit<FavoriteBooksState> {
         ),
       ));
       
-      final params = LoadFavoriteBooksParams(
+      const params = LoadFavoriteBooksParams(
         category: CourseCategory.favorite,
         page: 0,
         pageSize: 50, // Load all favorites since it's local

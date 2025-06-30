@@ -126,7 +126,7 @@ class PdfPageThumbnail extends StatelessWidget {
             children: [
               Positioned.fill(
                 child: Container(
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                   child: page.thumbnailPath != null
                       ? Image.file(
                           File(page.thumbnailPath!),
@@ -142,7 +142,7 @@ class PdfPageThumbnail extends StatelessWidget {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.3),
+                      color: colorScheme.primary.withValues(alpha:0.3),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -224,7 +224,7 @@ class PdfPageThumbnail extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha:0.7),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
@@ -242,14 +242,14 @@ class PdfPageThumbnail extends StatelessWidget {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha:0.4),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.8),
+                          color: Colors.black.withValues(alpha:0.8),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
@@ -282,7 +282,7 @@ class PdfPageThumbnail extends StatelessWidget {
     } else if (chapterInfo != null) {
       return _getChapterColor(chapterInfo!.chapterNumber);
     } else {
-      return colorScheme.outline.withOpacity(0.2);
+      return colorScheme.outline.withValues(alpha:0.2);
     }
   }
 
@@ -314,7 +314,7 @@ class PdfPageThumbnail extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     
     return Container(
-      color: colorScheme.surfaceVariant,
+      color: colorScheme.surfaceContainerHighest,
       child: Center(
         child: SizedBox(
           width: 20,

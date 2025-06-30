@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/sort_bottomsheet.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/test_detail_bottomsheet.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
@@ -103,7 +106,7 @@ class _TestsPageState extends State<TestsPage> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
     
-    return maxScroll > 0 && currentScroll >= (maxScroll * 0.8);
+    return maxScroll > 0 && currentScroll >= (maxScroll * 0.7);
   }
 
   Future<void> _refreshData() async {
@@ -150,158 +153,12 @@ class _TestsPageState extends State<TestsPage> {
   }
 
   void _showSortBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _buildSortBottomSheet(),
+    SortBottomSheet.show(
+      context,
+      selectedSortType: _selectedSortType,
+      languageCubit: _languageCubit,
+      onSortTypeChanged: _onSortTypeChanged,
     );
-  }
-
-  Widget _buildSortBottomSheet() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    
-    final maxHeight = screenSize.height * 0.6;
-    final headerHeight = screenSize.height * 0.08;
-    final availableContentHeight = maxHeight - headerHeight - bottomPadding;
-    
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: maxHeight,
-        maxWidth: screenSize.width,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            margin: EdgeInsets.only(
-              top: screenSize.height * 0.01,
-              bottom: screenSize.height * 0.005,
-            ),
-            width: screenSize.width * 0.1,
-            height: screenSize.height * 0.005,
-            decoration: BoxDecoration(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
-          Container(
-            height: headerHeight,
-            padding: EdgeInsets.symmetric(
-              horizontal: screenSize.width * 0.05,
-              vertical: screenSize.height * 0.01,
-            ),
-            child: Row(
-              children: [
-                Text(
-                  _languageCubit.getLocalizedText(
-                    korean: '정렬',
-                    english: 'Sort',
-                  ),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: screenSize.width * 0.05,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: screenSize.width * 0.06,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                    padding: EdgeInsets.all(screenSize.width * 0.02),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          Flexible(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: availableContentHeight,
-              ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: screenSize.width * 0.02,
-                  right: screenSize.width * 0.02,
-                  bottom: screenSize.height * 0.02 + bottomPadding,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: TestSortType.values.map((sortType) {
-                    final isSelected = _selectedSortType == sortType;
-                    return Container(
-                      margin: EdgeInsets.symmetric(
-                        vertical: screenSize.height * 0.002,
-                      ),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenSize.width * 0.04,
-                          vertical: screenSize.height * 0.005,
-                        ),
-                        leading: Icon(
-                          _getSortTypeIcon(sortType),
-                          color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                          size: screenSize.width * 0.06,
-                        ),
-                        title: Text(
-                          sortType.getDisplayName(_languageCubit.getLocalizedText),
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-                            fontSize: screenSize.width * 0.04,
-                          ),
-                        ),
-                        trailing: isSelected 
-                            ? Icon(
-                                Icons.check_rounded, 
-                                color: colorScheme.primary,
-                                size: screenSize.width * 0.05,
-                              )
-                            : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _onSortTypeChanged(sortType);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getSortTypeIcon(TestSortType sortType) {
-    switch (sortType) {
-      case TestSortType.recent:
-        return Icons.schedule_rounded;
-      case TestSortType.popular:
-        return Icons.trending_up_rounded;
-      case TestSortType.rating:
-        return Icons.star_rounded;
-      case TestSortType.viewCount:
-        return Icons.visibility_rounded;
-    }
   }
 
   void _showSearchDelegate() {
@@ -319,6 +176,19 @@ class _TestsPageState extends State<TestsPage> {
         onViewDetails: _viewTestDetails,
       ),
     );
+  }
+
+  IconData _getSortTypeIcon(TestSortType sortType) {
+    switch (sortType) {
+      case TestSortType.recent:
+        return Icons.schedule_rounded;
+      case TestSortType.popular:
+        return Icons.trending_up_rounded;
+      case TestSortType.rating:
+        return Icons.star_rounded;
+      case TestSortType.viewCount:
+        return Icons.visibility_rounded;
+    }
   }
 
   @override
@@ -683,30 +553,130 @@ class _TestsPageState extends State<TestsPage> {
     final crossAxisCount = isTablet ? 3 : 2;
     final childAspectRatio = isTablet ? 0.7 : 0.75;
     
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          if (index >= state.tests.length) return null;
-          
-          final test = state.tests[index];
-          return TestCard(
-            test: test,
-            canEdit: true,
-            onTap: () => _startTest(test),
-            onEdit: () => _editTest(test),
-            onDelete: () => _deleteTest(test),
-            onViewDetails: () => _viewTestDetails(test),
-          );
-        },
-        childCount: state.tests.length,
-      ),
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: state.tests.length,
+            itemBuilder: (context, index) {
+              final test = state.tests[index];
+              return TestCard(
+                test: test,
+                canEdit: true,
+                onTap: () => _startTest(test),
+                onLongPress: () => _viewTestDetails(test),
+                onEdit: () => _editTest(test),
+                onDelete: () => _deleteTest(test),
+                onViewDetails: () => _viewTestDetails(test),
+              );
+            },
+          ),
+        ),
+        _buildLoadMoreIndicator(state),
+      ]),
     );
+  }
+
+  Widget _buildLoadMoreIndicator(TestsState state) {
+    final isLoadingMore = state.currentOperation.type == TestsOperationType.loadMoreTests &&
+        state.currentOperation.status == TestsOperationStatus.inProgress;
+    
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    if (isLoadingMore) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    _languageCubit.getLocalizedText(
+                      korean: '더 많은 시험을 불러오는 중...',
+                      english: 'Loading more tests...',
+                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    if (!state.hasMore && state.tests.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _languageCubit.getLocalizedText(
+                      korean: '더 이상 시험이 없습니다',
+                      english: 'No more tests',
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return const SizedBox.shrink();
   }
 
   Widget _buildEmptyTestsView() {
@@ -838,188 +808,15 @@ class _TestsPageState extends State<TestsPage> {
   }
     
   void _viewTestDetails(TestItem test) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildTestDetailsBottomSheet(test),
+    HapticFeedback.lightImpact();
+    TestDetailsBottomSheet.show(
+      context, 
+      test: test,
+      languageCubit: _languageCubit,
+      onStartTest: () => _startTest(test),
     );
   }
-
-  Widget _buildTestDetailsBottomSheet(TestItem test) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
-    
-    return Container(
-      margin: EdgeInsets.all(screenSize.width * 0.04),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (_, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  margin: EdgeInsets.only(
-                    top: screenSize.height * 0.015,
-                    bottom: screenSize.height * 0.01,
-                  ),
-                  width: screenSize.width * 0.1,
-                  height: screenSize.height * 0.005,
-                  decoration: BoxDecoration(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: EdgeInsets.all(screenSize.width * 0.06),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          test.title,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.onSurface,
-                            fontSize: screenSize.width * 0.055,
-                          ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.015),
-                        Text(
-                          test.description,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.5,
-                            fontSize: screenSize.width * 0.04,
-                          ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.03),
-                        
-                        Wrap(
-                          spacing: screenSize.width * 0.03,
-                          runSpacing: screenSize.height * 0.015,
-                          children: [
-                            _buildDetailChip(
-                              icon: Icons.quiz_rounded,
-                              label: '${test.questionCount} Questions',
-                              color: colorScheme.primary,
-                              theme: theme,
-                              screenSize: screenSize,
-                            ),
-                            _buildDetailChip(
-                              icon: Icons.timer_rounded,
-                              label: test.formattedTimeLimit,
-                              color: colorScheme.tertiary,
-                              theme: theme,
-                              screenSize: screenSize,
-                            ),
-                            _buildDetailChip(
-                              icon: Icons.school_rounded,
-                              label: '${test.formattedPassingScore} to pass',
-                              color: colorScheme.secondary,
-                              theme: theme,
-                              screenSize: screenSize,
-                            ),
-                            if (test.rating > 0)
-                              _buildDetailChip(
-                                icon: Icons.star_rounded,
-                                label: '${test.formattedRating} (${test.ratingCount})',
-                                color: Colors.amber[600]!,
-                                theme: theme,
-                                screenSize: screenSize,
-                              ),
-                            _buildDetailChip(
-                              icon: Icons.visibility_rounded,
-                              label: '${test.formattedViewCount} views',
-                              color: Colors.blue[600]!,
-                              theme: theme,
-                              screenSize: screenSize,
-                            ),
-                          ],
-                        ),
-                        
-                        SizedBox(height: screenSize.height * 0.04),
-                        
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _startTest(test);
-                            },
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: Text(
-                              _languageCubit.getLocalizedText(
-                                korean: '시험 시작',
-                                english: 'Start Test',
-                              ),
-                            ),
-                            style: FilledButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                vertical: screenSize.height * 0.02,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildDetailChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required ThemeData theme,
-    required Size screenSize,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenSize.width * 0.03,
-        vertical: screenSize.height * 0.01,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: screenSize.width * 0.04, color: color),
-          SizedBox(width: screenSize.width * 0.015),
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: screenSize.width * 0.03,
-            ),
-          ),
-        ],
-      ),
-    );
-  } 
+  
   void _editTest(TestItem test) async {
     if (test.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(

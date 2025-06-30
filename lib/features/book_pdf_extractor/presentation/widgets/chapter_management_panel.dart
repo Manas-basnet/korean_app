@@ -29,7 +29,7 @@ class ChapterManagementPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          left: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+          left: BorderSide(color: colorScheme.outline.withValues(alpha:0.3)),
         ),
       ),
       child: Column(
@@ -40,7 +40,7 @@ class ChapterManagementPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
               border: Border(
-                bottom: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+                bottom: BorderSide(color: colorScheme.outline.withValues(alpha:0.3)),
               ),
             ),
             child: Row(
