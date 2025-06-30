@@ -153,6 +153,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       floatingActionButton: FloatingActionButton(
+        heroTag: "unpub_tests_page_fab",
         onPressed: () => context.push(Routes.testUpload),
         tooltip: _languageCubit.getLocalizedText(
           korean: '시험 만들기',

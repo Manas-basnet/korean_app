@@ -323,6 +323,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "admin_management_page_fab",
         onPressed: () => context.push(Routes.adminSignup),
         backgroundColor: colorScheme.secondary,
         foregroundColor: colorScheme.onSecondary,

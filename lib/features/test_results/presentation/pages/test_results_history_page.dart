@@ -177,6 +177,7 @@ class _TestResultsHistoryPageState extends State<TestResultsHistoryPage> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutBack,
           child: FloatingActionButton(
+            heroTag: "test_results_history_page_fab",
             onPressed: _showScrollToTop ? _scrollToTop : null,
             backgroundColor: colorScheme.primary,
             foregroundColor: colorScheme.onPrimary,

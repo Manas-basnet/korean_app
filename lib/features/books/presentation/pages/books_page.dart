@@ -506,6 +506,7 @@ class _BooksPageState extends State<BooksPage>
       child: Scaffold(
         backgroundColor: colorScheme.surface,
         floatingActionButton: FloatingActionButton(
+          heroTag: "books_page_fab",
           onPressed: () => context.push(Routes.uploadBooks),
           tooltip: _languageCubit.getLocalizedText(
             korean: '책 업로드',

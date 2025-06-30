@@ -361,6 +361,7 @@ class TestSessionCubit extends Cubit<TestSessionState> {
   Future<void> close() {
     _testTimer?.cancel();
     _questionTimer?.cancel();
+    debugPrint('Test session cubit closed');
     return super.close();
   }
 }

@@ -102,6 +102,7 @@ class _BookEditingPageState extends State<BookEditingPage> {
         builder: (context, state) {
           if (state is BookEditingLoaded && !state.isSelectionMode) {
             return FloatingActionButton.extended(
+              heroTag: 'add_chapter',
               onPressed: () => _showChapterManagement(context, state),
               icon: const Icon(Icons.auto_stories),
               label:
