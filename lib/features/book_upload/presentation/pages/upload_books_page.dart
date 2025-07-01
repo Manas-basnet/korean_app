@@ -104,6 +104,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
       builder: (context) => ChapterUploadDialog(
         chapterNumber: chapters.length + 1,
         fileUploadCubit: _fileUploadCubit,
+        originalChapter: null,
       ),
     );
 
@@ -172,6 +173,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
         chapterNumber: index + 1,
         fileUploadCubit: _fileUploadCubit,
         existingChapter: chapters[index],
+        originalChapter: null,
       ),
     );
 

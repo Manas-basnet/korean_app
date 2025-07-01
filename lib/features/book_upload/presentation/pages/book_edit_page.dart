@@ -138,6 +138,7 @@ class _BookEditPageState extends State<BookEditPage> {
       builder: (context) => ChapterUploadDialog(
         chapterNumber: _chapters.length + 1,
         fileUploadCubit: context.read<FileUploadCubit>(),
+        originalChapter: null,
       ),
     );
 
@@ -176,6 +177,7 @@ class _BookEditPageState extends State<BookEditPage> {
         fileUploadCubit: context.read<FileUploadCubit>(),
         existingChapter: existingChapter,
         existingAudioTracks: originalChapter.audioTracks,
+        originalChapter: originalChapter,
       ),
     );
 

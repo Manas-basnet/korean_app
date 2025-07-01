@@ -54,9 +54,6 @@ class Chapter {
   bool get hasAudio => audioTracks.isNotEmpty;
   int get audioTrackCount => audioTracks.length;
 
-  // Legacy compatibility getters for reading old data
-  String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
-  String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
 
   @override
   bool operator ==(Object other) {
@@ -95,25 +92,10 @@ class Chapter {
 
     List<AudioTrack> audioTracks = [];
     
-    // Handle new multiple audio tracks format
     if (json['audioTracks'] is List) {
       audioTracks = (json['audioTracks'] as List)
           .map((trackJson) => AudioTrack.fromJson(trackJson))
           .toList();
-    }
-    // Handle legacy single audio format for backward compatibility
-    else if (json['audioUrl'] != null || json['audioPath'] != null) {
-      audioTracks = [
-        AudioTrack(
-          id: '${json['id']}_legacy_audio',
-          name: 'Audio Track',
-          audioUrl: json['audioUrl'] as String?,
-          audioPath: json['audioPath'] as String?,
-          order: 0,
-          createdAt: createdAt,
-          updatedAt: updatedAt,
-        ),
-      ];
     }
 
     return Chapter(

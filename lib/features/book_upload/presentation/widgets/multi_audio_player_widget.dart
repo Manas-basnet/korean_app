@@ -40,7 +40,7 @@ class MultiAudioPlayerWidget extends StatelessWidget {
         child: Column(
           children: [
             Icon(
-              Icons.audiotrack_rounded, //TODO: audio track off icon
+              Icons.audiotrack_rounded,
               size: MediaQuery.of(context).size.width * 0.08,
               color: colorScheme.onSurfaceVariant.withValues(alpha:0.5),
             ),
@@ -185,7 +185,6 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
   void _removeAudioTrack(int index) {
     setState(() {
       _audioTracks.removeAt(index);
-      // Update order for remaining tracks
       for (int i = 0; i < _audioTracks.length; i++) {
         _audioTracks[i] = _audioTracks[i].copyWith(order: i);
       }
@@ -283,7 +282,7 @@ class _MultiAudioTrackManagerWidgetState extends State<MultiAudioTrackManagerWid
               child: Column(
                 children: [
                   Icon(
-                    Icons.audiotrack_rounded, //TODO: audio track off 
+                    Icons.audiotrack_rounded,
                     size: MediaQuery.of(context).size.width * 0.1,
                     color: colorScheme.onSurface.withValues(alpha:0.4),
                   ),
@@ -482,6 +481,12 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
     });
   }
 
+  void _removeSelectedAudio() {
+    setState(() {
+      _selectedAudioFile = null;
+    });
+  }
+
   void _saveAudioTrack() {
     if (_selectedAudioFile != null && _nameController.text.trim().isNotEmpty) {
       widget.onAudioTrackAdded(_selectedAudioFile!, _nameController.text.trim());
@@ -498,7 +503,7 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: mediaQuery.size.height * 0.7,
+          maxHeight: mediaQuery.size.height * 0.8,
           maxWidth: mediaQuery.size.width * 0.9,
         ),
         child: Column(
@@ -561,10 +566,20 @@ class _AddAudioTrackDialogState extends State<_AddAudioTrackDialog> {
                       ),
                     ),
                     SizedBox(height: mediaQuery.size.height * 0.02),
-                    AudioRecorderWidget(
-                      onAudioSelected: _onAudioSelected,
-                      label: 'Record or select audio file for this track',
-                    ),
+                    
+                    if (_selectedAudioFile != null) ...[
+                      AudioPlayerWidget(
+                        audioPath: _selectedAudioFile!.path,
+                        label: 'Selected Audio Track',
+                        onRemove: _removeSelectedAudio,
+                        onEdit: _removeSelectedAudio,
+                      ),
+                    ] else ...[
+                      AudioRecorderWidget(
+                        onAudioSelected: _onAudioSelected,
+                        label: 'Record or select audio file for this track',
+                      ),
+                    ],
                   ],
                 ),
               ),

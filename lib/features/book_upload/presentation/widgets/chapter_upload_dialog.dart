@@ -4,12 +4,14 @@ import 'package:korean_language_app/features/book_upload/domain/entities/chapter
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/widgets/multi_audio_player_widget.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
+import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
 
 class ChapterUploadDialog extends StatefulWidget {
   final int chapterNumber;
   final FileUploadCubit fileUploadCubit;
   final ChapterUploadData? existingChapter;
   final List<AudioTrack>? existingAudioTracks;
+  final Chapter? originalChapter;
 
   const ChapterUploadDialog({
     super.key,
@@ -17,6 +19,7 @@ class ChapterUploadDialog extends StatefulWidget {
     required this.fileUploadCubit,
     this.existingChapter,
     this.existingAudioTracks,
+    this.originalChapter,
   });
 
   @override
@@ -53,11 +56,13 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
       text: widget.existingChapter?.duration ?? '10 mins',
     );
 
-    if (widget.existingChapter != null) {
+    if (widget.existingChapter?.pdfFile != null) {
       _selectedFile = widget.existingChapter!.pdfFile;
-      if (_selectedFile != null && _selectedFile!.path.isNotEmpty) {
-        _fileName = _selectedFile!.path.split('/').last;
-      }
+      _fileName = _selectedFile!.path.split('/').last;
+    } else if (widget.originalChapter?.pdfUrl != null) {
+      _fileName = 'Current chapter PDF';
+    } else if (widget.existingChapter != null) {
+      _fileName = 'Chapter PDF file';
     }
   }
 
@@ -65,8 +70,6 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
     if (widget.existingChapter != null && widget.existingChapter!.audioTracks.isNotEmpty) {
       _audioTracks = List.from(widget.existingChapter!.audioTracks);
     } else if (widget.existingAudioTracks != null && widget.existingAudioTracks!.isNotEmpty) {
-      // We have existing audio tracks but they're not in the upload format
-      // Keep them as they are for now, we'll handle them separately
       _showExistingAudio = true;
     }
   }
@@ -93,16 +96,13 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
   void _onAudioTracksChanged(List<AudioTrackUploadData> audioTracks) {
     setState(() {
       _audioTracks = audioTracks;
-      _showExistingAudio = false; // Hide existing audio when new ones are added
+      _showExistingAudio = false;
     });
   }
 
   void _onEditExistingAudio() {
     setState(() {
       _showExistingAudio = false;
-      // Convert existing audio tracks to upload format if needed
-      // This would require the actual audio files which we don't have
-      // So we'll just start with empty audio tracks for editing
       _audioTracks.clear();
     });
   }
@@ -112,27 +112,26 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
       return;
     }
 
-    // Determine if anything was actually modified
     bool isModified = widget.existingChapter == null ||
         widget.existingChapter!.title != _titleController.text ||
         widget.existingChapter!.description != _descriptionController.text ||
         widget.existingChapter!.duration != _durationController.text ||
         _fileChanged ||
-        !_showExistingAudio || // If we're not showing existing audio, it means they were modified
+        !_showExistingAudio ||
         _audioTracks.length != (widget.existingAudioTracks?.length ?? 0);
 
-    // Only include new PDF file if actually changed, otherwise preserve existing
     File? pdfFileToUpload;
     if (_fileChanged && _selectedFile != null) {
       pdfFileToUpload = _selectedFile;
+    } else if (!_fileChanged && widget.existingChapter?.pdfFile != null) {
+      pdfFileToUpload = widget.existingChapter!.pdfFile;
     }
-    // If not changed, we'll let the data source handle preserving existing PDF
 
     final chapter = ChapterUploadData(
       title: _titleController.text,
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
       duration: _durationController.text.isEmpty ? null : _durationController.text,
-      pdfFile: pdfFileToUpload, // Only set if actually uploading new file
+      pdfFile: pdfFileToUpload,
       audioTracks: _audioTracks,
       order: widget.chapterNumber,
       isNewOrModified: isModified,
@@ -146,6 +145,10 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.sizeOf(context);
+    
+    final hasExistingPdf = _selectedFile != null || 
+                          widget.originalChapter?.pdfUrl != null || 
+                          widget.existingChapter?.pdfFile != null;
     
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -255,18 +258,17 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                       ),
                       SizedBox(height: mediaQuery.height * 0.02),
                       
-                      // PDF File Section
                       Container(
                         width: double.infinity,
                         padding: EdgeInsets.all(mediaQuery.width * 0.04),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _fileChanged
+                            color: _fileChanged || hasExistingPdf
                                 ? theme.colorScheme.primary.withValues(alpha: 0.5)
                                 : theme.colorScheme.outline.withValues(alpha: 0.3),
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          color: _fileChanged
+                          color: _fileChanged || hasExistingPdf
                               ? theme.colorScheme.primary.withValues(alpha: 0.05)
                               : theme.colorScheme.surface,
                         ),
@@ -278,14 +280,14 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                                 Container(
                                   padding: EdgeInsets.all(mediaQuery.width * 0.02),
                                   decoration: BoxDecoration(
-                                    color: _fileChanged
+                                    color: _fileChanged || hasExistingPdf
                                         ? theme.colorScheme.primary.withValues(alpha: 0.1)
                                         : theme.colorScheme.outline.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
-                                    _fileChanged ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
-                                    color: _fileChanged
+                                    _fileChanged || hasExistingPdf ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
+                                    color: _fileChanged || hasExistingPdf
                                         ? theme.colorScheme.primary
                                         : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                     size: mediaQuery.width * 0.05,
@@ -293,16 +295,38 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                                 ),
                                 SizedBox(width: mediaQuery.width * 0.03),
                                 Expanded(
-                                  child: Text(
-                                    _fileName ?? (widget.existingChapter != null 
-                                        ? 'Use existing chapter file' 
-                                        : 'No PDF selected'),
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: _fileChanged
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                      fontWeight: _fileChanged ? FontWeight.w600 : FontWeight.normal,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _fileName ?? 
+                                        (widget.existingChapter?.pdfFile != null 
+                                            ? widget.existingChapter!.pdfFile!.path.split('/').last
+                                            : 'No PDF selected'),
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: _fileChanged || hasExistingPdf
+                                              ? theme.colorScheme.primary
+                                              : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                          fontWeight: _fileChanged || hasExistingPdf ? FontWeight.w600 : FontWeight.normal,
+                                        ),
+                                      ),
+                                      if (_fileChanged)
+                                        Text(
+                                          'New PDF file ready for upload',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                                          ),
+                                        )
+                                      else if (hasExistingPdf && !_fileChanged)
+                                        Text(
+                                          widget.existingChapter?.pdfFile != null 
+                                              ? 'PDF file attached to chapter'
+                                              : 'Keep current PDF or select new one',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -313,7 +337,7 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                               child: ElevatedButton.icon(
                                 onPressed: _pickFile,
                                 icon: const Icon(Icons.upload_file_rounded),
-                                label: Text(widget.existingChapter != null 
+                                label: Text(hasExistingPdf && !_fileChanged
                                     ? 'Change PDF File' 
                                     : 'Select PDF File'),
                                 style: ElevatedButton.styleFrom(
@@ -334,7 +358,6 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                       ),
                       SizedBox(height: mediaQuery.height * 0.02),
                       
-                      // Audio Section
                       if (_showExistingAudio && widget.existingAudioTracks != null && widget.existingAudioTracks!.isNotEmpty) ...[
                         MultiAudioPlayerWidget(
                           audioTracks: widget.existingAudioTracks!,
