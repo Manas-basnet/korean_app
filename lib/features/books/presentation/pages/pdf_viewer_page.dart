@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/features/books/presentation/widgets/background_audio_player.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
-import 'package:korean_language_app/shared/widgets/audio_player.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final File pdfFile;
@@ -54,8 +54,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   int _totalPages = 0;
   
   // Audio overlay state
-  bool _isAudioPlaying = false;
-  AudioTrack? _currentPlayingTrack;
   Timer? _overlayHideTimer;
   bool _isUserInteractingWithOverlay = false;
   
@@ -243,21 +241,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     }
   }
   
-  void _onAudioPlay(AudioTrack track) {
-    setState(() {
-      _isAudioPlaying = true;
-      _currentPlayingTrack = track;
-    });
-    _showAudioOverlay();
-  }
-  
-  void _onAudioStop() {
-    setState(() {
-      _isAudioPlaying = false;
-      _currentPlayingTrack = null;
-    });
-  }
-  
   void _showAudioOverlay() {
     _audioOverlayController.forward();
     _startOverlayHideTimer();
@@ -291,265 +274,262 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     });
   }
   
+  void _onTrackStarted(AudioTrack track) {
+    _showAudioOverlay();
+    if (kDebugMode) {
+      print('Started playing: ${track.name}');
+    }
+  }
+  
+  void _onTrackCompleted(AudioTrack track) {
+    if (kDebugMode) {
+      print('Completed playing: ${track.name}');
+    }
+  }
+  
+  void _onPlaylistCompleted() {
+    if (kDebugMode) {
+      print('Playlist completed');
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.playlist_play, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Playlist completed'),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blue.shade600,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () {
-                _toggleUI();
-                if (_showAudioPanel) {
-                  _closeAudioPanel();
-                }
-              },
-              behavior: HitTestBehavior.translucent,
-              child: Stack(
-                children: [
-                  PDFView(
-                    key: ValueKey(_isHorizontal),
-                    filePath: widget.pdfFile.path,
-                    enableSwipe: true,
-                    swipeHorizontal: _isHorizontal,
-                    autoSpacing: true,
-                    pageFling: true,
-                    pageSnap: true,
-                    defaultPage: _currentPage > 0 ? _currentPage - 1 : 0,
-                    fitPolicy: FitPolicy.BOTH,
-                    preventLinkNavigation: false,
-                    onRender: (pages) {
-                      setState(() {
-                        _totalPages = pages ?? 0;
-                        if (_currentPage == 0 && _totalPages > 0) {
-                          _currentPage = 1;
-                        }
-                      });
-                      if (kDebugMode) {
-                        print('PDF rendered with $pages pages');
-                      }
-                    },
-                    onError: (error) {
-                      if (kDebugMode) {
-                        print('Error in PDFView: $error');
-                      }
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: $error'),
-                          backgroundColor: Colors.red.shade600,
-                        ),
+    return BackgroundAudioPlayer(
+      audioTracks: _audioTracks,
+      onTrackStarted: _onTrackStarted,
+      onTrackCompleted: _onTrackCompleted,
+      onPlaylistCompleted: _onPlaylistCompleted,
+      builder: (audioState) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {
+                    _toggleUI();
+                    if (_showAudioPanel) {
+                      _closeAudioPanel();
+                    }
+                  },
+                  behavior: HitTestBehavior.translucent,
+                  child: Stack(
+                    children: [
+                      PDFView(
+                        key: ValueKey(_isHorizontal),
+                        filePath: widget.pdfFile.path,
+                        enableSwipe: true,
+                        swipeHorizontal: _isHorizontal,
+                        autoSpacing: true,
+                        pageFling: true,
+                        pageSnap: true,
+                        defaultPage: _currentPage > 0 ? _currentPage - 1 : 0,
+                        fitPolicy: FitPolicy.BOTH,
+                        preventLinkNavigation: false,
+                        onRender: (pages) {
+                          setState(() {
+                            _totalPages = pages ?? 0;
+                            if (_currentPage == 0 && _totalPages > 0) {
+                              _currentPage = 1;
+                            }
+                          });
+                          if (kDebugMode) {
+                            print('PDF rendered with $pages pages');
+                          }
+                        },
+                        onError: (error) {
+                          if (kDebugMode) {
+                            print('Error in PDFView: $error');
+                          }
+                          context.pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $error'),
+                              backgroundColor: Colors.red.shade600,
+                            ),
+                          );
+                        },
+                        onPageError: (page, error) {
+                          debugPrint('Error on page $page: $error');
+                        },
+                        onViewCreated: (controller) {
+                          _pdfController = controller;
+                          if (kDebugMode) {
+                            print('PDFView controller created');
+                          }
+                        },
+                        onPageChanged: (int? page, int? total) {
+                          setState(() {
+                            _currentPage = (page ?? 0) + 1;
+                            _totalPages = total ?? 0;
+                          });
+                          if (kDebugMode) {
+                            print('Page changed: $_currentPage / $_totalPages');
+                          }
+                        },
+                      ),
+                      
+                      Container(
+                        color: Colors.transparent,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Audio Mini Player
+              if (audioState.showMiniPlayer)
+                Positioned(
+                  top: 50,
+                  left: 20,
+                  right: 80,
+                  child: AnimatedBuilder(
+                    animation: _overlayOpacityAnimation,
+                    builder: (context, child) {
+                      return AudioMiniPlayer(
+                        audioState: audioState,
+                        opacity: _overlayOpacityAnimation.value,
+                        onInteraction: _onOverlayInteraction,
                       );
                     },
-                    onPageError: (page, error) {
-                      debugPrint('Error on page $page: $error');
-                    },
-                    onViewCreated: (controller) {
-                      _pdfController = controller;
-                      if (kDebugMode) {
-                        print('PDFView controller created');
-                      }
-                    },
-                    onPageChanged: (int? page, int? total) {
-                      setState(() {
-                        _currentPage = (page ?? 0) + 1;
-                        _totalPages = total ?? 0;
-                      });
-                      if (kDebugMode) {
-                        print('Page changed: $_currentPage / $_totalPages');
-                      }
-                    },
                   ),
-                  
-                  Container(
-                    color: Colors.transparent,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Audio Overlay (persistent when playing)
-          if (_isAudioPlaying && _currentPlayingTrack != null)
-            Positioned(
-              top: 50,
-              left: 20,
-              right: 80,
-              child: GestureDetector(
-                onTap: _onOverlayInteraction,
-                onPanStart: (_) => _onOverlayInteraction(),
-                child: AnimatedBuilder(
-                  animation: _overlayOpacityAnimation,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _overlayOpacityAnimation.value,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            width: 1,
-                          ),
+                ),
+              
+              // UI Toggle Button
+              Positioned(
+                top: 50,
+                right: 20,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _toggleUI,
+                    borderRadius: BorderRadius.circular(25),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1,
                         ),
+                      ),
+                      child: Icon(
+                        _showUI ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              // UI Controls
+              if (_showUI) ...[
+                // Top Controls
+                Positioned(
+                  top: 50,
+                  left: 20,
+                  child: SlideTransition(
+                    position: _topSlideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SafeArea(
                         child: Row(
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
+                            _buildControlButton(
+                              icon: Icons.arrow_back_ios_new_rounded,
+                              onPressed: () => context.pop(),
+                              tooltip: 'Go Back',
+                            ),
+                            const SizedBox(width: 12),
+                            _buildControlButton(
+                              icon: Icons.file_download_outlined,
+                              onPressed: _downloadPdf,
+                              tooltip: 'Download PDF',
+                            ),
+                            if (_hasAudio) ...[
+                              const SizedBox(width: 12),
+                              _buildControlButton(
+                                icon: _showAudioPanel ? Icons.volume_off : Icons.volume_up,
+                                onPressed: _toggleAudioPanel,
+                                tooltip: _showAudioPanel ? 'Hide Audio' : 'Show Audio',
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.music_note,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _currentPlayingTrack!.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.play_arrow,
-                              color: Colors.green,
-                              size: 16,
-                            ),
+                            ],
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          
-          Positioned(
-            top: 50,
-            right: 20,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _toggleUI,
-                borderRadius: BorderRadius.circular(25),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    _showUI ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          if (_showUI) ...[
-            Positioned(
-              top: 50,
-              left: 20,
-              child: SlideTransition(
-                position: _topSlideAnimation,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SafeArea(
-                    child: Row(
-                      children: [
-                        _buildControlButton(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          onPressed: () => context.pop(),
-                          tooltip: 'Go Back',
-                        ),
-                        const SizedBox(width: 12),
-                        _buildControlButton(
-                          icon: Icons.file_download_outlined,
-                          onPressed: _downloadPdf,
-                          tooltip: 'Download PDF',
-                        ),
-                        if (_hasAudio) ...[
-                          const SizedBox(width: 12),
-                          _buildControlButton(
-                            icon: _showAudioPanel ? Icons.volume_off : Icons.volume_up,
-                            onPressed: _toggleAudioPanel,
-                            tooltip: _showAudioPanel ? 'Hide Audio' : 'Show Audio',
-                          ),
-                        ],
-                      ],
                     ),
                   ),
                 ),
-              ),
-            ),
-            
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: SlideTransition(
-                position: _bottomSlideAnimation,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SafeArea(
+                
+                // Bottom Controls
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: SlideTransition(
+                    position: _bottomSlideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SafeArea(
+                        child: Container(
+                          margin: const EdgeInsets.all(16),
+                          child: _buildBottomSection(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              
+              // Audio Panel with backdrop
+              if (_hasAudio && _showAudioPanel) ...[
+                // Backdrop
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _closeAudioPanel,
                     child: Container(
-                      margin: const EdgeInsets.all(16),
-                      child: _buildBottomSection(),
+                      color: Colors.black.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-          
-          // Audio Panel with backdrop
-          if (_hasAudio && _showAudioPanel) ...[
-            // Backdrop
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: _closeAudioPanel,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.3),
+                
+                // Audio Panel
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: 300,
+                  child: SlideTransition(
+                    position: _audioSlideAnimation,
+                    child: _buildAudioPanel(audioState),
+                  ),
                 ),
-              ),
-            ),
-            
-            // Audio Panel
-            Positioned(
-              top: 0,
-              bottom: 0,
-              right: 0,
-              width: 300,
-              child: SlideTransition(
-                position: _audioSlideAnimation,
-                child: _buildAudioPanel(),
-              ),
-            ),
-          ],
-        ],
-      ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
   
@@ -726,7 +706,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     );
   }
   
-  Widget _buildAudioPanel() {
+  Widget _buildAudioPanel(BackgroundAudioPlayerState audioState) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.95),
@@ -765,14 +745,31 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Audio Tracks',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Audio Tracks',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (audioState.currentTrack != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Playing: ${audioState.currentTrack!.name}',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   IconButton(
@@ -806,145 +803,16 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final audioTrack = _audioTracks[index];
-                        return _buildAudioTrackItem(audioTrack);
+                        return AudioTrackItem(
+                          audioTrack: audioTrack,
+                          audioState: audioState,
+                        );
                       },
                     ),
             ),
           ],
         ),
       ),
-    );
-  }
-  
-  Widget _buildAudioTrackItem(AudioTrack audioTrack) {
-    final isCurrentTrack = _currentPlayingTrack?.id == audioTrack.id;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: isCurrentTrack 
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isCurrentTrack 
-              ? Colors.green.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isCurrentTrack 
-                        ? Colors.green.withValues(alpha: 0.3)
-                        : Colors.blue.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: isCurrentTrack 
-                        ? const Icon(
-                            Icons.play_arrow,
-                            color: Colors.green,
-                            size: 16,
-                          )
-                        : Text(
-                            '${audioTrack.order}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    audioTrack.name,
-                    style: TextStyle(
-                      color: isCurrentTrack ? Colors.green : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: EnhancedCachedAudio(
-              audioUrl: audioTrack.audioUrl,
-              audioPath: audioTrack.audioPath,
-              label: audioTrack.name,
-              height: 50,
-              onPlay: () => _onAudioPlay(audioTrack),
-              onStop: _onAudioStop,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class EnhancedCachedAudio extends StatefulWidget {
-  final String? audioUrl;
-  final String? audioPath;
-  final String label;
-  final double height;
-  final VoidCallback? onPlay;
-  final VoidCallback? onStop;
-  final VoidCallback? onRemove;
-  final VoidCallback? onEdit;
-  final bool isCompact;
-
-  const EnhancedCachedAudio({
-    super.key,
-    this.audioUrl,
-    this.audioPath,
-    required this.label,
-    this.height = 50,
-    this.onPlay,
-    this.onStop,
-    this.onRemove,
-    this.onEdit,
-    this.isCompact = false,
-  });
-
-  @override
-  State<EnhancedCachedAudio> createState() => _EnhancedCachedAudioState();
-}
-
-class _EnhancedCachedAudioState extends State<EnhancedCachedAudio> {
-  @override
-  Widget build(BuildContext context) {
-    return AudioPlayerWidget(
-      audioUrl: widget.audioUrl,
-      audioPath: widget.audioPath,
-      label: widget.label,
-      height: widget.height,
-      onRemove: widget.onRemove,
-      onEdit: widget.onEdit,
-      isCompact: widget.isCompact,
-      onPlayStateChanged: (isPlaying) {
-        if (isPlaying) {
-          widget.onPlay?.call();
-        } else {
-          widget.onStop?.call();
-        }
-      },
     );
   }
 }
