@@ -5,9 +5,9 @@ import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/shared/models/test_answer.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_answer.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/complete_test_session_usecase.dart';
 

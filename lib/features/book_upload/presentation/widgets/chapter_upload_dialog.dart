@@ -4,7 +4,7 @@ import 'package:korean_language_app/features/book_upload/domain/entities/chapter
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/widgets/multi_audio_player_widget.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
-import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 
 class ChapterUploadDialog extends StatefulWidget {
   final int chapterNumber;

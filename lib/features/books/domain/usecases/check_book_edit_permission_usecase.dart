@@ -1,7 +1,7 @@
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
 class CheckBookEditPermissionParams {

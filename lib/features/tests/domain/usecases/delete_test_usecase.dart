@@ -4,7 +4,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/entities/usecase_params.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
 class DeleteTestParams {

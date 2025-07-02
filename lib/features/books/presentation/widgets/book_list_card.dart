@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/favorite_button.dart';
 
 class BookListCard extends StatelessWidget {

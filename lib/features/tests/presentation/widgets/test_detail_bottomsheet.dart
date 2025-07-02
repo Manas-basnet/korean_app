@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 class TestDetailsBottomSheet extends StatelessWidget {

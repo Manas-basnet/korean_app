@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/shared/models/chapter_info.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/pdf_page_info.dart';
 
 class PdfPageGridView extends StatelessWidget {

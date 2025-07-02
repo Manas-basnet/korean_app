@@ -9,7 +9,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/features/admin/data/service/admin_permission.dart';
 import 'package:korean_language_app/features/auth/domain/entities/user.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 import 'package:korean_language_app/features/unpublished_tests/domain/repositories/unpublished_tests_repository.dart';
 
 part 'unpublished_tests_state.dart';

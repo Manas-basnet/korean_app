@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 
 class TestCard extends StatelessWidget {
   final TestItem test;

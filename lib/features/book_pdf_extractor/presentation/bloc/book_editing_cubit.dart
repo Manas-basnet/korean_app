@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/data/services/pdf_cache_service.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/data/services/pdf_manipulation_service.dart';
-import 'package:korean_language_app/shared/models/chapter_info.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/page_selection.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/pdf_page_info.dart';
 

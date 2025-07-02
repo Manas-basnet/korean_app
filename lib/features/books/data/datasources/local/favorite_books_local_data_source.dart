@@ -1,4 +1,4 @@
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 abstract class FavoriteBooksLocalDataSource {
   Future<List<BookItem>> getAllBooks();

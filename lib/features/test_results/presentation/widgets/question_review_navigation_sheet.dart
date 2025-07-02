@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
-import 'package:korean_language_app/shared/models/test_answer.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_answer.dart';
 
 class TestReviewQuestionNavigationSheet extends StatelessWidget {
   final TestResult testResult;

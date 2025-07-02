@@ -7,7 +7,7 @@ import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 part 'book_search_state.dart';
 

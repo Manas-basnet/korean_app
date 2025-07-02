@@ -7,7 +7,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
 class LoadTestsParams extends Equatable {

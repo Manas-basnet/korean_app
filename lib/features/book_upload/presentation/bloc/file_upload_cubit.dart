@@ -13,7 +13,7 @@ import 'package:korean_language_app/features/book_upload/domain/usecases/pdf_pic
 import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_usecase.dart';
 import 'package:korean_language_app/features/book_upload/domain/usecases/update_book_with_chapters_usecase.dart';
 import 'package:korean_language_app/shared/enums/file_upload_type.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:file_picker/file_picker.dart';
 
 part 'file_upload_state.dart';

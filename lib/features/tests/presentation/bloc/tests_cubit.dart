@@ -7,7 +7,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/load_tests_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/check_test_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/usecases/get_test_by_id_usecase.dart';

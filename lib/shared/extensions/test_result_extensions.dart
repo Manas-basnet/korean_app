@@ -1,4 +1,4 @@
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 extension TestResultLocalization on TestResult {

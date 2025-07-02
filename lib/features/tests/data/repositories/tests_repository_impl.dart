@@ -10,8 +10,8 @@ import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/tests/data/datasources/local/tests_local_datasource.dart';
 import 'package:korean_language_app/features/tests/data/datasources/remote/tests_remote_datasource.dart';
 import 'package:korean_language_app/features/tests/domain/entities/user_test_interation.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_question.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 

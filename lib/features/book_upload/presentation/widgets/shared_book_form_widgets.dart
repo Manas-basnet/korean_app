@@ -10,7 +10,7 @@ import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/file_upload_type.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class UploadTypeSelectionWidget extends StatelessWidget {
   final BookUploadType uploadType;

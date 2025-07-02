@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/book_upload/presentation/widgets/shared_book_form_widgets.dart';
 import 'package:korean_language_app/features/book_upload/presentation/widgets/chapter_upload_dialog.dart';
-import 'package:korean_language_app/shared/models/chapter_info.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter_info.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
@@ -14,7 +14,7 @@ import 'package:korean_language_app/features/books/presentation/bloc/korean_book
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class BookUploadPage extends StatefulWidget {
   const BookUploadPage({super.key});

@@ -7,8 +7,8 @@ import 'package:korean_language_app/shared/services/auth_service.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_local_datasource.dart';
 import 'package:korean_language_app/features/unpublished_tests/data/datasources/unpublished_tests_remote_datasource.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
-import 'package:korean_language_app/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_question.dart';
 import 'package:korean_language_app/shared/enums/question_type.dart';
 import 'package:korean_language_app/features/unpublished_tests/domain/repositories/unpublished_tests_repository.dart';
 

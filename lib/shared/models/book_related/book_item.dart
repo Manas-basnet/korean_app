@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';

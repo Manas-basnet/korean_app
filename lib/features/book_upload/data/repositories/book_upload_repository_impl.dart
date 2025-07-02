@@ -7,7 +7,7 @@ import 'package:korean_language_app/features/admin/data/service/admin_permission
 import 'package:korean_language_app/features/book_upload/data/datasources/book_upload_remote_datasource.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class BookUploadRepositoryImpl extends BaseRepository implements BookUploadRepository {
   final BookUploadRemoteDataSource remoteDataSource;

@@ -2,7 +2,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class LoadMoreBooksParams {
   final CourseCategory category;

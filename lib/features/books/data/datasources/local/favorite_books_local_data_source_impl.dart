@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class FavoriteBooksLocalDataSourceImpl implements FavoriteBooksLocalDataSource {
   final StorageService _storageService;

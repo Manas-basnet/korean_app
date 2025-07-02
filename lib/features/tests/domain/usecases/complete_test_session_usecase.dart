@@ -4,7 +4,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/test_results/domain/usecases/save_test_result_usecase.dart';
 import 'package:korean_language_app/features/tests/domain/repositories/tests_repository.dart';
 import 'package:korean_language_app/features/tests/presentation/bloc/test_session/test_session_cubit.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 
 class CompleteTestSessionParams {

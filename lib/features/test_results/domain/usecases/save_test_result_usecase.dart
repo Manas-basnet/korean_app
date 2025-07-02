@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/test_results/domain/repositories/test_results_repository.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
 

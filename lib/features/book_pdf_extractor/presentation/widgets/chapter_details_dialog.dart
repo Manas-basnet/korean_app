@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/shared/models/chapter_info.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter_info.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 class ChapterDetailsDialog extends StatefulWidget {

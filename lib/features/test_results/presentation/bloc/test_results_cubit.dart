@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/test_results/domain/usecases/save_test_result_usecase.dart';
 import 'package:korean_language_app/features/test_results/domain/usecases/load_user_test_results_usecase.dart';
 import 'package:korean_language_app/features/test_results/domain/usecases/get_user_latest_result_usecase.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
-import 'package:korean_language_app/shared/models/test_question.dart';
+import 'package:korean_language_app/shared/models/test_related/test_question.dart';
 
 class TestItem {
   final String id;

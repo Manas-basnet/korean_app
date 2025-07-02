@@ -5,7 +5,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
 import 'package:korean_language_app/features/books/domain/repositories/favorite_book_repository.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class FavoriteBookRepositoryImpl extends BaseRepository implements FavoriteBookRepository {
   final FavoriteBooksLocalDataSource localDataSource;

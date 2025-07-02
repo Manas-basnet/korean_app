@@ -14,7 +14,7 @@ import 'package:korean_language_app/features/books/domain/usecases/get_chapter_p
 import 'package:korean_language_app/features/books/domain/usecases/load_more_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/refresh_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/regenerate_book_image_url_usecase.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 part 'korean_books_state.dart';
 

@@ -6,7 +6,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_favorite_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/search_favorite_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/toggle_favorite_book_usecase.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 part 'favorite_books_state.dart';
 

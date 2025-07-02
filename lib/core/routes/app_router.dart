@@ -5,7 +5,7 @@ import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
-import 'package:korean_language_app/shared/models/test_result.dart';
+import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_signup_page.dart';

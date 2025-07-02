@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 abstract class BookUploadRepository {
   Future<ApiResult<BookItem>> createBook(BookItem book, File pdfFile, {File? coverImageFile, List<AudioTrackUploadData>? audioTracks});

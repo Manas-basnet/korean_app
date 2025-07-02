@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
-import 'package:korean_language_app/features/book_upload/data/models/chapter.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
-import 'package:korean_language_app/shared/models/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
   final FirebaseFirestore firestore;

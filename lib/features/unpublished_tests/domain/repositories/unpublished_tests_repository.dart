@@ -1,6 +1,6 @@
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
-import 'package:korean_language_app/shared/models/test_item.dart';
+import 'package:korean_language_app/shared/models/test_related/test_item.dart';
 
 abstract class UnpublishedTestsRepository {
   Future<ApiResult<List<TestItem>>> getUnpublishedTests({int page = 0, int pageSize = 5});
