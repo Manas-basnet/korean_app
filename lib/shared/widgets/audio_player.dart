@@ -12,6 +12,7 @@ class AudioPlayerWidget extends StatefulWidget {
   final VoidCallback? onRemove;
   final VoidCallback? onEdit;
   final bool isCompact;
+  final Function(bool)? onPlayStateChanged; // Added callback
 
   const AudioPlayerWidget({
     super.key,
@@ -24,6 +25,7 @@ class AudioPlayerWidget extends StatefulWidget {
     this.onRemove,
     this.onEdit,
     this.isCompact = false,
+    this.onPlayStateChanged, // Added callback
   });
 
   @override
@@ -111,10 +113,16 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
+        final wasPlaying = _isPlaying;
         setState(() {
           _isPlaying = state == PlayerState.playing;
           _isLoading = state == PlayerState.playing && _duration == Duration.zero;
         });
+        
+        // Call the callback when play state changes
+        if (wasPlaying != _isPlaying) {
+          widget.onPlayStateChanged?.call(_isPlaying);
+        }
       }
     });
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
@@ -6,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 import 'package:korean_language_app/shared/models/audio_track.dart';
-import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
+import 'package:korean_language_app/shared/widgets/audio_player.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final File pdfFile;
@@ -30,6 +31,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     with TickerProviderStateMixin {
   
   static const Duration _animationDuration = Duration(milliseconds: 200);
+  static const Duration _overlayHideDelay = Duration(seconds: 3);
   static const Curve _animationCurve = Curves.easeInOut;
   static const Offset _topSlideBegin = Offset(0, -1);
   static const Offset _bottomSlideBegin = Offset(0, 1);
@@ -37,10 +39,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   
   late AnimationController _uiAnimationController;
   late AnimationController _audioAnimationController;
+  late AnimationController _audioOverlayController;
   late Animation<Offset> _topSlideAnimation;
   late Animation<Offset> _bottomSlideAnimation;
   late Animation<Offset> _audioSlideAnimation;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _overlayOpacityAnimation;
   
   PDFViewController? _pdfController;
   bool _showUI = true;
@@ -48,6 +52,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   bool _isHorizontal = false;
   int _currentPage = 0;
   int _totalPages = 0;
+  
+  // Audio overlay state
+  bool _isAudioPlaying = false;
+  AudioTrack? _currentPlayingTrack;
+  Timer? _overlayHideTimer;
+  bool _isUserInteractingWithOverlay = false;
   
   List<AudioTrack> get _audioTracks {
     if (widget.chapter != null) {
@@ -73,6 +83,11 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     );
     
     _audioAnimationController = AnimationController(
+      duration: _animationDuration,
+      vsync: this,
+    );
+    
+    _audioOverlayController = AnimationController(
       duration: _animationDuration,
       vsync: this,
     );
@@ -109,6 +124,14 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
       curve: _animationCurve,
     ));
     
+    _overlayOpacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _audioOverlayController,
+      curve: _animationCurve,
+    ));
+    
     _uiAnimationController.forward();
   }
   
@@ -116,6 +139,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   void dispose() {
     _uiAnimationController.dispose();
     _audioAnimationController.dispose();
+    _audioOverlayController.dispose();
+    _overlayHideTimer?.cancel();
     super.dispose();
   }
   
@@ -156,6 +181,18 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
         _showAudioPanel = true;
       });
       _audioAnimationController.forward();
+    }
+  }
+  
+  void _closeAudioPanel() {
+    if (_showAudioPanel) {
+      _audioAnimationController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _showAudioPanel = false;
+          });
+        }
+      });
     }
   }
   
@@ -206,6 +243,54 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     }
   }
   
+  void _onAudioPlay(AudioTrack track) {
+    setState(() {
+      _isAudioPlaying = true;
+      _currentPlayingTrack = track;
+    });
+    _showAudioOverlay();
+  }
+  
+  void _onAudioStop() {
+    setState(() {
+      _isAudioPlaying = false;
+      _currentPlayingTrack = null;
+    });
+  }
+  
+  void _showAudioOverlay() {
+    _audioOverlayController.forward();
+    _startOverlayHideTimer();
+  }
+  
+  void _hideAudioOverlay() {
+    if (!_isUserInteractingWithOverlay) {
+      _audioOverlayController.reverse();
+    }
+  }
+  
+  void _startOverlayHideTimer() {
+    _overlayHideTimer?.cancel();
+    _overlayHideTimer = Timer(_overlayHideDelay, _hideAudioOverlay);
+  }
+  
+  void _onOverlayInteraction() {
+    setState(() {
+      _isUserInteractingWithOverlay = true;
+    });
+    _audioOverlayController.forward();
+    _overlayHideTimer?.cancel();
+    
+    Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isUserInteractingWithOverlay = false;
+        });
+        _startOverlayHideTimer();
+      }
+    });
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,7 +299,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
         children: [
           Positioned.fill(
             child: GestureDetector(
-              onTap: _toggleUI,
+              onTap: () {
+                _toggleUI();
+                if (_showAudioPanel) {
+                  _closeAudioPanel();
+                }
+              },
               behavior: HitTestBehavior.translucent,
               child: Stack(
                 children: [
@@ -281,6 +371,74 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
               ),
             ),
           ),
+          
+          // Audio Overlay (persistent when playing)
+          if (_isAudioPlaying && _currentPlayingTrack != null)
+            Positioned(
+              top: 50,
+              left: 20,
+              right: 80,
+              child: GestureDetector(
+                onTap: _onOverlayInteraction,
+                onPanStart: (_) => _onOverlayInteraction(),
+                child: AnimatedBuilder(
+                  animation: _overlayOpacityAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _overlayOpacityAnimation.value,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.music_note,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _currentPlayingTrack!.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.play_arrow,
+                              color: Colors.green,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           
           Positioned(
             top: 50,
@@ -366,7 +524,19 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
             ),
           ],
           
-          if (_hasAudio && _showAudioPanel)
+          // Audio Panel with backdrop
+          if (_hasAudio && _showAudioPanel) ...[
+            // Backdrop
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _closeAudioPanel,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            
+            // Audio Panel
             Positioned(
               top: 0,
               bottom: 0,
@@ -377,6 +547,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                 child: _buildAudioPanel(),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -558,13 +729,20 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   Widget _buildAudioPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.9),
+        color: Colors.black.withValues(alpha: 0.95),
         border: Border(
           left: BorderSide(
             color: Colors.white.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 20,
+            offset: const Offset(-5, 0),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Column(
@@ -639,12 +817,18 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   }
   
   Widget _buildAudioTrackItem(AudioTrack audioTrack) {
+    final isCurrentTrack = _currentPlayingTrack?.id == audioTrack.id;
+    
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: isCurrentTrack 
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: isCurrentTrack 
+              ? Colors.green.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -659,26 +843,34 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.3),
+                    color: isCurrentTrack 
+                        ? Colors.green.withValues(alpha: 0.3)
+                        : Colors.blue.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
-                    child: Text(
-                      '${audioTrack.order}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: isCurrentTrack 
+                        ? const Icon(
+                            Icons.play_arrow,
+                            color: Colors.green,
+                            size: 16,
+                          )
+                        : Text(
+                            '${audioTrack.order}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     audioTrack.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isCurrentTrack ? Colors.green : Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -692,15 +884,67 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
           
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: CustomCachedAudio(
+            child: EnhancedCachedAudio(
               audioUrl: audioTrack.audioUrl,
               audioPath: audioTrack.audioPath,
               label: audioTrack.name,
               height: 50,
+              onPlay: () => _onAudioPlay(audioTrack),
+              onStop: _onAudioStop,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class EnhancedCachedAudio extends StatefulWidget {
+  final String? audioUrl;
+  final String? audioPath;
+  final String label;
+  final double height;
+  final VoidCallback? onPlay;
+  final VoidCallback? onStop;
+  final VoidCallback? onRemove;
+  final VoidCallback? onEdit;
+  final bool isCompact;
+
+  const EnhancedCachedAudio({
+    super.key,
+    this.audioUrl,
+    this.audioPath,
+    required this.label,
+    this.height = 50,
+    this.onPlay,
+    this.onStop,
+    this.onRemove,
+    this.onEdit,
+    this.isCompact = false,
+  });
+
+  @override
+  State<EnhancedCachedAudio> createState() => _EnhancedCachedAudioState();
+}
+
+class _EnhancedCachedAudioState extends State<EnhancedCachedAudio> {
+  @override
+  Widget build(BuildContext context) {
+    return AudioPlayerWidget(
+      audioUrl: widget.audioUrl,
+      audioPath: widget.audioPath,
+      label: widget.label,
+      height: widget.height,
+      onRemove: widget.onRemove,
+      onEdit: widget.onEdit,
+      isCompact: widget.isCompact,
+      onPlayStateChanged: (isPlaying) {
+        if (isPlaying) {
+          widget.onPlay?.call();
+        } else {
+          widget.onStop?.call();
+        }
+      },
     );
   }
 }
