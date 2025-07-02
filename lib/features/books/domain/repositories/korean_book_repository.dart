@@ -9,11 +9,15 @@ abstract class KoreanBookRepository {
   Future<ApiResult<List<BookItem>>> hardRefreshBooks(CourseCategory category, {int pageSize = 5});
   Future<ApiResult<List<BookItem>>> searchBooks(CourseCategory category, String query);
   
-  /// Get PDF file for single PDF books
+  // PDF file methods
   Future<ApiResult<File?>> getBookPdf(String bookId);
-  
-  /// Get PDF file for a specific chapter in chapter-wise books
   Future<ApiResult<File?>> getChapterPdf(String bookId, String chapterId);
+  
+  // Audio file methods
+  Future<ApiResult<File?>> getBookAudioTrack(String bookId, String audioTrackId);
+  Future<ApiResult<File?>> getChapterAudioTrack(String bookId, String chapterId, String audioTrackId);
+  Future<ApiResult<void>> preloadBookAudioTracks(String bookId);
+  Future<ApiResult<void>> preloadChapterAudioTracks(String bookId, String chapterId);
   
   Future<ApiResult<String?>> regenerateImageUrl(BookItem book);
 }

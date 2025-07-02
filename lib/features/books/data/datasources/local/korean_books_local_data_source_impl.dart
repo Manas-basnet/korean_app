@@ -16,6 +16,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
 
   Directory? _pdfCacheDir;
   Directory? _chaptersCacheDir;
+  Directory? _audioCacheDir;
 
   KoreanBooksLocalDataSourceImpl({required StorageService storageService})
       : _storageService = storageService;
@@ -44,6 +45,19 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     }
     
     return _chaptersCacheDir!;
+  }
+
+  Future<Directory> get _audioCacheDirectory async {
+    if (_audioCacheDir != null) return _audioCacheDir!;
+    
+    final appDir = await getApplicationDocumentsDirectory();
+    _audioCacheDir = Directory('${appDir.path}/audio_cache');
+    
+    if (!await _audioCacheDir!.exists()) {
+      await _audioCacheDir!.create(recursive: true);
+    }
+    
+    return _audioCacheDir!;
   }
 
   @override
@@ -117,9 +131,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
       
-      // Clean up associated PDF files
       await deletePdfFile(bookId);
       await deleteAllChapterPdfs(bookId);
+      await deleteAllBookAudioFiles(bookId);
     } catch (e) {
       debugPrint('Error removing book from storage: $e');
       throw Exception('Failed to remove book: $e');
@@ -136,8 +150,9 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       await _clearAllPdfs();
       await _clearAllChapterPdfs();
+      await _clearAllAudioFiles();
       
-      debugPrint('Cleared all books cache and PDFs');
+      debugPrint('Cleared all books cache, PDFs, and audio files');
     } catch (e) {
       debugPrint('Error clearing all books from storage: $e');
     }
@@ -230,7 +245,7 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     return null;
   }
 
-  // Single PDF file methods
+  // PDF file methods
   @override
   Future<File?> getPdfFile(String bookId) async {
     try {
@@ -373,6 +388,177 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     }
   }
 
+  // Audio file methods for book-level audio tracks
+  @override
+  Future<File?> getAudioFile(String bookId, String audioTrackId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      final audioFile = File('${bookDir.path}/$audioTrackId.m4a');
+      
+      if (await audioFile.exists() && await _isValidAudioFile(audioFile)) {
+        return audioFile;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting audio file: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveAudioFile(String bookId, String audioTrackId, File audioFile) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      
+      if (!await bookDir.exists()) {
+        await bookDir.create(recursive: true);
+      }
+      
+      final cacheFile = File('${bookDir.path}/$audioTrackId.m4a');
+      await audioFile.copy(cacheFile.path);
+      
+      if (!await cacheFile.exists() || await cacheFile.length() == 0) {
+        throw Exception('Failed to save audio file properly');
+      }
+      
+      debugPrint('Cached audio file: ${cacheFile.path}');
+    } catch (e) {
+      debugPrint('Error saving audio file: $e');
+      throw Exception('Failed to save audio file: $e');
+    }
+  }
+
+  @override
+  Future<bool> hasAudioFile(String bookId, String audioTrackId) async {
+    try {
+      final file = await getAudioFile(bookId, audioTrackId);
+      return file != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> deleteAudioFile(String bookId, String audioTrackId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      final file = File('${bookDir.path}/$audioTrackId.m4a');
+      
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Deleted audio cache: ${file.path}');
+      }
+    } catch (e) {
+      debugPrint('Error deleting audio file: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteAllBookAudioFiles(String bookId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final bookDir = Directory('${cacheDir.path}/$bookId');
+      
+      if (await bookDir.exists()) {
+        final files = await bookDir.list().toList();
+        for (final file in files) {
+          if (file is File && file.path.endsWith('.m4a')) {
+            await file.delete();
+          }
+        }
+        debugPrint('Deleted all book-level audio files for book: $bookId');
+      }
+    } catch (e) {
+      debugPrint('Error deleting all book audio files: $e');
+    }
+  }
+
+  // Audio file methods for chapter-level audio tracks
+  @override
+  Future<File?> getChapterAudioFile(String bookId, String chapterId, String audioTrackId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final chapterDir = Directory('${cacheDir.path}/$bookId/chapters/$chapterId');
+      final audioFile = File('${chapterDir.path}/$audioTrackId.m4a');
+      
+      if (await audioFile.exists() && await _isValidAudioFile(audioFile)) {
+        return audioFile;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting chapter audio file: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveChapterAudioFile(String bookId, String chapterId, String audioTrackId, File audioFile) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final chapterDir = Directory('${cacheDir.path}/$bookId/chapters/$chapterId');
+      
+      if (!await chapterDir.exists()) {
+        await chapterDir.create(recursive: true);
+      }
+      
+      final cacheFile = File('${chapterDir.path}/$audioTrackId.m4a');
+      await audioFile.copy(cacheFile.path);
+      
+      if (!await cacheFile.exists() || await cacheFile.length() == 0) {
+        throw Exception('Failed to save chapter audio file properly');
+      }
+      
+      debugPrint('Cached chapter audio file: ${cacheFile.path}');
+    } catch (e) {
+      debugPrint('Error saving chapter audio file: $e');
+      throw Exception('Failed to save chapter audio file: $e');
+    }
+  }
+
+  @override
+  Future<bool> hasChapterAudioFile(String bookId, String chapterId, String audioTrackId) async {
+    try {
+      final file = await getChapterAudioFile(bookId, chapterId, audioTrackId);
+      return file != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> deleteChapterAudioFile(String bookId, String chapterId, String audioTrackId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final chapterDir = Directory('${cacheDir.path}/$bookId/chapters/$chapterId');
+      final file = File('${chapterDir.path}/$audioTrackId.m4a');
+      
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Deleted chapter audio cache: ${file.path}');
+      }
+    } catch (e) {
+      debugPrint('Error deleting chapter audio file: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteAllChapterAudioFiles(String bookId, String chapterId) async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      final chapterDir = Directory('${cacheDir.path}/$bookId/chapters/$chapterId');
+      
+      if (await chapterDir.exists()) {
+        await chapterDir.delete(recursive: true);
+        debugPrint('Deleted all chapter audio files for chapter: $chapterId');
+      }
+    } catch (e) {
+      debugPrint('Error deleting all chapter audio files: $e');
+    }
+  }
+
   Future<void> _clearAllPdfs() async {
     try {
       final cacheDir = await _pdfCacheDirectory;
@@ -399,6 +585,19 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
     }
   }
 
+  Future<void> _clearAllAudioFiles() async {
+    try {
+      final cacheDir = await _audioCacheDirectory;
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create(recursive: true);
+      }
+      debugPrint('Cleared all cached audio files');
+    } catch (e) {
+      debugPrint('Error clearing all audio files: $e');
+    }
+  }
+
   Future<bool> _isValidPDF(File pdfFile) async {
     try {
       if (!await pdfFile.exists()) return false;
@@ -411,6 +610,19 @@ class KoreanBooksLocalDataSourceImpl implements KoreanBooksLocalDataSource {
       
       final header = String.fromCharCodes(bytes.take(4));
       return header == '%PDF';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> _isValidAudioFile(File audioFile) async {
+    try {
+      if (!await audioFile.exists()) return false;
+      
+      final fileSize = await audioFile.length();
+      if (fileSize < 1024) return false;
+      
+      return true;
     } catch (e) {
       return false;
     }

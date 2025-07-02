@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/shared/models/book_related/chapter.dart';
+import 'package:korean_language_app/shared/models/audio_track.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
@@ -257,6 +258,159 @@ class FirestoreKoreanBooksDataSource implements KoreanBooksRemoteDataSource {
       throw ExceptionMapper.mapFirebaseException(e);
     } catch (e) {
       throw Exception('Failed to get chapter PDF URL: $e');
+    }
+  }
+
+  // Audio download methods for book-level audio tracks
+  @override
+  Future<File?> downloadAudioToLocal(String bookId, String audioTrackId, String localPath) async {
+    try {
+      final audioUrl = await getAudioDownloadUrl(bookId, audioTrackId);
+      
+      if (audioUrl == null || audioUrl.isEmpty) {
+        return null;
+      }
+      
+      final ref = storage.refFromURL(audioUrl);
+      final file = File(localPath);
+      
+      final dir = file.parent;
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      
+      final downloadTask = ref.writeToFile(file);
+      await downloadTask;
+      
+      if (await file.exists() && await file.length() > 0) {
+        return file;
+      } else {
+        return null;
+      }
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to download audio: $e');
+    }
+  }
+
+  @override
+  Future<String?> getAudioDownloadUrl(String bookId, String audioTrackId) async {
+    try {
+      final docSnapshot = await firestore.collection(booksCollection).doc(bookId).get();
+      
+      if (!docSnapshot.exists) {
+        return null;
+      }
+      
+      final data = docSnapshot.data() as Map<String, dynamic>;
+      
+      if (data.containsKey('audioTracks') && data['audioTracks'] is List) {
+        final audioTracks = (data['audioTracks'] as List)
+            .map((trackJson) => AudioTrack.fromJson(trackJson))
+            .toList();
+        
+        final audioTrack = audioTracks.firstWhere(
+          (track) => track.id == audioTrackId,
+          orElse: () => const AudioTrack(
+            id: '',
+            name: '',
+            order: 0,
+          ),
+        );
+        
+        if (audioTrack.id.isNotEmpty && audioTrack.audioUrl != null) {
+          return audioTrack.audioUrl;
+        }
+      }
+      
+      return null;
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to get audio URL: $e');
+    }
+  }
+
+  // Audio download methods for chapter-level audio tracks
+  @override
+  Future<File?> downloadChapterAudioToLocal(String bookId, String chapterId, String audioTrackId, String localPath) async {
+    try {
+      final audioUrl = await getChapterAudioDownloadUrl(bookId, chapterId, audioTrackId);
+      
+      if (audioUrl == null || audioUrl.isEmpty) {
+        return null;
+      }
+      
+      final ref = storage.refFromURL(audioUrl);
+      final file = File(localPath);
+      
+      final dir = file.parent;
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      
+      final downloadTask = ref.writeToFile(file);
+      await downloadTask;
+      
+      if (await file.exists() && await file.length() > 0) {
+        return file;
+      } else {
+        return null;
+      }
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to download chapter audio: $e');
+    }
+  }
+
+  @override
+  Future<String?> getChapterAudioDownloadUrl(String bookId, String chapterId, String audioTrackId) async {
+    try {
+      final docSnapshot = await firestore.collection(booksCollection).doc(bookId).get();
+      
+      if (!docSnapshot.exists) {
+        return null;
+      }
+      
+      final data = docSnapshot.data() as Map<String, dynamic>;
+      
+      if (data.containsKey('chapters') && data['chapters'] is List) {
+        final chapters = (data['chapters'] as List)
+            .map((chapterJson) => Chapter.fromJson(chapterJson))
+            .toList();
+        
+        final chapter = chapters.firstWhere(
+          (c) => c.id == chapterId,
+          orElse: () => const Chapter(
+            id: '',
+            title: '',
+            order: 0,
+          ),
+        );
+        
+        if (chapter.id.isNotEmpty && chapter.audioTracks.isNotEmpty) {
+          final audioTrack = chapter.audioTracks.firstWhere(
+            (track) => track.id == audioTrackId,
+            orElse: () => const AudioTrack(
+              id: '',
+              name: '',
+              order: 0,
+            ),
+          );
+          
+          if (audioTrack.id.isNotEmpty && audioTrack.audioUrl != null) {
+            return audioTrack.audioUrl;
+          }
+        }
+      }
+      
+      return null;
+    } on FirebaseException catch (e) {
+      throw ExceptionMapper.mapFirebaseException(e);
+    } catch (e) {
+      throw Exception('Failed to get chapter audio URL: $e');
     }
   }
 

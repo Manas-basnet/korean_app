@@ -1,12 +1,15 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:korean_language_app/core/data/base_repository.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 import 'package:korean_language_app/shared/services/image_cache_service.dart';
+import 'package:korean_language_app/shared/services/audio_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/korean_books_local_datasource.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/korean_books_remote_data_source.dart';
 import 'package:korean_language_app/features/books/domain/repositories/korean_book_repository.dart';
@@ -17,6 +20,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
   final KoreanBooksRemoteDataSource remoteDataSource;
   final KoreanBooksLocalDataSource localDataSource;
   final ImageCacheService imageCacheService;
+  final AudioCacheService audioCacheService;
   
   static const Duration cacheValidityDuration = Duration(hours: 1, minutes: 30);
 
@@ -24,6 +28,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
     required this.remoteDataSource,
     required this.localDataSource,
     required this.imageCacheService,
+    required this.audioCacheService,
     required NetworkInfo networkInfo,
   }) : super(networkInfo);
 
@@ -66,6 +71,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       cacheData: (remoteBooks) async {
         await _cacheBooksDataOnly(remoteBooks);
         _cacheBookImagesInBackground(remoteBooks);
+        _cacheBookAudioTracksInBackground(remoteBooks);
       },
     );
 
@@ -104,6 +110,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
             await _updateBookHash(book);
           }
           _cacheBookImagesInBackground(remoteBooks);
+          _cacheBookAudioTracksInBackground(remoteBooks);
           debugPrint('Cached ${remoteBooks.length} new books from page $page');
         }
       },
@@ -180,6 +187,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       cacheData: (remoteBooks) async {
         await _cacheBooksDataOnly(remoteBooks);
         _cacheBookImagesInBackground(remoteBooks);
+        _cacheBookAudioTracksInBackground(remoteBooks);
       },
     );
     
@@ -208,6 +216,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
           if (remoteResults.isNotEmpty) {
             await _updateCacheWithNewBooksDataOnly(remoteResults);
             _cacheBookImagesInBackground(remoteResults);
+            _cacheBookAudioTracksInBackground(remoteResults);
           }
           
           final combinedResults = _combineAndDeduplicateResults(cachedResults, remoteResults);
@@ -285,6 +294,137 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
   }
 
   @override
+  Future<ApiResult<File?>> getBookAudioTrack(String bookId, String audioTrackId) async {
+    final result = await handleCacheFirstCall<File?>(
+      () async {
+        final cachedAudio = await localDataSource.getAudioFile(bookId, audioTrackId);
+        if (cachedAudio != null) {
+          debugPrint('Returning cached audio track for book: $bookId, track: $audioTrackId');
+          return ApiResult.success(cachedAudio);
+        }
+        return ApiResult.failure('No cached audio track', FailureType.cache);
+      },
+      () async {
+        debugPrint('Downloading audio track for book: $bookId, track: $audioTrackId');
+        final downloadedAudio = await _downloadAndCacheBookAudio(bookId, audioTrackId);
+        return ApiResult.success(downloadedAudio);
+      },
+    );
+
+    return result;
+  }
+
+  @override
+  Future<ApiResult<File?>> getChapterAudioTrack(String bookId, String chapterId, String audioTrackId) async {
+    final result = await handleCacheFirstCall<File?>(
+      () async {
+        final cachedAudio = await localDataSource.getChapterAudioFile(bookId, chapterId, audioTrackId);
+        if (cachedAudio != null) {
+          debugPrint('Returning cached chapter audio track for chapter: $chapterId, track: $audioTrackId');
+          return ApiResult.success(cachedAudio);
+        }
+        return ApiResult.failure('No cached chapter audio track', FailureType.cache);
+      },
+      () async {
+        debugPrint('Downloading chapter audio track for chapter: $chapterId, track: $audioTrackId');
+        final downloadedAudio = await _downloadAndCacheChapterAudio(bookId, chapterId, audioTrackId);
+        return ApiResult.success(downloadedAudio);
+      },
+    );
+
+    return result;
+  }
+
+  @override
+  Future<ApiResult<void>> preloadBookAudioTracks(String bookId) async {
+    try {
+      final books = await localDataSource.getAllBooks();
+      final book = books.firstWhere(
+        (b) => b.id == bookId,
+        orElse: () => const BookItem(
+          id: '',
+          title: '',
+          description: '',
+          duration: '',
+          chaptersCount: 0,
+          icon: Icons.book,
+          level: BookLevel.beginner,
+          courseCategory: CourseCategory.korean,
+          country: '',
+          category: '',
+        ),
+      );
+      
+      if (book.id.isEmpty) {
+        return ApiResult.failure('Book not found', FailureType.notFound);
+      }
+      
+      for (final audioTrack in book.audioTracks) {
+        if (audioTrack.audioUrl != null && audioTrack.audioUrl!.isNotEmpty) {
+          await _downloadAndCacheBookAudio(bookId, audioTrack.id);
+        }
+      }
+      
+      debugPrint('Preloaded ${book.audioTracks.length} audio tracks for book: $bookId');
+      return ApiResult.success(null);
+    } catch (e) {
+      debugPrint('Error preloading book audio tracks: $e');
+      return ApiResult.failure('Failed to preload audio tracks: $e', FailureType.unknown);
+    }
+  }
+
+  @override
+  Future<ApiResult<void>> preloadChapterAudioTracks(String bookId, String chapterId) async {
+    try {
+      final books = await localDataSource.getAllBooks();
+      final book = books.firstWhere(
+        (b) => b.id == bookId,
+        orElse: () => const BookItem(
+          id: '',
+          title: '',
+          description: '',
+          duration: '',
+          chaptersCount: 0,
+          icon: Icons.book,
+          level: BookLevel.beginner,
+          courseCategory: CourseCategory.korean,
+          country: '',
+          category: '',
+        ),
+      );
+      
+      if (book.id.isEmpty) {
+        return ApiResult.failure('Book not found', FailureType.notFound);
+      }
+      
+      final chapter = book.chapters.firstWhere(
+        (c) => c.id == chapterId,
+        orElse: () => const Chapter(
+          id: '',
+          title: '',
+          order: 0,
+        ),
+      );
+      
+      if (chapter.id.isEmpty) {
+        return ApiResult.failure('Chapter not found', FailureType.notFound);
+      }
+      
+      for (final audioTrack in chapter.audioTracks) {
+        if (audioTrack.audioUrl != null && audioTrack.audioUrl!.isNotEmpty) {
+          await _downloadAndCacheChapterAudio(bookId, chapterId, audioTrack.id);
+        }
+      }
+      
+      debugPrint('Preloaded ${chapter.audioTracks.length} audio tracks for chapter: $chapterId');
+      return ApiResult.success(null);
+    } catch (e) {
+      debugPrint('Error preloading chapter audio tracks: $e');
+      return ApiResult.failure('Failed to preload chapter audio tracks: $e', FailureType.unknown);
+    }
+  }
+
+  @override
   Future<ApiResult<String?>> regenerateImageUrl(BookItem book) async {
     if (book.bookImagePath == null || book.bookImagePath!.isEmpty) {
       return ApiResult.success(null);
@@ -345,6 +485,7 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
           debugPrint('Cache expired and online, clearing cache and resetting pagination');
           await localDataSource.clearAllBooks();
           await imageCacheService.clearAllImages();
+          await audioCacheService.clearAllAudioTracks();
         } else {
           debugPrint('Cache expired but offline, keeping expired cache for offline access');
         }
@@ -391,6 +532,18 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
     });
   }
 
+  void _cacheBookAudioTracksInBackground(List<BookItem> books) {
+    Future.microtask(() async {
+      try {
+        debugPrint('Starting background audio caching for ${books.length} books...');
+        await _cacheBookAudioTracks(books);
+        debugPrint('Completed background audio caching for ${books.length} books');
+      } catch (e) {
+        debugPrint('Background audio caching failed: $e');
+      }
+    });
+  }
+
   Future<void> _cacheBookImages(List<BookItem> books) async {
     try {
       for (final book in books) {
@@ -400,6 +553,16 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       }
     } catch (e) {
       debugPrint('Error caching book images: $e');
+    }
+  }
+
+  Future<void> _cacheBookAudioTracks(List<BookItem> books) async {
+    try {
+      for (final book in books) {
+        await audioCacheService.cacheBookAudioTracks(book);
+      }
+    } catch (e) {
+      debugPrint('Error caching book audio tracks: $e');
     }
   }
 
@@ -416,6 +579,8 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
             updatedBook = updatedBook.copyWith(bookImagePath: cachedPath);
           }
         }
+        
+        updatedBook = await audioCacheService.processBookWithCachedAudio(updatedBook);
         
         processedBooks.add(updatedBook);
       }
@@ -552,6 +717,80 @@ class KoreanBookRepositoryImpl extends BaseRepository implements KoreanBookRepos
       return await localDataSource.getChapterPdfFile(bookId, chapterId);
     } catch (e) {
       throw Exception('Error downloading chapter PDF: $e');
+    }
+  }
+
+  Future<File?> _downloadAndCacheBookAudio(String bookId, String audioTrackId) async {
+    try {
+      final audioUrl = await remoteDataSource.getAudioDownloadUrl(bookId, audioTrackId);
+      if (audioUrl == null || audioUrl.isEmpty) {
+        throw Exception('Audio URL not found for book audio track: $audioTrackId');
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final tempPath = '${directory.path}/temp_${audioTrackId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      
+      final downloadedFile = await remoteDataSource.downloadAudioToLocal(bookId, audioTrackId, tempPath);
+      if (downloadedFile == null) {
+        throw Exception('Failed to download audio track');
+      }
+
+      if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
+        throw Exception('Downloaded audio track is invalid');
+      }
+
+      try {
+        await localDataSource.saveAudioFile(bookId, audioTrackId, downloadedFile);
+      } catch (e) {
+        debugPrint('Failed to cache audio track: $e');
+      }
+
+      try {
+        await downloadedFile.delete();
+      } catch (e) {
+        debugPrint('Failed to delete temp audio file: $e');
+      }
+
+      return await localDataSource.getAudioFile(bookId, audioTrackId);
+    } catch (e) {
+      throw Exception('Error downloading audio track: $e');
+    }
+  }
+
+  Future<File?> _downloadAndCacheChapterAudio(String bookId, String chapterId, String audioTrackId) async {
+    try {
+      final audioUrl = await remoteDataSource.getChapterAudioDownloadUrl(bookId, chapterId, audioTrackId);
+      if (audioUrl == null || audioUrl.isEmpty) {
+        throw Exception('Chapter audio URL not found for track: $audioTrackId');
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final tempPath = '${directory.path}/temp_${chapterId}_${audioTrackId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      
+      final downloadedFile = await remoteDataSource.downloadChapterAudioToLocal(bookId, chapterId, audioTrackId, tempPath);
+      if (downloadedFile == null) {
+        throw Exception('Failed to download chapter audio track');
+      }
+
+      if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
+        throw Exception('Downloaded chapter audio track is invalid');
+      }
+
+      try {
+        await localDataSource.saveChapterAudioFile(bookId, chapterId, audioTrackId, downloadedFile);
+      } catch (e) {
+        debugPrint('Failed to cache chapter audio track: $e');
+      }
+
+      try {
+        await downloadedFile.delete();
+      } catch (e) {
+        debugPrint('Failed to delete temp chapter audio file: $e');
+      }
+
+      return await localDataSource.getChapterAudioFile(bookId, chapterId, audioTrackId);
+    } catch (e) {
+      throw Exception('Error downloading chapter audio track: $e');
     }
   }
 
