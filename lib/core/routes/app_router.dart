@@ -161,10 +161,12 @@ class AppRouter {
         name: 'pdfViewer',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
-          final pdfFile = state.extra as PDFViewerScreen;
+          final extra = state.extra as PDFViewerScreen;
           return PDFViewerScreen(
-            pdfFile: pdfFile.pdfFile,
-            title: pdfFile.title,
+            pdfFile: extra.pdfFile,
+            title: extra.title,
+            book: extra.book,
+            chapter: extra.chapter,
           );
         },
       ),

@@ -1,9 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/features/books/presentation/widgets/book_audio_tracks_widget.dart';
+import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 
 class BookDetailsBottomSheet extends StatelessWidget {
   final BookItem book;
@@ -17,6 +20,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final languageCubit = context.read<LanguagePreferenceCubit>();
     
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -52,7 +56,10 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   children: [
                     Text(
-                      'Description',
+                      languageCubit.getLocalizedText(
+                        korean: '설명',
+                        english: 'Description',
+                      ),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -64,13 +71,22 @@ class BookDetailsBottomSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     
-                    _buildDetailsGrid(context, theme),
+                    if (book.audioTracks.isNotEmpty) ...[
+                      BookAudioTracksWidget(
+                        book: book,
+                        isCompact: false,
+                        showPreloadButton: true,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    
+                    _buildDetailsGrid(context, theme, languageCubit),
                     const SizedBox(height: 24),
                     
-                    _buildMetadataSection(context, theme),
+                    _buildMetadataSection(context, theme, languageCubit),
                     const SizedBox(height: 24),
                     
-                    _buildActionButtons(context, colorScheme),
+                    _buildActionButtons(context, colorScheme, languageCubit),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -83,6 +99,8 @@ class BookDetailsBottomSheet extends StatelessWidget {
   }
 
   Widget _buildBookHeader(BuildContext context, ThemeData theme) {
+    final languageCubit = context.read<LanguagePreferenceCubit>();
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -168,14 +186,42 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     book.uploadType == BookUploadType.chapterWise
-                        ? '${book.chaptersCount} chapter${book.chaptersCount != 1 ? 's' : ''}'
-                        : 'Single PDF',
+                        ? languageCubit.getLocalizedText(
+                            korean: '${book.chaptersCount}개 챕터',
+                            english: '${book.chaptersCount} chapter${book.chaptersCount != 1 ? 's' : ''}',
+                          )
+                        : languageCubit.getLocalizedText(
+                            korean: '단일 PDF',
+                            english: 'Single PDF',
+                          ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
                     ),
                   ),
                 ],
               ),
+              if (book.audioTracks.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.audiotrack,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      languageCubit.getLocalizedText(
+                        korean: '${book.audioTracks.length}개 오디오 트랙',
+                        english: '${book.audioTracks.length} audio track${book.audioTracks.length != 1 ? 's' : ''}',
+                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -234,6 +280,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
   Widget _buildBookTypeChip(BuildContext context, ThemeData theme) {
     final isChapterWise = book.uploadType == BookUploadType.chapterWise;
     final chipColor = isChapterWise ? Colors.blue : Colors.orange;
+    final languageCubit = context.read<LanguagePreferenceCubit>();
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -252,7 +299,9 @@ class BookDetailsBottomSheet extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isChapterWise ? 'Chapters' : 'Single PDF',
+            isChapterWise 
+                ? languageCubit.getLocalizedText(korean: '챕터별', english: 'Chapters')
+                : languageCubit.getLocalizedText(korean: 'PDF', english: 'Single PDF'),
             style: TextStyle(
               color: chipColor,
               fontWeight: FontWeight.bold,
@@ -264,31 +313,31 @@ class BookDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsGrid(BuildContext context, ThemeData theme) {
+  Widget _buildDetailsGrid(BuildContext context, ThemeData theme, LanguagePreferenceCubit languageCubit) {
     final List<Map<String, dynamic>> details = [
       {
         'icon': Icons.language,
-        'label': 'Country',
+        'label': languageCubit.getLocalizedText(korean: '국가', english: 'Country'),
         'value': book.country,
       },
       {
         'icon': Icons.category,
-        'label': 'Category',
+        'label': languageCubit.getLocalizedText(korean: '카테고리', english: 'Category'),
         'value': book.courseCategory.toString().split('.').last,
       },
       {
         'icon': Icons.timer,
-        'label': 'Duration',
+        'label': languageCubit.getLocalizedText(korean: '소요 시간', english: 'Duration'),
         'value': book.duration,
       },
       {
         'icon': book.uploadType == BookUploadType.chapterWise 
             ? Icons.auto_stories 
             : Icons.picture_as_pdf,
-        'label': 'Type',
+        'label': languageCubit.getLocalizedText(korean: '타입', english: 'Type'),
         'value': book.uploadType == BookUploadType.chapterWise 
-            ? '${book.chaptersCount} Chapters'
-            : 'Single PDF',
+            ? languageCubit.getLocalizedText(korean: '${book.chaptersCount}개 챕터', english: '${book.chaptersCount} Chapters')
+            : languageCubit.getLocalizedText(korean: '단일 PDF', english: 'Single PDF'),
       },
     ];
     
@@ -352,7 +401,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildMetadataSection(BuildContext context, ThemeData theme) {
+  Widget _buildMetadataSection(BuildContext context, ThemeData theme, LanguagePreferenceCubit languageCubit) {
     final dateFormat = DateFormat('MMM d, yyyy');
     
     return Container(
@@ -372,7 +421,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Metadata',
+            languageCubit.getLocalizedText(korean: '메타데이터', english: 'Metadata'),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -382,7 +431,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           if (book.createdAt != null) _buildMetadataItem(
             context,
             Icons.calendar_today,
-            'Created',
+            languageCubit.getLocalizedText(korean: '생성일', english: 'Created'),
             dateFormat.format(book.createdAt!),
             theme,
           ),
@@ -390,7 +439,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           if (book.updatedAt != null) _buildMetadataItem(
             context,
             Icons.update,
-            'Updated',
+            languageCubit.getLocalizedText(korean: '수정일', english: 'Updated'),
             dateFormat.format(book.updatedAt!),
             theme,
           ),
@@ -398,7 +447,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           if (book.creatorUid != null) _buildMetadataItem(
             context,
             Icons.person,
-            'Creator ID',
+            languageCubit.getLocalizedText(korean: '작성자 ID', english: 'Creator ID'),
             book.creatorUid!,
             theme,
           ),
@@ -406,7 +455,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           if (book.pdfPath != null) _buildMetadataItem(
             context,
             Icons.insert_drive_file,
-            'PDF Path',
+            languageCubit.getLocalizedText(korean: 'PDF 경로', english: 'PDF Path'),
             book.pdfPath!,
             theme,
           ),
@@ -458,7 +507,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildActionButtons(BuildContext context, ColorScheme colorScheme, LanguagePreferenceCubit languageCubit) {
     return Row(
       children: [
         Expanded(
@@ -473,8 +522,8 @@ class BookDetailsBottomSheet extends StatelessWidget {
             ),
             label: Text(
               book.uploadType == BookUploadType.chapterWise 
-                  ? 'View Chapters' 
-                  : 'Read Now'
+                  ? languageCubit.getLocalizedText(korean: '챕터 보기', english: 'View Chapters')
+                  : languageCubit.getLocalizedText(korean: '지금 읽기', english: 'Read Now')
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
@@ -492,7 +541,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
             Navigator.pop(context);
           },
           icon: const Icon(Icons.download),
-          label: const Text('Download'),
+          label: Text(languageCubit.getLocalizedText(korean: '다운로드', english: 'Download')),
           style: OutlinedButton.styleFrom(
             foregroundColor: colorScheme.primary,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

@@ -556,7 +556,7 @@ class _BooksPageState extends State<BooksPage>
         if (operation.status == KoreanBooksOperationStatus.completed &&
             state.loadedPdfFile != null) {
           Navigator.of(context, rootNavigator: true).pop();
-          _verifyAndOpenPdf(state.loadedPdfFile!, operation.bookId ?? '');
+          _verifyAndOpenPdf(state.loadedPdfFile!, state.books.firstWhere((b) => b.id == operation.bookId));
           _currentPdfLoadingBookId = null;
         } else if (operation.status == KoreanBooksOperationStatus.failed) {
           Navigator.of(context, rootNavigator: true).pop();
@@ -576,7 +576,7 @@ class _BooksPageState extends State<BooksPage>
     _viewSinglePdf(book);
   }
 
-  void _verifyAndOpenPdf(File pdfFile, String title) async {
+  void _verifyAndOpenPdf(File pdfFile, BookItem item) async {
     try {
       final fileExists = await pdfFile.exists();
       final fileSize = fileExists ? await pdfFile.length() : 0;
@@ -585,7 +585,7 @@ class _BooksPageState extends State<BooksPage>
         throw Exception('PDF file is empty or does not exist');
       }
 
-      Future.microtask(() => _openPdfViewer(pdfFile, title));
+      Future.microtask(() => _openPdfViewer(pdfFile, item));
     } catch (e) {
       _snackBarCubit.showErrorLocalized(
         korean: '오류: PDF 파일을 열 수 없습니다',
@@ -594,10 +594,10 @@ class _BooksPageState extends State<BooksPage>
     }
   }
 
-  void _openPdfViewer(File pdfFile, String title) {
+  void _openPdfViewer(File pdfFile, BookItem item) {
     context.push(
       Routes.pdfViewer,
-      extra: PDFViewerScreen(pdfFile: pdfFile, title: title),
+      extra: PDFViewerScreen(pdfFile: pdfFile, title: item.title, book: item,),
     );
   }
 

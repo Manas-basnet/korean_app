@@ -11,6 +11,8 @@ import 'package:korean_language_app/shared/presentation/language_preference/bloc
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/pdf_viewer_page.dart';
+import 'package:korean_language_app/features/books/presentation/widgets/chapters_audio_tracks_widget.dart';
+import 'package:korean_language_app/features/books/presentation/widgets/book_audio_tracks_widget.dart';
 
 class ChaptersPage extends StatefulWidget {
   final BookItem book;
@@ -94,7 +96,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
         if (state.currentOperation.status == KoreanBooksOperationStatus.completed &&
             state.loadedPdfFile != null) {
           Navigator.of(context, rootNavigator: true).pop();
-          _verifyAndOpenPdf(state.loadedPdfFile!, chapter.title);
+          _verifyAndOpenPdf(state.loadedPdfFile!, chapter);
           _clearLoadingState();
         } else if (state.currentOperation.status == KoreanBooksOperationStatus.failed) {
           Navigator.of(context, rootNavigator: true).pop();
@@ -151,7 +153,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
     );
   }
 
-  void _verifyAndOpenPdf(File pdfFile, String chapterTitle) async {
+  void _verifyAndOpenPdf(File pdfFile, Chapter chapter) async {
     try {
       final fileExists = await pdfFile.exists();
       final fileSize = fileExists ? await pdfFile.length() : 0;
@@ -160,7 +162,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
         throw Exception('PDF file is empty or does not exist');
       }
 
-      Future.microtask(() => _openPdfViewer(pdfFile, chapterTitle));
+      Future.microtask(() => _openPdfViewer(pdfFile, chapter));
     } catch (e) {
       _snackBarCubit.showErrorLocalized(
         korean: '오류: PDF 파일을 열 수 없습니다',
@@ -169,12 +171,13 @@ class _ChaptersPageState extends State<ChaptersPage> {
     }
   }
 
-  void _openPdfViewer(File pdfFile, String chapterTitle) {
+  void _openPdfViewer(File pdfFile, Chapter chapter) {
     context.push(
       Routes.pdfViewer,
       extra: PDFViewerScreen(
         pdfFile: pdfFile,
-        title: chapterTitle,
+        title: chapter.title,
+        chapter: chapter,
       ),
     );
   }
@@ -316,6 +319,24 @@ class _ChaptersPageState extends State<ChaptersPage> {
                         color: colorScheme.onSurface.withValues(alpha:0.5),
                       ),
                     ),
+                    if (widget.book.audioTracks.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.audiotrack,
+                        size: 16,
+                        color: colorScheme.onSurface.withValues(alpha:0.5),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _languageCubit.getLocalizedText(
+                          korean: '${widget.book.audioTracks.length}개 오디오',
+                          english: '${widget.book.audioTracks.length} audio',
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha:0.5),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -325,13 +346,40 @@ class _ChaptersPageState extends State<ChaptersPage> {
           Expanded(
             child: sortedChapters.isEmpty
                 ? _buildEmptyChaptersView()
-                : ListView.builder(
+                : SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
-                    itemCount: sortedChapters.length,
-                    itemBuilder: (context, index) {
-                      final chapter = sortedChapters[index];
-                      return _buildChapterCard(chapter, index, theme);
-                    },
+                    child: Column(
+                      children: [
+                        if (widget.book.audioTracks.isNotEmpty) ...[
+                          BookAudioTracksWidget(
+                            book: widget.book,
+                            isCompact: false,
+                            showPreloadButton: true,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        
+                        ...sortedChapters.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final chapter = entry.value;
+                          return Column(
+                            children: [
+                              _buildChapterCard(chapter, index, theme),
+                              if (chapter.audioTracks.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                ChapterAudioTracksWidget(
+                                  bookId: widget.book.id,
+                                  chapter: chapter,
+                                  isCompact: true,
+                                  showPreloadButton: false,
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
                   ),
           ),
         ],
@@ -383,7 +431,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
     final isLoading = _currentLoadingChapterId == chapter.id;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       elevation: 2,
       shadowColor: colorScheme.shadow.withValues(alpha:0.1),
       shape: RoundedRectangleBorder(
@@ -475,6 +523,25 @@ class _ChaptersPageState extends State<ChaptersPage> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (chapter.audioTracks.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.audiotrack,
+                            size: 14,
+                            color: Colors.green.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _languageCubit.getLocalizedText(
+                              korean: '${chapter.audioTracks.length}개 오디오',
+                              english: '${chapter.audioTracks.length} audio',
+                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.green.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                         if (chapter.duration != null && chapter.duration!.isNotEmpty) ...[
                           const SizedBox(width: 12),
                           Icon(

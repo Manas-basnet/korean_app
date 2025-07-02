@@ -86,6 +86,10 @@ class BookGridCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       _buildBookTypeIndicator(context),
+                      if (book.audioTracks.isNotEmpty || book.hasChapterAudio) ...[
+                        const SizedBox(height: 6),
+                        _buildAudioIndicator(context),
+                      ],
                     ],
                   ),
                   
@@ -286,6 +290,44 @@ class BookGridCard extends StatelessWidget {
     );
   }
 
+  Widget _buildAudioIndicator(BuildContext context) {
+    final totalAudioCount = book.totalAudioTracks;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.audiotrack,
+            size: 10,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$totalAudioCount',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBookTypeIndicator(BuildContext context) {
     final isChapterWise = book.uploadType == BookUploadType.chapterWise;
     
@@ -341,10 +383,6 @@ class BookGridCard extends StatelessWidget {
   }
 
   void _handleImageLoadError(BuildContext context) {
-    //TODO: Fix the multiple rebuild of widget 
-    // if (book.bookImagePath != null && book.bookImagePath!.isNotEmpty) {
-    //   context.read<KoreanBooksCubit>().regenerateBookImageUrl(book);
-    // }
   }
 
   Widget _buildImagePlaceholder(BuildContext context) {
