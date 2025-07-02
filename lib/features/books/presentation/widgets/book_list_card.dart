@@ -182,13 +182,6 @@ class BookListCard extends StatelessWidget {
           child: _buildBookTypeIndicator(context),
         ),
         
-        if (book.audioTracks.isNotEmpty || book.hasChapterAudio)
-          Positioned(
-            bottom: 48,
-            left: 54,
-            child: _buildAudioIndicator(context),
-          ),
-        
         Positioned(
           bottom: 8,
           left: 8,
@@ -217,44 +210,6 @@ class BookListCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAudioIndicator(BuildContext context) {
-    final totalAudioCount = book.totalAudioTracks;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.audiotrack,
-            size: 12,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 2),
-          Text(
-            '$totalAudioCount',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -348,23 +303,6 @@ class BookListCard extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
-                if (book.audioTracks.isNotEmpty || book.hasChapterAudio) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.audiotrack,
-                    size: 12,
-                    color: Colors.green.shade600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${book.totalAudioTracks}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.green.shade600,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
                 const Spacer(),
                 _buildBookTypeChip(context),
               ],
