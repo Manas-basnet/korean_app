@@ -38,10 +38,10 @@ class BookGridCard extends StatelessWidget {
 
     return Card(
       elevation: 3,
-      shadowColor: colorScheme.shadow.withValues( alpha: 0.3),
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues( alpha: 0.1), width: 0.5),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -64,7 +64,7 @@ class BookGridCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: book.level.getColor().withValues( alpha: 0.85),
+                          color: book.level.getColor().withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: const [
                             BoxShadow(
@@ -86,6 +86,10 @@ class BookGridCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       _buildBookTypeIndicator(context),
+                      if (book.hasAudio || book.hasChapterAudio) ...[
+                        const SizedBox(height: 6),
+                        _buildAudioIndicator(context),
+                      ],
                     ],
                   ),
                   
@@ -96,7 +100,7 @@ class BookGridCard extends StatelessWidget {
                       icon: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues( alpha: 0.4),
+                          color: Colors.black.withValues(alpha: 0.4),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -213,7 +217,7 @@ class BookGridCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues( alpha: 0.85),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.85),
                     shape: BoxShape.circle,
                     boxShadow: const [
                       BoxShadow(
@@ -243,31 +247,65 @@ class BookGridCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withValues( alpha: 0.7),
+                      Colors.black.withValues(alpha: 0.7),
                     ],
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: Text(
-                        book.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                              color: Colors.black45,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            book.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 2,
+                                  color: Colors.black45,
+                                ),
+                              ],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (book.hasAudio || book.hasChapterAudio) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.volume_up,
+                                  size: 12,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${book.totalAudioTracks} tracks',
+                                  style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    shadows: [
+                                      Shadow(
+                                        offset: Offset(0, 1),
+                                        blurRadius: 2,
+                                        color: Colors.black45,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        ],
                       ),
                     ),
                     AnimatedFavoriteButton(
@@ -326,6 +364,42 @@ class BookGridCard extends StatelessWidget {
     );
   }
 
+  Widget _buildAudioIndicator(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.headphones,
+            size: 8,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            '${book.totalAudioTracks}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCoverImage(BuildContext context) {
     return book.bookImage != null && book.bookImage!.isNotEmpty
         ? CachedNetworkImage(
@@ -341,15 +415,15 @@ class BookGridCard extends StatelessWidget {
   }
 
   void _handleImageLoadError(BuildContext context) {
-    //TODO: Fix the multiple rebuild of widget 
+    // TODO: Fix the multiple rebuild of widget 
     // if (book.bookImagePath != null && book.bookImagePath!.isNotEmpty) {
     //   context.read<KoreanBooksCubit>().regenerateBookImageUrl(book);
     // }
   }
 
   Widget _buildImagePlaceholder(BuildContext context) {
-    final placeholderColor = Theme.of(context).colorScheme.primary.withValues( alpha: 0.1);
-    final iconColor = Theme.of(context).colorScheme.primary.withValues( alpha: 0.7);
+    final placeholderColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.1);
+    final iconColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.7);
     
     return Container(
       color: placeholderColor,
@@ -366,7 +440,7 @@ class BookGridCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withValues( alpha: 0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

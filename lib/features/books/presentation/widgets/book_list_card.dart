@@ -38,10 +38,10 @@ class BookListCard extends StatelessWidget {
     
     return Card(
       elevation: 3,
-      shadowColor: colorScheme.shadow.withValues( alpha: 0.3),
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues( alpha: 0.1), width: 0.5),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
       ),
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -98,8 +98,8 @@ class BookListCard extends StatelessWidget {
   
   Widget _buildImagePlaceholder(BuildContext context) {
     final theme = Theme.of(context);
-    final placeholderColor = theme.colorScheme.primary.withValues( alpha: 0.1);
-    final iconColor = theme.colorScheme.primary.withValues( alpha: 0.7);
+    final placeholderColor = theme.colorScheme.primary.withValues(alpha: 0.1);
+    final iconColor = theme.colorScheme.primary.withValues(alpha: 0.7);
     
     return Container(
       color: placeholderColor,
@@ -116,7 +116,7 @@ class BookListCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withValues( alpha: 0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -158,7 +158,7 @@ class BookListCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues( alpha: 0.85),
+                color: theme.colorScheme.primary.withValues(alpha: 0.85),
                 shape: BoxShape.circle,
                 boxShadow: const [
                   BoxShadow(
@@ -182,13 +182,20 @@ class BookListCard extends StatelessWidget {
           child: _buildBookTypeIndicator(context),
         ),
         
+        if (book.hasAudio || book.hasChapterAudio)
+          Positioned(
+            bottom: 24,
+            right: 8,
+            child: _buildAudioIndicator(context),
+          ),
+        
         Positioned(
           bottom: 8,
           left: 8,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: book.level.getColor().withValues( alpha: 0.85),
+              color: book.level.getColor().withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(14),
               boxShadow: const [
                 BoxShadow(
@@ -242,6 +249,42 @@ class BookListCard extends StatelessWidget {
           const SizedBox(width: 2),
           Text(
             isChapterWise ? 'Chapters' : 'PDF',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioIndicator(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.headphones,
+            size: 10,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            '${book.totalAudioTracks}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 9,
@@ -321,6 +364,28 @@ class BookListCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            
+            if (book.hasAudio || book.hasChapterAudio) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.headphones,
+                    size: 14,
+                    color: Colors.green,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${book.totalAudioTracks} audio tracks',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.green,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             
             _buildActionButtons(context, theme),
           ],
@@ -502,13 +567,23 @@ class BookListCard extends StatelessWidget {
         
         const SizedBox(width: 8),
         
-        if (canEdit && onEditBook != null)
+        if (book.hasAudio || book.hasChapterAudio)
+          Expanded(
+            child: _buildIconButton(
+              context,
+              Icons.headphones,
+              () => onViewPdf(book),
+              Colors.green.withValues(alpha: 0.1),
+              Colors.green,
+            ),
+          )
+        else if (canEdit && onEditBook != null)
           Expanded(
             child: _buildIconButton(
               context,
               Icons.edit,
               () => onEditBook!(book),
-              theme.colorScheme.primary.withValues( alpha: 0.1),
+              theme.colorScheme.primary.withValues(alpha: 0.1),
               theme.colorScheme.primary,
             ),
           )
@@ -518,7 +593,7 @@ class BookListCard extends StatelessWidget {
               context,
               Icons.quiz,
               onQuizBook != null ? () => onQuizBook!(book) : null,
-              theme.colorScheme.secondary.withValues( alpha: 0.1),
+              theme.colorScheme.secondary.withValues(alpha: 0.1),
               theme.colorScheme.secondary,
             ),
           ),
@@ -530,8 +605,8 @@ class BookListCard extends StatelessWidget {
             context,
             Icons.download,
             () => onDownloadClicked != null ? onDownloadClicked!(book) : null,
-            Colors.green.withValues( alpha: 0.1),
-            Colors.green,
+            Colors.blue.withValues(alpha: 0.1),
+            Colors.blue,
           ),
         ),
       ],

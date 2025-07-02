@@ -3,15 +3,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
+import 'package:korean_language_app/shared/models/audio_track.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final File pdfFile;
   final String title;
+  final BookItem? book;
+  final Chapter? chapter;
   
   const PDFViewerScreen({
     super.key,
     required this.pdfFile,
     required this.title,
+    this.book,
+    this.chapter,
   });
 
   @override
@@ -21,7 +29,6 @@ class PDFViewerScreen extends StatefulWidget {
 class _PDFViewerScreenState extends State<PDFViewerScreen>
     with TickerProviderStateMixin {
   
-  // Animation configuration variables
   static const Duration _animationDuration = Duration(milliseconds: 200);
   static const Curve _animationCurve = Curves.easeInOut;
   static const Offset _topSlideBegin = Offset(0, -1);
@@ -29,15 +36,29 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   static const Offset _slideEnd = Offset.zero;
   
   late AnimationController _uiAnimationController;
+  late AnimationController _audioAnimationController;
   late Animation<Offset> _topSlideAnimation;
   late Animation<Offset> _bottomSlideAnimation;
+  late Animation<Offset> _audioSlideAnimation;
   late Animation<double> _fadeAnimation;
   
   PDFViewController? _pdfController;
   bool _showUI = true;
+  bool _showAudioPanel = false;
   bool _isHorizontal = false;
   int _currentPage = 0;
   int _totalPages = 0;
+  
+  List<AudioTrack> get _audioTracks {
+    if (widget.chapter != null) {
+      return widget.chapter!.audioTracks;
+    } else if (widget.book != null) {
+      return widget.book!.audioTracks;
+    }
+    return [];
+  }
+  
+  bool get _hasAudio => _audioTracks.isNotEmpty;
   
   @override
   void initState() {
@@ -47,6 +68,11 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   
   void _initializeAnimations() {
     _uiAnimationController = AnimationController(
+      duration: _animationDuration,
+      vsync: this,
+    );
+    
+    _audioAnimationController = AnimationController(
       duration: _animationDuration,
       vsync: this,
     );
@@ -67,6 +93,14 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
       curve: _animationCurve,
     ));
     
+    _audioSlideAnimation = Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: _slideEnd,
+    ).animate(CurvedAnimation(
+      parent: _audioAnimationController,
+      curve: _animationCurve,
+    ));
+    
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -81,6 +115,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   @override
   void dispose() {
     _uiAnimationController.dispose();
+    _audioAnimationController.dispose();
     super.dispose();
   }
   
@@ -90,7 +125,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     }
     
     if (_showUI) {
-      // Hide UI with animation
       _uiAnimationController.reverse().then((_) {
         if (mounted) {
           setState(() {
@@ -99,11 +133,29 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
         }
       });
     } else {
-      // Show UI with animation
       setState(() {
         _showUI = true;
       });
       _uiAnimationController.forward();
+    }
+  }
+  
+  void _toggleAudioPanel() {
+    if (!_hasAudio) return;
+    
+    if (_showAudioPanel) {
+      _audioAnimationController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _showAudioPanel = false;
+          });
+        }
+      });
+    } else {
+      setState(() {
+        _showAudioPanel = true;
+      });
+      _audioAnimationController.forward();
     }
   }
   
@@ -160,64 +212,76 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // PDF Viewer
           Positioned.fill(
-            child: PDFView(
-              key: ValueKey(_isHorizontal),
-              filePath: widget.pdfFile.path,
-              enableSwipe: true,
-              swipeHorizontal: _isHorizontal,
-              autoSpacing: true,
-              pageFling: true,
-              pageSnap: true,
-              defaultPage: _currentPage > 0 ? _currentPage - 1 : 0,
-              fitPolicy: FitPolicy.BOTH,
-              preventLinkNavigation: false,
-              onRender: (pages) {
-                setState(() {
-                  _totalPages = pages ?? 0;
-                  if (_currentPage == 0 && _totalPages > 0) {
-                    _currentPage = 1;
-                  }
-                });
-                if (kDebugMode) {
-                  print('PDF rendered with $pages pages');
-                }
-              },
-              onError: (error) {
-                if (kDebugMode) {
-                  print('Error in PDFView: $error');
-                }
-                context.pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $error'),
-                    backgroundColor: Colors.red.shade600,
+            child: GestureDetector(
+              onTap: _toggleUI,
+              behavior: HitTestBehavior.translucent,
+              child: Stack(
+                children: [
+                  PDFView(
+                    key: ValueKey(_isHorizontal),
+                    filePath: widget.pdfFile.path,
+                    enableSwipe: true,
+                    swipeHorizontal: _isHorizontal,
+                    autoSpacing: true,
+                    pageFling: true,
+                    pageSnap: true,
+                    defaultPage: _currentPage > 0 ? _currentPage - 1 : 0,
+                    fitPolicy: FitPolicy.BOTH,
+                    preventLinkNavigation: false,
+                    onRender: (pages) {
+                      setState(() {
+                        _totalPages = pages ?? 0;
+                        if (_currentPage == 0 && _totalPages > 0) {
+                          _currentPage = 1;
+                        }
+                      });
+                      if (kDebugMode) {
+                        print('PDF rendered with $pages pages');
+                      }
+                    },
+                    onError: (error) {
+                      if (kDebugMode) {
+                        print('Error in PDFView: $error');
+                      }
+                      context.pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: $error'),
+                          backgroundColor: Colors.red.shade600,
+                        ),
+                      );
+                    },
+                    onPageError: (page, error) {
+                      debugPrint('Error on page $page: $error');
+                    },
+                    onViewCreated: (controller) {
+                      _pdfController = controller;
+                      if (kDebugMode) {
+                        print('PDFView controller created');
+                      }
+                    },
+                    onPageChanged: (int? page, int? total) {
+                      setState(() {
+                        _currentPage = (page ?? 0) + 1;
+                        _totalPages = total ?? 0;
+                      });
+                      if (kDebugMode) {
+                        print('Page changed: $_currentPage / $_totalPages');
+                      }
+                    },
                   ),
-                );
-              },
-              onPageError: (page, error) {
-                debugPrint('Error on page $page: $error');
-              },
-              onViewCreated: (controller) {
-                _pdfController = controller;
-                if (kDebugMode) {
-                  print('PDFView controller created');
-                }
-              },
-              onPageChanged: (int? page, int? total) {
-                setState(() {
-                  _currentPage = (page ?? 0) + 1;
-                  _totalPages = total ?? 0;
-                });
-                if (kDebugMode) {
-                  print('Page changed: $_currentPage / $_totalPages');
-                }
-              },
+                  
+                  Container(
+                    color: Colors.transparent,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                ],
+              ),
             ),
           ),
           
-          // Always visible toggle button
           Positioned(
             top: 50,
             right: 20,
@@ -229,10 +293,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha:0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(25),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha:0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -246,68 +310,73 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
             ),
           ),
           
-          // Back button (top-left)
-          Positioned(
-            top: 50,
-            left: 20,
-            child: _showUI 
-              ? SlideTransition(
-                  position: _topSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SafeArea(
-                      child: _buildControlButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        onPressed: () => context.pop(),
-                        tooltip: 'Go Back',
-                      ),
+          if (_showUI) ...[
+            Positioned(
+              top: 50,
+              left: 20,
+              child: SlideTransition(
+                position: _topSlideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SafeArea(
+                    child: Row(
+                      children: [
+                        _buildControlButton(
+                          icon: Icons.arrow_back_ios_new_rounded,
+                          onPressed: () => context.pop(),
+                          tooltip: 'Go Back',
+                        ),
+                        const SizedBox(width: 12),
+                        _buildControlButton(
+                          icon: Icons.file_download_outlined,
+                          onPressed: _downloadPdf,
+                          tooltip: 'Download PDF',
+                        ),
+                        if (_hasAudio) ...[
+                          const SizedBox(width: 12),
+                          _buildControlButton(
+                            icon: _showAudioPanel ? Icons.volume_off : Icons.volume_up,
+                            onPressed: _toggleAudioPanel,
+                            tooltip: _showAudioPanel ? 'Hide Audio' : 'Show Audio',
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                )
-              : const SizedBox.shrink(),
-          ),
+                ),
+              ),
+            ),
+            
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SlideTransition(
+                position: _bottomSlideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SafeArea(
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      child: _buildBottomSection(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
           
-          // Download button (top-left, next to back button)
-          Positioned(
-            top: 50,
-            left: 80,
-            child: _showUI 
-              ? SlideTransition(
-                  position: _topSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SafeArea(
-                      child: _buildControlButton(
-                        icon: Icons.file_download_outlined,
-                        onPressed: _downloadPdf,
-                        tooltip: 'Download PDF',
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-          ),
-          
-          // Bottom Controls & Page Indicator
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _showUI 
-              ? SlideTransition(
-                  position: _bottomSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SafeArea(
-                      child: Container(
-                        margin: const EdgeInsets.all(16),
-                        child: _buildBottomSection(),
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-          ),
+          if (_hasAudio && _showAudioPanel)
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              width: 300,
+              child: SlideTransition(
+                position: _audioSlideAnimation,
+                child: _buildAudioPanel(),
+              ),
+            ),
         ],
       ),
     );
@@ -320,10 +389,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha:0.7),
+            color: Colors.black.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withValues(alpha:0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -377,7 +446,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.white.withValues(alpha:0.2)
+              ? Colors.white.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -410,15 +479,15 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha:0.8),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: Colors.white.withValues(alpha:0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -444,7 +513,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
           Text(
             ' / $_totalPages',
             style: TextStyle(
-              color: Colors.white.withValues(alpha:0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -461,10 +530,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha:0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: Colors.white.withValues(alpha:0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -482,6 +551,155 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildAudioPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.9),
+        border: Border(
+          left: BorderSide(
+            color: Colors.white.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.library_music,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Audio Tracks',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _toggleAudioPanel,
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            
+            Expanded(
+              child: _audioTracks.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No audio tracks available',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _audioTracks.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final audioTrack = _audioTracks[index];
+                        return _buildAudioTrackItem(audioTrack);
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildAudioTrackItem(AudioTrack audioTrack) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${audioTrack.order}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    audioTrack.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: CustomCachedAudio(
+              audioUrl: audioTrack.audioUrl,
+              audioPath: audioTrack.audioPath,
+              label: audioTrack.name,
+              height: 50,
+            ),
+          ),
+        ],
       ),
     );
   }

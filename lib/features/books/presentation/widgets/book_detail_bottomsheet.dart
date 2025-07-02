@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_audio.dart';
 
 class BookDetailsBottomSheet extends StatelessWidget {
   final BookItem book;
@@ -36,7 +37,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                 width: 40,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues( alpha: 0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
@@ -66,6 +67,11 @@ class BookDetailsBottomSheet extends StatelessWidget {
                     
                     _buildDetailsGrid(context, theme),
                     const SizedBox(height: 24),
+                    
+                    if (book.hasAudio || book.hasChapterAudio) ...[
+                      _buildAudioSection(context, theme),
+                      const SizedBox(height: 24),
+                    ],
                     
                     _buildMetadataSection(context, theme),
                     const SizedBox(height: 24),
@@ -119,14 +125,14 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   Icon(
                     book.icon,
                     size: 16,
-                    color: theme.colorScheme.primary.withValues( alpha: 0.7),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       book.category,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues( alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -148,13 +154,13 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   Icon(
                     Icons.timer_outlined,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     book.duration,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -163,7 +169,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                         ? Icons.auto_stories 
                         : Icons.picture_as_pdf,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -171,9 +177,24 @@ class BookDetailsBottomSheet extends StatelessWidget {
                         ? '${book.chaptersCount} chapter${book.chaptersCount != 1 ? 's' : ''}'
                         : 'Single PDF',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues( alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
+                  if (book.hasAudio || book.hasChapterAudio) ...[
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.headphones,
+                      size: 16,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${book.totalAudioTracks} tracks',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -187,12 +208,12 @@ class BookDetailsBottomSheet extends StatelessWidget {
     return Container(
       width: 100,
       height: 140,
-      color: Theme.of(context).colorScheme.primary.withValues( alpha: 0.1),
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
       child: Center(
         child: Icon(
           book.icon,
           size: 40,
-          color: Theme.of(context).colorScheme.primary.withValues( alpha: 0.7),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -205,9 +226,9 @@ class BookDetailsBottomSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: levelColor.withValues( alpha: 0.1),
+        color: levelColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: levelColor.withValues( alpha: 0.3), width: 1),
+        border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -238,9 +259,9 @@ class BookDetailsBottomSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: chipColor.withValues( alpha: 0.1),
+        color: chipColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: chipColor.withValues( alpha: 0.3), width: 1),
+        border: Border.all(color: chipColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -311,7 +332,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues( alpha: 0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -332,7 +353,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                   Text(
                     detail['label'],
                     style: TextStyle(
-                      color: theme.colorScheme.onSurface.withValues( alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       fontSize: 12,
                     ),
                   ),
@@ -352,6 +373,128 @@ class BookDetailsBottomSheet extends StatelessWidget {
     );
   }
 
+  Widget _buildAudioSection(BuildContext context, ThemeData theme) {
+    final allAudioTracks = <Map<String, dynamic>>[];
+    
+    for (final audioTrack in book.audioTracks) {
+      allAudioTracks.add({
+        'track': audioTrack,
+        'type': 'book',
+        'source': 'Book Level',
+      });
+    }
+    
+    for (final chapter in book.chapters) {
+      for (final audioTrack in chapter.audioTracks) {
+        allAudioTracks.add({
+          'track': audioTrack,
+          'type': 'chapter',
+          'source': 'Chapter: ${chapter.title}',
+        });
+      }
+    }
+    
+    if (allAudioTracks.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.headphones,
+              size: 20,
+              color: Colors.green,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Audio Tracks (${allAudioTracks.length})',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        ...allAudioTracks.map((item) {
+          final audioTrack = item['track'];
+          final source = item['source'];
+          
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.green.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${audioTrack.order}',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            audioTrack.name,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            source,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                CustomCachedAudio(
+                  audioUrl: audioTrack.audioUrl,
+                  audioPath: audioTrack.audioPath,
+                  label: audioTrack.name,
+                  height: 45,
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
   Widget _buildMetadataSection(BuildContext context, ThemeData theme) {
     final dateFormat = DateFormat('MMM d, yyyy');
     
@@ -362,7 +505,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues( alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -430,7 +573,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
           Icon(
             icon,
             size: 16,
-            color: theme.colorScheme.onSurface.withValues( alpha: 0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -440,7 +583,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: theme.colorScheme.onSurface.withValues( alpha: 0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 13,
                   ),
                 ),
@@ -499,7 +642,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            side: BorderSide(color: colorScheme.primary.withValues( alpha: 0.5)),
+            side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
           ),
         ),
       ],

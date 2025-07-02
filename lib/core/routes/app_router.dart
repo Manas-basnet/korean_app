@@ -157,14 +157,16 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: '/pdf-viewer',
+        path: Routes.pdfViewer,
         name: 'pdfViewer',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
-          final pdfFile = state.extra as PDFViewerScreen;
+          final extra = state.extra as PDFViewerScreen;
           return PDFViewerScreen(
-            pdfFile: pdfFile.pdfFile,
-            title: pdfFile.title,
+            pdfFile: extra.pdfFile,
+            title: extra.title,
+            chapter: extra.chapter,
+            book: extra.book,
           );
         },
       ),
