@@ -15,16 +15,20 @@ import 'package:korean_language_app/features/book_upload/domain/usecases/update_
 import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_book_audio_track_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/get_book_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_chapter_audio_track_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/get_chapter_pdf_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_favorite_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_more_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/preload_book_audio_tracks_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/refresh_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/regenerate_book_image_url_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/search_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/search_favorite_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/toggle_favorite_book_usecase.dart';
+import 'package:korean_language_app/shared/services/audio_cache_service.dart';
 import 'package:korean_language_app/shared/services/image_cache_service.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/favorite_books_local_data_source_impl.dart';
@@ -42,6 +46,9 @@ import 'package:korean_language_app/features/books/presentation/bloc/korean_book
 
 void registerBooksDependencies(GetIt sl) {
   // Services
+  sl.registerLazySingleton<AudioCacheService>(
+    () => AudioCacheService(storageService: sl())
+  );
   sl.registerLazySingleton<ImageCacheService>(
     () => ImageCacheService(storageService: sl())
   );
@@ -117,6 +124,22 @@ void registerBooksDependencies(GetIt sl) {
     repository: sl(),
   ));
 
+  sl.registerLazySingleton(() => GetBookAudioTrackUseCase(
+    repository: sl(),
+  ));
+
+  sl.registerLazySingleton(() => GetChapterAudioTrackUseCase(
+    repository: sl(),
+  ));
+
+  sl.registerLazySingleton(() => PreloadBookAudioTracksUseCase(
+    repository: sl(),
+  ));
+
+  sl.registerLazySingleton(() => PreloadChapterAudioTracksUseCase(
+    repository: sl(),
+  ));
+
   // Favorite Books Use Cases
   sl.registerLazySingleton(() => LoadFavoriteBooksUseCase(
     repository: sl(),
@@ -139,6 +162,10 @@ void registerBooksDependencies(GetIt sl) {
     getChapterPdfUseCase: sl(),
     checkBookEditPermissionUseCase: sl(),
     regenerateBookImageUrlUseCase: sl(),
+    getBookAudioTrackUseCase: sl(),
+    getChapterAudioTrackUseCase: sl(),
+    preloadBookAudioTracksUseCase: sl(), 
+    preloadChapterAudioTracksUseCase: sl(),
   ));
 
   sl.registerFactory(() => BookEditingCubit(
@@ -189,7 +216,8 @@ void registerBooksDependencies(GetIt sl) {
       remoteDataSource: sl(),
       localDataSource: sl(),
       imageCacheService: sl(),
-      networkInfo: sl(),
+      networkInfo: sl(), 
+      audioCacheService: sl(),
     )
   );
   

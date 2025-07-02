@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_book_audio_track_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/preload_book_audio_tracks_usecase.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/features/books/domain/usecases/check_book_edit_permission_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/get_book_pdf_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/get_chapter_pdf_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecases/get_chapter_audio_track_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/load_more_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/refresh_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecases/regenerate_book_image_url_usecase.dart';
@@ -24,6 +27,10 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
   final RefreshBooksUseCase refreshBooksUseCase;
   final GetBookPdfUseCase getBookPdfUseCase;
   final GetChapterPdfUseCase getChapterPdfUseCase;
+  final GetBookAudioTrackUseCase getBookAudioTrackUseCase;
+  final GetChapterAudioTrackUseCase getChapterAudioTrackUseCase;
+  final PreloadBookAudioTracksUseCase preloadBookAudioTracksUseCase;
+  final PreloadChapterAudioTracksUseCase preloadChapterAudioTracksUseCase;
   final CheckBookEditPermissionUseCase checkBookEditPermissionUseCase;
   final RegenerateBookImageUrlUseCase regenerateBookImageUrlUseCase;
   
@@ -40,6 +47,10 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
     required this.refreshBooksUseCase,
     required this.getBookPdfUseCase,
     required this.getChapterPdfUseCase,
+    required this.getBookAudioTrackUseCase,
+    required this.getChapterAudioTrackUseCase,
+    required this.preloadBookAudioTracksUseCase,
+    required this.preloadChapterAudioTracksUseCase,
     required this.checkBookEditPermissionUseCase,
     required this.regenerateBookImageUrlUseCase,
   }) : super(const KoreanBooksInitial()) {
@@ -407,6 +418,280 @@ class KoreanBooksCubit extends Cubit<KoreanBooksState> {
       _clearOperationAfterDelay();
     } finally {
       _downloadsInProgress.remove(chapterId);
+    }
+  }
+  
+  Future<void> loadBookAudioTrack(String bookId, String audioTrackId) async {
+    if (_downloadsInProgress.contains(audioTrackId)) {
+      debugPrint('Audio track download already in progress for track: $audioTrackId');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      _downloadsInProgress.add(audioTrackId);
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadAudioTrack,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: audioTrackId,
+        ),
+      ));
+      
+      final params = GetBookAudioTrackParams(bookId: bookId, audioTrackId: audioTrackId);
+      final result = await getBookAudioTrackUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (audioFile) {
+          _operationStopwatch.stop();
+          debugPrint('Book audio track loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for track: $audioTrackId');
+          
+          emit(state.copyWith(
+            loadedAudioFile: audioFile,
+            loadedAudioTrackId: audioTrackId,
+            loadedAudioBookId: bookId,
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadAudioTrack,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: audioTrackId,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Book audio track load failed after ${_operationStopwatch.elapsedMilliseconds}ms for track $audioTrackId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadAudioTrack,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: audioTrackId,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error loading book audio track after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadAudioTrack,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: audioTrackId,
+          message: 'Failed to load audio track: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
+    } finally {
+      _downloadsInProgress.remove(audioTrackId);
+    }
+  }
+
+  Future<void> loadChapterAudioTrack(String bookId, String chapterId, String audioTrackId) async {
+    final trackKey = '${chapterId}_$audioTrackId';
+    if (_downloadsInProgress.contains(trackKey)) {
+      debugPrint('Chapter audio track download already in progress for track: $audioTrackId in chapter: $chapterId');
+      return;
+    }
+    
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      _downloadsInProgress.add(trackKey);
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadAudioTrack,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: trackKey,
+        ),
+      ));
+      
+      final params = GetChapterAudioTrackParams(
+        bookId: bookId, 
+        chapterId: chapterId, 
+        audioTrackId: audioTrackId
+      );
+      final result = await getChapterAudioTrackUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (audioFile) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter audio track loaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for track: $audioTrackId in chapter: $chapterId');
+          
+          emit(state.copyWith(
+            loadedAudioFile: audioFile,
+            loadedAudioTrackId: audioTrackId,
+            loadedAudioBookId: bookId,
+            loadedAudioChapterId: chapterId,
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadAudioTrack,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: trackKey,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter audio track load failed after ${_operationStopwatch.elapsedMilliseconds}ms for track $audioTrackId in chapter $chapterId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.loadAudioTrack,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: trackKey,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error loading chapter audio track after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.loadAudioTrack,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: trackKey,
+          message: 'Failed to load chapter audio track: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
+    } finally {
+      _downloadsInProgress.remove(trackKey);
+    }
+  }
+
+  Future<void> preloadBookAudioTracks(String bookId) async {
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.preloadAudioTracks,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: bookId,
+        ),
+      ));
+      
+      final params = PreloadBookAudioTracksParams(bookId: bookId);
+      final result = await preloadBookAudioTracksUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (_) {
+          _operationStopwatch.stop();
+          debugPrint('Book audio tracks preloaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for book: $bookId');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.preloadAudioTracks,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: bookId,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Book audio tracks preload failed after ${_operationStopwatch.elapsedMilliseconds}ms for book $bookId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.preloadAudioTracks,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: bookId,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error preloading book audio tracks after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.preloadAudioTracks,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: bookId,
+          message: 'Failed to preload audio tracks: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
+    }
+  }
+
+  Future<void> preloadChapterAudioTracks(String bookId, String chapterId) async {
+    _operationStopwatch.reset();
+    _operationStopwatch.start();
+    
+    try {
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.preloadAudioTracks,
+          status: KoreanBooksOperationStatus.inProgress,
+          bookId: chapterId,
+        ),
+      ));
+      
+      final params = PreloadChapterAudioTracksParams(bookId: bookId, chapterId: chapterId);
+      final result = await preloadChapterAudioTracksUseCase.execute(params);
+      
+      result.fold(
+        onSuccess: (_) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter audio tracks preloaded successfully in ${_operationStopwatch.elapsedMilliseconds}ms for chapter: $chapterId');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.preloadAudioTracks,
+              status: KoreanBooksOperationStatus.completed,
+              bookId: chapterId,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+        onFailure: (message, type) {
+          _operationStopwatch.stop();
+          debugPrint('Chapter audio tracks preload failed after ${_operationStopwatch.elapsedMilliseconds}ms for chapter $chapterId: $message');
+          
+          emit(state.copyWith(
+            currentOperation: KoreanBooksOperation(
+              type: KoreanBooksOperationType.preloadAudioTracks,
+              status: KoreanBooksOperationStatus.failed,
+              bookId: chapterId,
+              message: message,
+            ),
+          ));
+          _clearOperationAfterDelay();
+        },
+      );
+    } catch (e) {
+      _operationStopwatch.stop();
+      debugPrint('Error preloading chapter audio tracks after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
+      
+      emit(state.copyWith(
+        currentOperation: KoreanBooksOperation(
+          type: KoreanBooksOperationType.preloadAudioTracks,
+          status: KoreanBooksOperationStatus.failed,
+          bookId: chapterId,
+          message: 'Failed to preload chapter audio tracks: $e',
+        ),
+      ));
+      _clearOperationAfterDelay();
     }
   }
   

@@ -5,7 +5,9 @@ enum KoreanBooksOperationType {
   loadMoreBooks, 
   searchBooks, 
   loadPdf, 
-  refreshBooks 
+  refreshBooks,
+  loadAudioTrack,
+  preloadAudioTracks,
 }
 
 enum KoreanBooksOperationStatus { 
@@ -52,6 +54,10 @@ class KoreanBooksState extends BaseState {
   final KoreanBooksOperation currentOperation;
   final File? loadedPdfFile;
   final String? loadedPdfBookId;
+  final File? loadedAudioFile;
+  final String? loadedAudioTrackId;
+  final String? loadedAudioBookId;
+  final String? loadedAudioChapterId;
 
   const KoreanBooksState({
     super.isLoading = false,
@@ -62,6 +68,10 @@ class KoreanBooksState extends BaseState {
     required this.currentOperation,
     this.loadedPdfFile,
     this.loadedPdfBookId,
+    this.loadedAudioFile,
+    this.loadedAudioTrackId,
+    this.loadedAudioBookId,
+    this.loadedAudioChapterId,
   });
 
   @override
@@ -79,6 +89,10 @@ class KoreanBooksState extends BaseState {
       currentOperation: currentOperation,
       loadedPdfFile: loadedPdfFile,
       loadedPdfBookId: loadedPdfBookId,
+      loadedAudioFile: loadedAudioFile,
+      loadedAudioTrackId: loadedAudioTrackId,
+      loadedAudioBookId: loadedAudioBookId,
+      loadedAudioChapterId: loadedAudioChapterId,
     );
   }
 
@@ -91,6 +105,10 @@ class KoreanBooksState extends BaseState {
     KoreanBooksOperation? currentOperation,
     File? loadedPdfFile,
     String? loadedPdfBookId,
+    File? loadedAudioFile,
+    String? loadedAudioTrackId,
+    String? loadedAudioBookId,
+    String? loadedAudioChapterId,
   }) {
     return KoreanBooksState(
       isLoading: isLoading ?? this.isLoading,
@@ -101,6 +119,10 @@ class KoreanBooksState extends BaseState {
       currentOperation: currentOperation ?? this.currentOperation,
       loadedPdfFile: loadedPdfFile ?? this.loadedPdfFile,
       loadedPdfBookId: loadedPdfBookId ?? this.loadedPdfBookId,
+      loadedAudioFile: loadedAudioFile ?? this.loadedAudioFile,
+      loadedAudioTrackId: loadedAudioTrackId ?? this.loadedAudioTrackId,
+      loadedAudioBookId: loadedAudioBookId ?? this.loadedAudioBookId,
+      loadedAudioChapterId: loadedAudioChapterId ?? this.loadedAudioChapterId,
     );
   }
 
@@ -114,6 +136,10 @@ class KoreanBooksState extends BaseState {
       currentOperation: operation,
       loadedPdfFile: loadedPdfFile,
       loadedPdfBookId: loadedPdfBookId,
+      loadedAudioFile: loadedAudioFile,
+      loadedAudioTrackId: loadedAudioTrackId,
+      loadedAudioBookId: loadedAudioBookId,
+      loadedAudioChapterId: loadedAudioChapterId,
     );
   }
 
@@ -125,11 +151,19 @@ class KoreanBooksState extends BaseState {
         currentOperation,
         loadedPdfFile?.path,
         loadedPdfBookId,
+        loadedAudioFile?.path,
+        loadedAudioTrackId,
+        loadedAudioBookId,
+        loadedAudioChapterId,
       ];
 }
 
 class KoreanBooksInitial extends KoreanBooksState {
   const KoreanBooksInitial() : super(
     currentOperation: const KoreanBooksOperation(status: KoreanBooksOperationStatus.none),
+    loadedAudioFile: null,
+    loadedAudioTrackId: null,
+    loadedAudioBookId: null,
+    loadedAudioChapterId: null,
   );
 }
