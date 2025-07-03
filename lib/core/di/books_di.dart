@@ -4,13 +4,52 @@ import 'package:korean_language_app/features/book_upload/data/datasources/book_u
 import 'package:korean_language_app/features/book_upload/data/repositories/book_upload_repository_impl.dart';
 import 'package:korean_language_app/features/book_upload/domain/repositories/book_upload_repository.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
+import 'package:korean_language_app/features/books/domain/usecase/check_book_permission_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecase/get_book_by_id_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecase/load_books_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecase/search_books_usecase.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_search/book_search_cubit.dart';
 void registerBooksDependencies(GetIt sl) {
 
-  // Cubits with use case dependencies
+  // Cubits
   sl.registerFactory(() => BookUploadCubit(
     repository: sl(),
     authService: sl(),
     adminService: sl(),
+  ));
+
+  sl.registerFactory(() => BooksCubit(
+    loadBooksUseCase: sl(),
+    checkEditPermissionUseCase: sl(),
+    getBookByIdUseCase: sl(),
+    networkInfo: sl()
+  ));
+
+  sl.registerFactory(() => BookSearchCubit(
+    searchBooksUseCase: sl(),
+    checkEditPermissionUseCase: sl(),
+  ));
+
+  // Use cases
+  sl.registerLazySingleton(() => LoadBooksUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => CheckBookEditPermissionUseCase(
+    adminPermissionService: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => GetBookByIdUseCase(
+    repository: sl(),
+    authService: sl(),
+  ));
+
+  sl.registerLazySingleton(() => SearchBooksUseCase(
+    repository: sl(),
+    authService: sl(),
   ));
   
   // Repositories

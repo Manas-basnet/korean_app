@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_search/book_search_cubit.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -259,12 +260,12 @@ class AppRouter {
                 builder: (context, state, child) => MultiBlocProvider(
                   providers: [
                     //TODO: to implement
-                    // BlocProvider<BooksCubit>(
-                    //   create: (context) => sl<BooksCubit>(),
-                    // ),
-                    // BlocProvider<BookSearchCubit>(
-                    //   create: (context) => sl<BookSearchCubit>(),
-                    // ),
+                    BlocProvider<BooksCubit>(
+                      create: (context) => sl<BooksCubit>(),
+                    ),
+                    BlocProvider<BookSearchCubit>(
+                      create: (context) => sl<BookSearchCubit>(),
+                    ),
                     BlocProvider<BookUploadCubit>(
                       create: (context) => sl<BookUploadCubit>(),
                     ),

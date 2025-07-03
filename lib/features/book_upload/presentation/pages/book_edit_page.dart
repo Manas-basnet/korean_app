@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
@@ -42,7 +43,7 @@ class _BookEditPageState extends State<BookEditPage> {
   
   final ImagePicker _imagePicker = ImagePicker();
   
-  BooksCubit get _booksCubit => context.read<BooksCubit>(); //TODO: Implement Books feature
+  BooksCubit get _booksCubit => context.read<BooksCubit>();
   BookUploadCubit get _bookUploadCubit => context.read<BookUploadCubit>();
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
