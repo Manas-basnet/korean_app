@@ -1,46 +1,58 @@
-import 'package:korean_language_app/shared/models/audio_track.dart';
+import 'package:equatable/equatable.dart';
+import 'audio_track.dart';
 
-class Chapter {
+class BookChapter extends Equatable {
   final String id;
   final String title;
-  final String? description;
+  final String description;
+  final String? imageUrl;
+  final String? imagePath;
   final String? pdfUrl;
   final String? pdfPath;
   final List<AudioTrack> audioTracks;
   final int order;
-  final String? duration;
+  final int duration; // in seconds (total of all audio tracks)
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final Map<String, dynamic>? metadata;
 
-  const Chapter({
+  const BookChapter({
     required this.id,
     required this.title,
-    this.description,
+    required this.description,
+    this.imageUrl,
+    this.imagePath,
     this.pdfUrl,
     this.pdfPath,
     this.audioTracks = const [],
-    required this.order,
-    this.duration,
+    this.order = 0,
+    this.duration = 0,
     this.createdAt,
     this.updatedAt,
+    this.metadata,
   });
 
-  Chapter copyWith({
+  BookChapter copyWith({
     String? id,
     String? title,
     String? description,
+    String? imageUrl,
+    String? imagePath,
     String? pdfUrl,
     String? pdfPath,
     List<AudioTrack>? audioTracks,
     int? order,
-    String? duration,
+    int? duration,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Map<String, dynamic>? metadata,
   }) {
-    return Chapter(
+    return BookChapter(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imagePath: imagePath ?? this.imagePath,
       pdfUrl: pdfUrl ?? this.pdfUrl,
       pdfPath: pdfPath ?? this.pdfPath,
       audioTracks: audioTracks ?? this.audioTracks,
@@ -48,24 +60,32 @@ class Chapter {
       duration: duration ?? this.duration,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      metadata: metadata ?? this.metadata,
     );
   }
 
-  bool get hasAudio => audioTracks.isNotEmpty;
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
+  bool get hasPdf => pdfUrl != null && pdfUrl!.isNotEmpty;
+  bool get hasAudioTracks => audioTracks.isNotEmpty;
   int get audioTrackCount => audioTracks.length;
+  String get formattedDuration => _formatDuration(Duration(seconds: duration));
 
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    
-    return other is Chapter && other.id == id;
+  int get totalAudioDuration {
+    return audioTracks.fold(0, (sum, track) => sum + track.duration);
   }
 
-  @override
-  int get hashCode => id.hashCode;
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      String twoDigitHours = twoDigits(duration.inHours);
+      return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
+    }
+    return "$twoDigitMinutes:$twoDigitSeconds";
+  }
 
-  factory Chapter.fromJson(Map<String, dynamic> json) {
+  factory BookChapter.fromJson(Map<String, dynamic> json) {
     DateTime? createdAt;
     if (json['createdAt'] != null) {
       if (json['createdAt'] is int) {
@@ -77,7 +97,7 @@ class Chapter {
         }
       }
     }
-    
+
     DateTime? updatedAt;
     if (json['updatedAt'] != null) {
       if (json['updatedAt'] is int) {
@@ -91,24 +111,26 @@ class Chapter {
     }
 
     List<AudioTrack> audioTracks = [];
-    
     if (json['audioTracks'] is List) {
       audioTracks = (json['audioTracks'] as List)
-          .map((trackJson) => AudioTrack.fromJson(trackJson))
+          .map((track) => AudioTrack.fromJson(track as Map<String, dynamic>))
           .toList();
     }
 
-    return Chapter(
+    return BookChapter(
       id: json['id'] as String,
       title: json['title'] as String,
-      description: json['description'] as String?,
+      description: json['description'] as String,
+      imageUrl: json['imageUrl'] as String?,
+      imagePath: json['imagePath'] as String?,
       pdfUrl: json['pdfUrl'] as String?,
       pdfPath: json['pdfPath'] as String?,
       audioTracks: audioTracks,
-      order: json['order'] as int,
-      duration: json['duration'] as String?,
+      order: json['order'] as int? ?? 0,
+      duration: json['duration'] as int? ?? 0,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
 
@@ -117,6 +139,8 @@ class Chapter {
       'id': id,
       'title': title,
       'description': description,
+      'imageUrl': imageUrl,
+      'imagePath': imagePath,
       'pdfUrl': pdfUrl,
       'pdfPath': pdfPath,
       'audioTracks': audioTracks.map((track) => track.toJson()).toList(),
@@ -124,6 +148,24 @@ class Chapter {
       'duration': duration,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
+      'metadata': metadata,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        title,
+        description,
+        imageUrl,
+        imagePath,
+        pdfUrl,
+        pdfPath,
+        audioTracks,
+        order,
+        duration,
+        createdAt,
+        updatedAt,
+        metadata,
+      ];
 }

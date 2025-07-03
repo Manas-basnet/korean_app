@@ -5,53 +5,44 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/features/book_upload/presentation/pages/chapter_editor_page.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
+import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
-import 'package:korean_language_app/features/book_upload/presentation/pages/chapter_editor_page.dart';
 
-class BookEditPage extends StatefulWidget {
-  final String bookId;
-
-  const BookEditPage({super.key, required this.bookId});
+class BookUploadPage extends StatefulWidget {
+  const BookUploadPage({super.key});
 
   @override
-  State<BookEditPage> createState() => _BookEditPageState();
+  State<BookUploadPage> createState() => _BookUploadPageState();
 }
 
-class _BookEditPageState extends State<BookEditPage> {
+class _BookUploadPageState extends State<BookUploadPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   
   BookLevel _selectedLevel = BookLevel.beginner;
   TestCategory _selectedCategory = TestCategory.practice;
-  String _selectedLanguage = 'Korean';
-  IconData _selectedIcon = Icons.book;
+  final String _selectedLanguage = 'Korean';
+  final IconData _selectedIcon = Icons.book;
   File? _selectedImage;
-  String? _currentImageUrl;
   bool _isPublished = true;
   
-  List<BookChapter> _chapters = [];
-  bool _isLoading = true;
-  bool _isUpdating = false;
-  BookItem? _originalBook;
+  final List<BookChapter> _chapters = [];
+  bool _isUploading = false;
   
   final ImagePicker _imagePicker = ImagePicker();
   
-  BooksCubit get _booksCubit => context.read<BooksCubit>(); //TODO: Implement Books feature
   BookUploadCubit get _bookUploadCubit => context.read<BookUploadCubit>();
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBook();
-  }
+  AuthCubit get _authCubit => context.read<AuthCubit>();
 
   @override
   void dispose() {
@@ -60,92 +51,10 @@ class _BookEditPageState extends State<BookEditPage> {
     super.dispose();
   }
 
-  Future<void> _loadBook() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _booksCubit.loadBookById(widget.bookId);
-      
-      final booksState = _booksCubit.state;
-      if (booksState.selectedBook != null) {
-        _originalBook = booksState.selectedBook!;
-        _populateFields(_originalBook!);
-      } else {
-        _snackBarCubit.showErrorLocalized(
-          korean: '도서를 찾을 수 없습니다',
-          english: 'Book not found',
-        );
-        context.pop();
-      }
-    } catch (e) {
-      _snackBarCubit.showErrorLocalized(
-        korean: '도서를 불러오는 중 오류가 발생했습니다',
-        english: 'Error loading book',
-      );
-      context.pop();
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _populateFields(BookItem book) {
-    _titleController.text = book.title;
-    _descriptionController.text = book.description;
-    
-    setState(() {
-      _selectedLevel = book.level;
-      _selectedCategory = book.category;
-      _selectedLanguage = book.language;
-      _selectedIcon = book.icon;
-      _currentImageUrl = book.imageUrl;
-      _isPublished = book.isPublished;
-      _chapters = List.from(book.chapters);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          title: Text(
-            _languageCubit.getLocalizedText(
-              korean: '도서 편집',
-              english: 'Edit Book',
-            ),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: colorScheme.primary),
-              const SizedBox(height: 16),
-              Text(
-                _languageCubit.getLocalizedText(
-                  korean: '도서를 불러오는 중...',
-                  english: 'Loading book...',
-                ),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -153,37 +62,27 @@ class _BookEditPageState extends State<BookEditPage> {
         elevation: 0,
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _languageCubit.getLocalizedText(
-                korean: '도서 편집',
-                english: 'Edit Book',
-              ),
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            if (_originalBook != null)
-              Text(
-                _originalBook!.title,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
+        title: Text(
+          _languageCubit.getLocalizedText(
+            korean: '새 도서 만들기',
+            english: 'Create Book',
+          ),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: TextButton(
-              onPressed: _isUpdating ? null : _updateBook,
+              onPressed: _isUploading ? null : _uploadBook,
               style: TextButton.styleFrom(
-                backgroundColor: _isUpdating ? Colors.grey.shade300 : colorScheme.primary,
-                foregroundColor: _isUpdating ? Colors.grey.shade600 : colorScheme.onPrimary,
+                backgroundColor: _isUploading ? Colors.grey.shade300 : colorScheme.primary,
+                foregroundColor: _isUploading ? Colors.grey.shade600 : colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: _isUpdating
+              child: _isUploading
                   ? SizedBox(
                       width: 16,
                       height: 16,
@@ -194,8 +93,8 @@ class _BookEditPageState extends State<BookEditPage> {
                     )
                   : Text(
                       _languageCubit.getLocalizedText(
-                        korean: '저장',
-                        english: 'Save',
+                        korean: '업로드',
+                        english: 'Upload',
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -206,21 +105,21 @@ class _BookEditPageState extends State<BookEditPage> {
       body: BlocListener<BookUploadCubit, BookUploadState>(
         listener: (context, state) {
           if (state.currentOperation.status == BookUploadOperationStatus.completed &&
-              state.currentOperation.type == BookUploadOperationType.updateBook) {
+              state.currentOperation.type == BookUploadOperationType.createBook) {
             _snackBarCubit.showSuccessLocalized(
-              korean: '도서가 성공적으로 수정되었습니다',
-              english: 'Book updated successfully',
+              korean: '도서가 성공적으로 업로드되었습니다',
+              english: 'Book uploaded successfully',
             );
-            context.pop(true);
+            context.go(Routes.books);
           } else if (state.currentOperation.status == BookUploadOperationStatus.failed) {
             _snackBarCubit.showErrorLocalized(
-              korean: state.error ?? '도서 수정에 실패했습니다',
-              english: state.error ?? 'Failed to update book',
+              korean: state.error ?? '도서 업로드에 실패했습니다',
+              english: state.error ?? 'Failed to upload book',
             );
           }
           
           setState(() {
-            _isUpdating = state.isLoading;
+            _isUploading = state.isLoading;
           });
         },
         child: Form(
@@ -230,8 +129,8 @@ class _BookEditPageState extends State<BookEditPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildEditNotice(),
-                const SizedBox(height: 24),
+                _buildProgressSection(),
+                const SizedBox(height: 32),
                 _buildBasicInfoSection(),
                 const SizedBox(height: 32),
                 _buildSettingsSection(),
@@ -248,31 +147,50 @@ class _BookEditPageState extends State<BookEditPage> {
     );
   }
 
-  Widget _buildEditNotice() {
+  Widget _buildProgressSection() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
+    int completedSteps = 0;
+    if (_titleController.text.isNotEmpty && _descriptionController.text.isNotEmpty) completedSteps++;
+    if (_chapters.isNotEmpty) completedSteps++;
+    
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.edit, color: Colors.orange, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _languageCubit.getLocalizedText(
-                korean: '기존 도서를 편집하고 있습니다',
-                english: 'Editing existing book',
+          Row(
+            children: [
+              Text(
+                _languageCubit.getLocalizedText(
+                  korean: '진행 상황',
+                  english: 'Progress',
+                ),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              const Spacer(),
+              Text(
+                '$completedSteps/2',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: completedSteps / 2,
+            backgroundColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            borderRadius: BorderRadius.circular(4),
           ),
         ],
       ),
@@ -303,6 +221,10 @@ class _BookEditPageState extends State<BookEditPage> {
               korean: '도서 제목',
               english: 'Book Title',
             ),
+            hintText: _languageCubit.getLocalizedText(
+              korean: '예: 기초 한국어 문법 가이드',
+              english: 'e.g. Basic Korean Grammar Guide',
+            ),
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
@@ -313,6 +235,7 @@ class _BookEditPageState extends State<BookEditPage> {
             }
             return null;
           },
+          onChanged: (value) => setState(() {}),
         ),
         
         const SizedBox(height: 16),
@@ -323,6 +246,10 @@ class _BookEditPageState extends State<BookEditPage> {
             labelText: _languageCubit.getLocalizedText(
               korean: '설명',
               english: 'Description',
+            ),
+            hintText: _languageCubit.getLocalizedText(
+              korean: '도서에 대한 설명을 입력하세요',
+              english: 'Enter book description',
             ),
             alignLabelWithHint: true,
           ),
@@ -336,6 +263,7 @@ class _BookEditPageState extends State<BookEditPage> {
             }
             return null;
           },
+          onChanged: (value) => setState(() {}),
         ),
       ],
     );
@@ -450,8 +378,8 @@ class _BookEditPageState extends State<BookEditPage> {
       children: [
         Text(
           _languageCubit.getLocalizedText(
-            korean: '커버 이미지',
-            english: 'Cover Image',
+            korean: '커버 이미지 (선택사항)',
+            english: 'Cover Image (Optional)',
           ),
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
@@ -491,79 +419,6 @@ class _BookEditPageState extends State<BookEditPage> {
                     ),
                     child: const Icon(
                       Icons.close,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          )
-        else if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
-          Stack(
-            children: [
-              GestureDetector(
-                onTap: () => DialogUtils.showFullScreenImage(
-                  context,
-                  _currentImageUrl!,
-                  null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _currentImageUrl!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(child: Icon(Icons.broken_image)),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _currentImageUrl = null;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.edit,
                       color: Colors.white,
                       size: 16,
                     ),
@@ -678,6 +533,16 @@ class _BookEditPageState extends State<BookEditPage> {
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  _languageCubit.getLocalizedText(
+                    korean: '첫 번째 챕터를 추가해보세요',
+                    english: 'Add your first chapter to get started',
+                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
                   onPressed: _addChapter,
@@ -746,7 +611,40 @@ class _BookEditPageState extends State<BookEditPage> {
                                 color: colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            ..._buildChapterBadges(chapter),
+                            if (chapter.hasImage) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'IMG',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (chapter.hasPdf) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'PDF',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -786,55 +684,11 @@ class _BookEditPageState extends State<BookEditPage> {
     );
   }
 
-  List<Widget> _buildChapterBadges(BookChapter chapter) {
-    final theme = Theme.of(context);
-    final badges = <Widget>[];
-    
-    if (chapter.hasImage) {
-      badges.add(const SizedBox(width: 8));
-      badges.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          'IMG',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: Colors.blue,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ));
-    }
-    
-    if (chapter.hasPdf) {
-      badges.add(const SizedBox(width: 8));
-      badges.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          'PDF',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: Colors.red,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ));
-    }
-    
-    return badges;
-  }
-
   Future<void> _pickImage() async {
     final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _selectedImage = File(image.path);
-        _currentImageUrl = null;
       });
     }
   }
@@ -924,7 +778,7 @@ class _BookEditPageState extends State<BookEditPage> {
     );
   }
 
-  Future<void> _updateBook() async {
+  Future<void> _uploadBook() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -937,8 +791,18 @@ class _BookEditPageState extends State<BookEditPage> {
       return;
     }
 
+    final authState = _authCubit.state;
+    if (authState is! Authenticated) {
+      _snackBarCubit.showErrorLocalized(
+        korean: '로그인이 필요합니다',
+        english: 'Please log in first',
+      );
+      return;
+    }
+
     try {
-      final updatedBook = _originalBook!.copyWith(
+      final book = BookItem(
+        id: '',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         chapters: _chapters,
@@ -946,22 +810,20 @@ class _BookEditPageState extends State<BookEditPage> {
         category: _selectedCategory,
         language: _selectedLanguage,
         icon: _selectedIcon,
-        isPublished: _isPublished,
+        creatorUid: authState.user.uid,
+        createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
-        imageUrl: _selectedImage != null ? null : _currentImageUrl,
-        imagePath: _selectedImage != null ? null : _originalBook!.imagePath,
+        isPublished: _isPublished,
+        imageUrl: null,
+        imagePath: null,
       );
 
-      await _bookUploadCubit.updateExistingBook(
-        widget.bookId, 
-        updatedBook, 
-        imageFile: _selectedImage,
-      );
+      await _bookUploadCubit.uploadNewBook(book, imageFile: _selectedImage);
 
     } catch (e) {
       _snackBarCubit.showErrorLocalized(
-        korean: '도서 수정 중 오류가 발생했습니다: $e',
-        english: 'Error updating book: $e',
+        korean: '도서 업로드 중 오류가 발생했습니다: $e',
+        english: 'Error uploading book: $e',
       );
     }
   }

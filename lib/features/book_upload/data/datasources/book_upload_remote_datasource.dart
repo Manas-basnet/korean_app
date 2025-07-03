@@ -1,28 +1,24 @@
 import 'dart:io';
-
-import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 abstract class BookUploadRemoteDataSource {
-  Future<BookItem> uploadBook(BookItem book, File pdfFile, {File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
+  /// Upload book with optional cover image and chapter files atomically
+  /// Book is only created if all uploads succeed
+  Future<BookItem> uploadBook(BookItem book, {File? imageFile});
   
-  Future<BookItem> uploadBookWithChapters(
-    BookItem book, 
-    List<ChapterUploadData> chapters, 
-    {File? coverImageFile}
-  );
+  /// Update existing book with optional new cover image and chapter files
+  /// Returns updated book - operation is atomic
+  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? imageFile});
   
-  Future<BookItem> updateBook(String bookId, BookItem updatedBook, {File? pdfFile, File? coverImageFile, List<AudioTrackUploadData>? audioTracks});
-  
-  Future<BookItem> updateBookWithChapters(
-    String bookId, 
-    BookItem updatedBook, 
-    List<ChapterUploadData>? chapters, 
-    {File? coverImageFile}
-  );
-  
+  /// Delete book and all associated files (cover image, chapter images, PDFs, audio files)
   Future<bool> deleteBook(String bookId);
   
-  Future<List<BookItem>> searchBookById(String bookId);
-  Future<BookItem?> getBookById(String bookId);
+  /// Get when the book was last updated
+  Future<DateTime?> getBookLastUpdated(String bookId);
+  
+  /// Regenerate download URL from storage path (useful for expired URLs)
+  Future<String?> regenerateUrlFromPath(String storagePath);
+  
+  /// Verify if a URL is still working
+  Future<bool> verifyUrlIsWorking(String url);
 }

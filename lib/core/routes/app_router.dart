@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
-import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/book_editing_cubit.dart';
-import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/book_editing_page.dart';
-import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -14,14 +11,6 @@ import 'package:korean_language_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:korean_language_app/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:korean_language_app/features/auth/presentation/pages/login_page.dart';
 import 'package:korean_language_app/features/auth/presentation/pages/register_page.dart';
-import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/favorite_books/favorite_books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/korean_books/korean_books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/pages/books_page.dart';
-import 'package:korean_language_app/features/books/presentation/pages/favorite_books_page.dart';
-import 'package:korean_language_app/features/books/presentation/pages/pdf_viewer_page.dart';
-import 'package:korean_language_app/features/book_upload/presentation/pages/upload_books_page.dart';
 import 'package:korean_language_app/features/home/presentation/pages/home_page.dart';
 import 'package:korean_language_app/features/profile/presentation/bloc/profile_cubit.dart';
 import 'package:korean_language_app/features/profile/presentation/pages/language_preference_page.dart';
@@ -42,6 +31,12 @@ import 'package:korean_language_app/features/unpublished_tests/presentation/bloc
 import 'package:korean_language_app/features/unpublished_tests/presentation/pages/unpublished_tests_page.dart';
 import 'package:korean_language_app/features/user_management/presentation/bloc/user_management_cubit.dart';
 import 'package:korean_language_app/features/user_management/presentation/pages/user_management_page.dart';
+import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
+import 'package:korean_language_app/features/book_upload/presentation/pages/book_upload_page.dart';
+import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/pages/books_page.dart';
 import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
 import 'package:korean_language_app/shared/presentation/update/widgets/update_bottomsheet.dart';
 import 'package:korean_language_app/shared/presentation/widgets/splash/splash_screen.dart';
@@ -140,36 +135,6 @@ class AppRouter {
         builder: (context, state) => const ForgotPasswordPage(),
       ),
 
-      // Full-screen routes that don't need bottom nav
-      GoRoute(
-        path: Routes.bookEditingPage,
-        name: 'bookEditingPage',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final pdfFile = state.extra as BookEditingPage;
-          return BlocProvider<BookEditingCubit>(
-            create: (context) => sl<BookEditingCubit>(),
-            child: BookEditingPage(
-              sourcePdf: pdfFile.sourcePdf,
-              onChaptersGenerated: pdfFile.onChaptersGenerated,
-            ),
-          );
-        },
-      ),
-      GoRoute(
-        path: Routes.pdfViewer,
-        name: 'pdfViewer',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final extra = state.extra as PDFViewerScreen;
-          return PDFViewerScreen(
-            pdfFile: extra.pdfFile,
-            title: extra.title,
-            chapter: extra.chapter,
-            book: extra.book,
-          );
-        },
-      ),
       GoRoute(
         path: '/test-result',
         name: 'testResult',
@@ -293,14 +258,15 @@ class AppRouter {
               ShellRoute(
                 builder: (context, state, child) => MultiBlocProvider(
                   providers: [
-                    BlocProvider<KoreanBooksCubit>(
-                      create: (context) => sl<KoreanBooksCubit>(),
-                    ),
-                    BlocProvider<FavoriteBooksCubit>(
-                      create: (context) => sl<FavoriteBooksCubit>(),
-                    ),
-                    BlocProvider<BookSearchCubit>(
-                      create: (context) => sl<BookSearchCubit>(),
+                    //TODO: to implement
+                    // BlocProvider<BooksCubit>(
+                    //   create: (context) => sl<BooksCubit>(),
+                    // ),
+                    // BlocProvider<BookSearchCubit>(
+                    //   create: (context) => sl<BookSearchCubit>(),
+                    // ),
+                    BlocProvider<BookUploadCubit>(
+                      create: (context) => sl<BookUploadCubit>(),
                     ),
                   ],
                   child: child,
@@ -309,32 +275,19 @@ class AppRouter {
                   GoRoute(
                     path: '/books',
                     name: 'books',
-                    builder: (context, state) => const BooksPage(),
+                    builder: (context, state) => const BooksPage(), //TODO: implement
                     routes: [
                       GoRoute(
-                        path: 'upload-books',
-                        name: 'uploadBooks',
+                        path: 'upload',
+                        name: 'bookUpload',
                         builder: (context, state) => const BookUploadPage(),
                       ),
                       GoRoute(
-                        path: 'edit-books',
-                        name: 'editBooks',
+                        path: 'edit/:bookId',
+                        name: 'bookEdit',
                         builder: (context, state) {
-                          final extra = state.extra as BookEditPage;
-                          return BookEditPage(book: extra.book);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'favorite-books',
-                        name: 'favoriteBooks',
-                        builder: (context, state) => const FavoriteBooksPage(),
-                      ),
-                      GoRoute(
-                        path: 'chapters',
-                        name: 'chapters',
-                        builder: (context, state) {
-                          final extra = state.extra as ChaptersPage;
-                          return ChaptersPage(book: extra.book);
+                          final bookId = state.pathParameters['bookId']!;
+                          return BookEditPage(bookId: bookId);
                         },
                       ),
                     ],
@@ -415,7 +368,6 @@ class Routes {
   static const login = '/login';
   static const register = '/register';
   static const forgotPassword = '/forgot-password';
-  static const bookEditingPage = '/book-editing-page';
   static const home = '/home';
 
   static const tests = '/tests';
@@ -426,12 +378,9 @@ class Routes {
   static const unpublishedTests = '/tests/unpublished';
   static const testTakingBase = '/tests/taking';
 
+  // Books routes
   static const books = '/books';
-  static const pdfViewer = '/pdf-viewer';
-  static const uploadBooks = '/books/upload-books';
-  static const editBooks = '/books/edit-books';
-  static const favoriteBooks = '/books/favorite-books';
-  static const chapters = '/books/chapters';
+  static const bookUpload = '/books/upload';
 
   static const profile = '/profile';
   static const languagePreferences = '/profile/language-preferences';
@@ -442,6 +391,7 @@ class Routes {
 
   static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
+  static String bookEdit(String bookId) => '/books/edit/$bookId';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {

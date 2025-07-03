@@ -1,114 +1,122 @@
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/shared/models/book_related/chapter.dart';
-import 'package:korean_language_app/shared/models/audio_track.dart';
-import 'package:korean_language_app/shared/enums/book_upload_type.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/course_category.dart';
+import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'book_chapter.dart';
 
 class BookItem {
   final String id;
   final String title;
   final String description;
-  final String? bookImage;
-  final String? pdfUrl;
-  final String? bookImagePath;
-  final String? pdfPath;
-  final List<AudioTrack> audioTracks;
-  final String duration;
-  final int chaptersCount;
-  final IconData icon;
+  final String? imageUrl;
+  final String? imagePath;
+  final List<BookChapter> chapters;
+  final int duration; // total duration in seconds
   final BookLevel level;
-  final CourseCategory courseCategory;
-  final String country;
-  final String category;
+  final TestCategory category;
+  final String language;
+  final IconData icon;
   final String? creatorUid;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final bool isPublished;
+  final Map<String, dynamic>? metadata;
   
-  final BookUploadType uploadType;
-  final List<Chapter> chapters;
+  final int viewCount;
+  final double rating;
+  final int ratingCount;
+  final double popularity;
 
   const BookItem({
     required this.id,
     required this.title,
     required this.description,
-    this.bookImage,
-    this.pdfUrl,
-    this.bookImagePath,
-    this.pdfPath,
-    this.audioTracks = const [],
-    required this.duration,
-    required this.chaptersCount,
-    required this.icon,
+    this.imageUrl,
+    this.imagePath,
+    required this.chapters,
+    this.duration = 0,
     required this.level,
-    required this.courseCategory,
-    required this.country,
     required this.category,
+    this.language = 'Korean',
+    this.icon = Icons.book,
     this.creatorUid,
     this.createdAt,
     this.updatedAt,
-    this.uploadType = BookUploadType.singlePdf,
-    this.chapters = const [],
+    this.isPublished = true,
+    this.metadata,
+    this.viewCount = 0,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    this.popularity = 0.0,
   });
 
   BookItem copyWith({
     String? id,
     String? title,
     String? description,
-    String? bookImage,
-    String? pdfUrl,
-    String? bookImagePath,
-    String? pdfPath,
-    List<AudioTrack>? audioTracks,
-    String? duration,
-    int? chaptersCount,
-    IconData? icon,
+    String? imageUrl,
+    String? imagePath,
+    List<BookChapter>? chapters,
+    int? duration,
     BookLevel? level,
-    CourseCategory? courseCategory,
-    String? country,
-    String? category,
+    TestCategory? category,
+    String? language,
+    IconData? icon,
     String? creatorUid,
     DateTime? createdAt,
     DateTime? updatedAt,
-    BookUploadType? uploadType,
-    List<Chapter>? chapters,
+    bool? isPublished,
+    Map<String, dynamic>? metadata,
+    int? viewCount,
+    double? rating,
+    int? ratingCount,
+    double? popularity,
   }) {
     return BookItem(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      bookImage: bookImage ?? this.bookImage,
-      pdfUrl: pdfUrl ?? this.pdfUrl,
-      bookImagePath: bookImagePath ?? this.bookImagePath,
-      pdfPath: pdfPath ?? this.pdfPath,
-      audioTracks: audioTracks ?? this.audioTracks,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imagePath: imagePath ?? this.imagePath,
+      chapters: chapters ?? this.chapters,
       duration: duration ?? this.duration,
-      chaptersCount: chaptersCount ?? this.chaptersCount,
-      icon: icon ?? this.icon,
       level: level ?? this.level,
-      courseCategory: courseCategory ?? this.courseCategory,
-      country: country ?? this.country,
       category: category ?? this.category,
+      language: language ?? this.language,
+      icon: icon ?? this.icon,
       creatorUid: creatorUid ?? this.creatorUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      uploadType: uploadType ?? this.uploadType,
-      chapters: chapters ?? this.chapters,
+      isPublished: isPublished ?? this.isPublished,
+      metadata: metadata ?? this.metadata,
+      viewCount: viewCount ?? this.viewCount,
+      rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      popularity: popularity ?? this.popularity,
     );
   }
 
-  bool get hasAudio => audioTracks.isNotEmpty;
-  bool get hasChapterAudio => chapters.any((chapter) => chapter.hasAudio);
-  int get totalAudioTracks => audioTracks.length + chapters.fold(0, (sum, chapter) => sum + chapter.audioTrackCount);
+  int get chapterCount => chapters.length;
+  int get totalDuration {
+    return chapters.fold(0, (sum, chapter) => sum + chapter.totalAudioDuration);
+  }
+  String get formattedDuration => _formatDuration(Duration(seconds: totalDuration));
+  String get formattedRating => rating > 0 ? rating.toStringAsFixed(1) : '0.0';
+  String get formattedViewCount => viewCount > 999 ? '${(viewCount / 1000).toStringAsFixed(1)}k' : viewCount.toString();
 
-  // Legacy compatibility for old single audio fields
-  String? get audioUrl => audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null;
-  String? get audioPath => audioTracks.isNotEmpty ? audioTracks.first.audioPath : null;
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      String twoDigitHours = twoDigits(duration.inHours);
+      return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
+    }
+    return "$twoDigitMinutes:$twoDigitSeconds";
+  }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    
     return other is BookItem && other.id == id;
   }
 
@@ -127,64 +135,26 @@ class BookItem {
     } else {
       level = BookLevel.beginner;
     }
-    
-    CourseCategory courseCategory;
-    if (json['courseCategory'] is int) {
-      courseCategory = CourseCategory.values[json['courseCategory']];
-    } else if (json['courseCategory'] is String) {
-      courseCategory = CourseCategory.values.firstWhere(
-        (e) => e.toString().split('.').last == json['courseCategory'],
-        orElse: () => CourseCategory.korean,
+
+    TestCategory category;
+    if (json['category'] is int) {
+      category = TestCategory.values[json['category']];
+    } else if (json['category'] is String) {
+      category = TestCategory.values.firstWhere(
+        (e) => e.toString().split('.').last == json['category'],
+        orElse: () => TestCategory.practice,
       );
     } else {
-      courseCategory = CourseCategory.korean;
+      category = TestCategory.practice;
     }
 
-    BookUploadType uploadType = BookUploadType.singlePdf;
-    if (json['uploadType'] is String) {
-      uploadType = BookUploadType.values.firstWhere(
-        (e) => e.toString().split('.').last == json['uploadType'],
-        orElse: () => BookUploadType.singlePdf,
-      );
-    }
-
-    List<Chapter> chapters = [];
-    if (json['chapters'] is List) {
-      chapters = (json['chapters'] as List)
-          .map((chapterJson) => Chapter.fromJson(chapterJson))
-          .toList();
-    }
-
-    List<AudioTrack> audioTracks = [];
-    
-    // Handle new multiple audio tracks format
-    if (json['audioTracks'] is List) {
-      audioTracks = (json['audioTracks'] as List)
-          .map((trackJson) => AudioTrack.fromJson(trackJson))
-          .toList();
-    }
-    // Handle legacy single audio format for backward compatibility
-    else if (json['audioUrl'] != null || json['audioPath'] != null) {
-      audioTracks = [
-        AudioTrack(
-          id: '${json['id']}_legacy_audio',
-          name: 'Audio Track',
-          audioUrl: json['audioUrl'] as String?,
-          audioPath: json['audioPath'] as String?,
-          order: 0,
-        ),
-      ];
-    }
-    
     IconData icon;
     if (json['iconCodePoint'] != null) {
       icon = _iconMapping[json['iconCodePoint']] ?? Icons.book;
-    } else if (json['icon'] is int) {
-      icon = _iconMapping[json['icon']] ?? Icons.book;
     } else {
       icon = Icons.book;
     }
-    
+
     DateTime? createdAt;
     if (json['createdAt'] != null) {
       if (json['createdAt'] is int) {
@@ -196,7 +166,7 @@ class BookItem {
         }
       }
     }
-    
+
     DateTime? updatedAt;
     if (json['updatedAt'] != null) {
       if (json['updatedAt'] is int) {
@@ -209,27 +179,34 @@ class BookItem {
       }
     }
 
+    List<BookChapter> chapters = [];
+    if (json['chapters'] is List) {
+      chapters = (json['chapters'] as List)
+          .map((c) => BookChapter.fromJson(c as Map<String, dynamic>))
+          .toList();
+    }
+
     return BookItem(
       id: json['id'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      bookImage: json['bookImage'] as String?,
-      pdfUrl: json['pdfUrl'] as String?,
-      bookImagePath: json['bookImagePath'] as String?,
-      pdfPath: json['pdfPath'] as String?,
-      audioTracks: audioTracks,
-      duration: json['duration'] as String? ?? '30 mins',
-      chaptersCount: json['chaptersCount'] as int? ?? (chapters.isNotEmpty ? chapters.length : 1),
-      icon: icon,
+      imageUrl: json['imageUrl'] as String?,
+      imagePath: json['imagePath'] as String?,
+      chapters: chapters,
+      duration: json['duration'] as int? ?? 0,
       level: level,
-      courseCategory: courseCategory,
-      country: json['country'] as String? ?? 'Korea',
-      category: json['category'] as String? ?? 'Language',
+      category: category,
+      language: json['language'] as String? ?? 'Korean',
+      icon: icon,
       creatorUid: json['creatorUid'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      uploadType: uploadType,
-      chapters: chapters,
+      isPublished: json['isPublished'] as bool? ?? true,
+      metadata: json['metadata'] as Map<String, dynamic>?,
+      viewCount: json['viewCount'] as int? ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: json['ratingCount'] as int? ?? 0,
+      popularity: (json['popularity'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -238,44 +215,35 @@ class BookItem {
       'id': id,
       'title': title,
       'description': description,
-      'bookImage': bookImage,
-      'pdfUrl': pdfUrl,
-      'bookImagePath': bookImagePath,
-      'pdfPath': pdfPath,
-      'audioTracks': audioTracks.map((track) => track.toJson()).toList(),
+      'imageUrl': imageUrl,
+      'imagePath': imagePath,
+      'chapters': chapters.map((c) => c.toJson()).toList(),
       'duration': duration,
-      'chaptersCount': chaptersCount,
+      'level': level.toString().split('.').last,
+      'category': category.toString().split('.').last,
+      'language': language,
       'iconCodePoint': icon.codePoint,
       'iconFontFamily': icon.fontFamily,
       'iconFontPackage': icon.fontPackage,
-      'level': level.toString().split('.').last,
-      'courseCategory': courseCategory.toString().split('.').last,
-      'country': country,
-      'category': category,
       'creatorUid': creatorUid,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
-      'uploadType': uploadType.toString().split('.').last,
-      'chapters': chapters.map((chapter) => chapter.toJson()).toList(),
-      // Legacy fields for backward compatibility
-      'audioUrl': audioTracks.isNotEmpty ? audioTracks.first.audioUrl : null,
-      'audioPath': audioTracks.isNotEmpty ? audioTracks.first.audioPath : null,
+      'isPublished': isPublished,
+      'metadata': metadata,
+      'viewCount': viewCount,
+      'rating': rating,
+      'ratingCount': ratingCount,
+      'popularity': popularity,
     };
   }
 
   static final Map<int, IconData> _iconMapping = {
-    Icons.menu_book.codePoint: Icons.menu_book,
-    Icons.quiz.codePoint: Icons.quiz,
-    Icons.business.codePoint: Icons.business,
-    Icons.theater_comedy.codePoint: Icons.theater_comedy,
-    Icons.record_voice_over.codePoint: Icons.record_voice_over,
-    Icons.auto_stories.codePoint: Icons.auto_stories,
-    Icons.history_edu.codePoint: Icons.history_edu,
-    Icons.music_note.codePoint: Icons.music_note,
-    Icons.movie.codePoint: Icons.movie,
-    Icons.edit.codePoint: Icons.edit,
-    Icons.forum.codePoint: Icons.forum,
     Icons.book.codePoint: Icons.book,
-    Icons.help_outline.codePoint: Icons.help_outline,
+    Icons.library_books.codePoint: Icons.library_books,
+    Icons.menu_book.codePoint: Icons.menu_book,
+    Icons.auto_stories.codePoint: Icons.auto_stories,
+    Icons.chrome_reader_mode.codePoint: Icons.chrome_reader_mode,
+    Icons.import_contacts.codePoint: Icons.import_contacts,
+    Icons.book_outlined.codePoint: Icons.book_outlined,
   };
 }
