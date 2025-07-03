@@ -11,6 +11,7 @@ import 'package:korean_language_app/features/books/presentation/bloc/korean_book
 import 'package:korean_language_app/features/book_upload/presentation/bloc/file_upload_cubit.dart';
 import 'package:korean_language_app/features/book_upload/domain/entities/chapter_upload_data.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/chapter.dart';
 
 class BookEditPage extends StatefulWidget {
   final BookItem book;
@@ -139,10 +140,22 @@ class _BookEditPageState extends State<BookEditPage> {
         chapterNumber: _chapters.length + 1,
         fileUploadCubit: context.read<FileUploadCubit>(),
         originalChapter: null,
+        existingChapterTitles: _getAllChapterTitles(), // Pass existing titles
       ),
     );
 
     if (result != null) {
+      // Check for duplicate titles
+      if (_hasChapterWithTitle(result.title)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A chapter with the title "${result.title}" already exists. Please choose a different title.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _chapters.add(result);
         _hasChapterChanges = true;
@@ -162,13 +175,32 @@ class _BookEditPageState extends State<BookEditPage> {
 
   void _editChapter(int index) async {
     final existingChapter = _chapters[index];
-    final originalChapter = widget.book.chapters.firstWhere(
-      (ch) => ch.id == existingChapter.existingId,
-      orElse: () => widget.book.chapters.firstWhere(
+    
+    Chapter? originalChapter;
+    if (existingChapter.existingId != null) {
+      originalChapter = widget.book.chapters.firstWhere(
+        (ch) => ch.id == existingChapter.existingId,
+        orElse: () => widget.book.chapters.firstWhere(
+          (ch) => ch.order == existingChapter.order,
+          orElse: () => widget.book.chapters.isNotEmpty ? widget.book.chapters.first : Chapter(
+            id: 'temp_${existingChapter.order}',
+            title: existingChapter.title,
+            order: existingChapter.order,
+            audioTracks: [],
+          ),
+        ),
+      );
+    } else {
+      originalChapter = widget.book.chapters.firstWhere(
         (ch) => ch.order == existingChapter.order,
-        orElse: () => widget.book.chapters.first,
-      ),
-    );
+        orElse: () => widget.book.chapters.isNotEmpty ? widget.book.chapters.first : Chapter(
+          id: 'temp_${existingChapter.order}',
+          title: existingChapter.title,
+          order: existingChapter.order,
+          audioTracks: [],
+        ),
+      );
+    }
 
     final result = await showDialog<ChapterUploadData>(
       context: context,
@@ -176,24 +208,55 @@ class _BookEditPageState extends State<BookEditPage> {
         chapterNumber: index + 1,
         fileUploadCubit: context.read<FileUploadCubit>(),
         existingChapter: existingChapter,
-        existingAudioTracks: originalChapter.audioTracks,
+        existingAudioTracks: null,
         originalChapter: originalChapter,
+        existingChapterTitles: _getAllChapterTitles(excludeIndex: index), // Pass existing titles excluding current
       ),
     );
 
     if (result != null) {
+      // Check for duplicate titles (excluding the current chapter)
+      if (_hasChapterWithTitle(result.title, excludeChapterId: existingChapter.existingId)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A chapter with the title "${result.title}" already exists. Please choose a different title.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _chapters[index] = result;
+        
         if (!existingChapter.isNewOrModified || 
             existingChapter.title != result.title ||
             existingChapter.description != result.description ||
             existingChapter.duration != result.duration ||
             result.pdfFile != null ||
-            result.audioTracks.length != existingChapter.audioTracks.length) {
+            result.audioTracks.isNotEmpty) {
           _hasChapterChanges = true;
         }
       });
     }
+  }
+
+  List<String> _getAllChapterTitles({int? excludeIndex}) {
+    List<String> titles = [];
+    
+    // Add existing book chapter titles
+    for (final chapter in widget.book.chapters) {
+      titles.add(chapter.title.toLowerCase().trim());
+    }
+    
+    // Add current editing chapter titles
+    for (int i = 0; i < _chapters.length; i++) {
+      if (excludeIndex == null || i != excludeIndex) {
+        titles.add(_chapters[i].title.toLowerCase().trim());
+      }
+    }
+    
+    return titles;
   }
   
   Future<void> _updateBook() async {
@@ -510,6 +573,27 @@ class _BookEditPageState extends State<BookEditPage> {
         ],
       ),
     );
+  }
+
+  bool _hasChapterWithTitle(String title, {String? excludeChapterId}) {
+    // Check existing chapters in the book
+    for (final chapter in widget.book.chapters) {
+      if (chapter.title.toLowerCase().trim() == title.toLowerCase().trim() && 
+          chapter.id != excludeChapterId) {
+        return true;
+      }
+    }
+    
+    // Check chapters being edited/added
+    for (int i = 0; i < _chapters.length; i++) {
+      final chapter = _chapters[i];
+      if (chapter.title.toLowerCase().trim() == title.toLowerCase().trim() && 
+          chapter.existingId != excludeChapterId) {
+        return true;
+      }
+    }
+    
+    return false;
   }
   
   @override

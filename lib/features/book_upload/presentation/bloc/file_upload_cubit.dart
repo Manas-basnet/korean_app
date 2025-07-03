@@ -124,13 +124,85 @@ class FileUploadCubit extends Cubit<FileUploadState> {
     }
   }
 
+
   Future<bool> _isAudioValid(File audioFile) async {
     try {
       final fileSize = await audioFile.length();
-      return fileSize <= 50 * 1024 * 1024 && fileSize >= 100;
+      final fileName = audioFile.path.toLowerCase();
+      
+      // Check file size (between 100 bytes and 50MB)
+      if (fileSize < 100 || fileSize > 50 * 1024 * 1024) {
+        return false;
+      }
+      
+      // Check file extension
+      const validExtensions = ['.mp3', '.m4a', '.wav', '.aac', '.ogg', '.flac'];
+      bool hasValidExtension = validExtensions.any((ext) => fileName.endsWith(ext));
+      
+      if (!hasValidExtension) {
+        return false;
+      }
+      
+      // Additional validation: try to read the first few bytes to verify it's an audio file
+      final bytes = await audioFile.openRead(0, 12).toList();
+      final headerBytes = bytes.expand((x) => x).take(12).toList();
+      
+      if (headerBytes.length < 4) return false;
+      
+      // Check for common audio file signatures
+      if (_isMP3File(headerBytes) || 
+          _isM4AFile(headerBytes) || 
+          _isWAVFile(headerBytes) || 
+          _isOGGFile(headerBytes)) {
+        return true;
+      }
+      
+      return hasValidExtension; // Fallback to extension check
     } catch (e) {
       return false;
     }
+  }
+
+  bool _isMP3File(List<int> bytes) {
+    // MP3 files start with ID3 tag or FF FB/FF FA/FF F3/FF F2
+    if (bytes.length >= 3) {
+      // Check for ID3 tag
+      if (bytes[0] == 0x49 && bytes[1] == 0x44 && bytes[2] == 0x33) {
+        return true;
+      }
+      // Check for MP3 frame header
+      if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isM4AFile(List<int> bytes) {
+    // M4A files have 'ftyp' at position 4-7
+    if (bytes.length >= 8) {
+      return bytes[4] == 0x66 && bytes[5] == 0x74 && 
+            bytes[6] == 0x79 && bytes[7] == 0x70;
+    }
+    return false;
+  }
+
+  bool _isWAVFile(List<int> bytes) {
+    // WAV files start with 'RIFF'
+    if (bytes.length >= 4) {
+      return bytes[0] == 0x52 && bytes[1] == 0x49 && 
+            bytes[2] == 0x46 && bytes[3] == 0x46;
+    }
+    return false;
+  }
+
+  bool _isOGGFile(List<int> bytes) {
+    // OGG files start with 'OggS'
+    if (bytes.length >= 4) {
+      return bytes[0] == 0x4F && bytes[1] == 0x67 && 
+            bytes[2] == 0x67 && bytes[3] == 0x53;
+    }
+    return false;
   }
   
   Future<bool> uploadBook(BookItem book, File pdfFile, File? imageFile, {List<AudioTrackUploadData>? audioTracks}) async {

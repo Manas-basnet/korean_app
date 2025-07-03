@@ -178,8 +178,15 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       
       for (int i = 0; i < chaptersData.length; i++) {
         final chapterData = chaptersData[i];
+        
+        // Generate unique chapter ID
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final randomSuffix = ((timestamp + i) % 10000).toString().padLeft(4, '0');
+        final chapterId = '${bookId}_ch_${timestamp}_${randomSuffix}_$i';
+        
         try {
-          final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
+          // Upload chapter PDF using unique ID
+          final chapterResult = await _uploadChapterPdf(bookId, chapterId, chapterData.pdfFile!);
           uploadedChapterPaths.add(chapterResult['storagePath']!);
           
           List<AudioTrack> chapterAudioTracks = [];
@@ -187,11 +194,13 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           if (chapterData.audioTracks.isNotEmpty) {
             for (int j = 0; j < chapterData.audioTracks.length; j++) {
               final audioTrackData = chapterData.audioTracks[j];
-              final audioResult = await _uploadChapterAudio(bookId, i + 1, j + 1, audioTrackData.audioFile);
+              final audioResult = await _uploadChapterAudio(bookId, chapterId, j + 1, audioTrackData.audioFile);
               uploadedAudioPaths.add(audioResult['storagePath']!);
               
+              // Generate unique audio track ID
+              final audioTimestamp = DateTime.now().millisecondsSinceEpoch;
               final audioTrack = AudioTrack(
-                id: '${bookId}_chapter_${i + 1}_audio_${j + 1}',
+                id: '${chapterId}_audio_${j + 1}_$audioTimestamp',
                 name: audioTrackData.name,
                 audioUrl: audioResult['url'],
                 audioPath: audioResult['storagePath'],
@@ -205,7 +214,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           }
           
           final chapter = Chapter(
-            id: '${bookId}_chapter_${i + 1}',
+            id: chapterId, // Use the unique chapter ID
             title: chapterData.title,
             description: chapterData.description,
             pdfUrl: chapterResult['url'],
@@ -218,7 +227,12 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           );
           
           processedChapters.add(chapter);
+          
+          if (kDebugMode) {
+            print('Successfully uploaded chapter $chapterId: ${chapterData.title}');
+          }
         } catch (e) {
+          // Clean up on chapter upload failure
           if (uploadedImagePath != null) {
             await _deleteFileByPath(uploadedImagePath);
           }
@@ -228,7 +242,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
           for (final path in uploadedAudioPaths) {
             await _deleteFileByPath(path);
           }
-          throw Exception('Failed to upload chapter ${i + 1}: $e');
+          throw Exception('Failed to upload chapter ${i + 1} "${chapterData.title}": $e');
         }
       }
       
@@ -248,6 +262,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       );
       
     } catch (e) {
+      // Clean up all uploaded files on failure
       if (uploadedImagePath != null) {
         await _deleteFileByPath(uploadedImagePath);
       }
@@ -435,6 +450,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       List<Chapter> processedChapters = List.from(updatedBook.chapters);
       
       try {
+        // Handle cover image update
         if (coverImageFile != null) {
           final imageResult = await _uploadCoverImage(bookId, coverImageFile);
           newImagePath = imageResult['storagePath'];
@@ -455,74 +471,148 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
             }
           }
           
+          // IMPORTANT: Find and delete removed chapters' files
+          if (existingChapterMap.isNotEmpty) {
+            // Get list of chapter IDs that will remain after update
+            Set<String> remainingChapterIds = {};
+            for (final chapterData in chaptersData) {
+              if (chapterData.existingId != null) {
+                remainingChapterIds.add(chapterData.existingId!);
+              }
+              // Also check by order for chapters without explicit ID
+              else {
+                try {
+                  final existingByOrder = existingChapterMap.values.firstWhere(
+                    (ch) => ch.order == chapterData.order,
+                  );
+                  remainingChapterIds.add(existingByOrder.id);
+                } catch (e) {
+                  // No existing chapter found by order - this is a new chapter
+                }
+              }
+            }
+            
+            // Find chapters that will be deleted (exist in Firestore but not in new list)
+            List<Chapter> chaptersToDelete = [];
+            for (final existingChapter in existingChapterMap.values) {
+              if (!remainingChapterIds.contains(existingChapter.id)) {
+                chaptersToDelete.add(existingChapter);
+              }
+            }
+            
+            // Delete files for removed chapters
+            for (final chapterToDelete in chaptersToDelete) {
+              if (kDebugMode) {
+                print('Deleting files for removed chapter: ${chapterToDelete.title} (ID: ${chapterToDelete.id})');
+              }
+              
+              // Delete chapter PDF
+              if (chapterToDelete.pdfPath != null && chapterToDelete.pdfPath!.isNotEmpty) {
+                await _deleteFileByPath(chapterToDelete.pdfPath!);
+                if (kDebugMode) {
+                  print('Deleted chapter PDF: ${chapterToDelete.pdfPath}');
+                }
+              }
+              
+              // Delete chapter audio tracks
+              for (final audioTrack in chapterToDelete.audioTracks) {
+                if (audioTrack.audioPath != null && audioTrack.audioPath!.isNotEmpty) {
+                  await _deleteFileByPath(audioTrack.audioPath!);
+                  if (kDebugMode) {
+                    print('Deleted chapter audio: ${audioTrack.audioPath}');
+                  }
+                }
+              }
+            }
+            
+            if (chaptersToDelete.isNotEmpty && kDebugMode) {
+              print('Successfully cleaned up ${chaptersToDelete.length} deleted chapters');
+            }
+          }
+          
           processedChapters.clear();
           
           for (int i = 0; i < chaptersData.length; i++) {
             final chapterData = chaptersData[i];
             
-            if (chapterData.isNewOrModified && chapterData.pdfFile != null && chapterData.pdfFile!.existsSync()) {
+            // Find existing chapter - FIXED LOGIC
+            Chapter? existingChapter;
+            bool isNewChapter = false;
+            
+            if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
+              // Found by existing ID - this is an update to existing chapter
+              existingChapter = existingChapterMap[chapterData.existingId!];
+              if (kDebugMode) {
+                print('Found existing chapter by ID: ${chapterData.existingId}');
+              }
+            } else {
+              // Try to find by order
               try {
-                final chapterResult = await _uploadChapterPdf(bookId, i + 1, chapterData.pdfFile!);
+                existingChapter = existingChapterMap.values.firstWhere(
+                  (ch) => ch.order == chapterData.order,
+                );
+                if (kDebugMode) {
+                  print('Found existing chapter by order: ${chapterData.order}');
+                }
+              } catch (e) {
+                // No existing chapter found - this is a new chapter
+                existingChapter = null;
+                isNewChapter = true;
+                if (kDebugMode) {
+                  print('No existing chapter found for order ${chapterData.order} - treating as new chapter');
+                }
+              }
+            }
+            
+            // Generate chapter ID - FIXED TO USE UNIQUE IDs
+            String chapterId;
+            if (existingChapter != null) {
+              chapterId = existingChapter.id; // Use existing ID
+            } else {
+              // Generate unique ID for new chapter using timestamp and random component
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final randomSuffix = ((timestamp + i) % 10000).toString().padLeft(4, '0');
+              chapterId = '${bookId}_ch_${timestamp}_${randomSuffix}_$i';
+            }
+            
+            String? chapterPdfUrl = existingChapter?.pdfUrl;
+            String? chapterPdfPath = existingChapter?.pdfPath;
+            List<AudioTrack> chapterAudioTracks = List.from(existingChapter?.audioTracks ?? []);
+            
+            // Handle PDF update - ONLY if new PDF file is provided OR if this is a new chapter
+            if (chapterData.pdfFile != null && chapterData.pdfFile!.existsSync()) {
+              try {
+                if (kDebugMode) {
+                  print('Uploading ${isNewChapter ? "new" : "updated"} PDF for chapter $chapterId: ${chapterData.pdfFile!.path}');
+                }
+                
+                // Use chapter ID instead of position for storage path
+                final chapterResult = await _uploadChapterPdf(bookId, chapterId, chapterData.pdfFile!);
                 newChapterPaths.add(chapterResult['storagePath']!);
                 
-                List<AudioTrack> chapterAudioTracks = [];
-                
-                if (chapterData.audioTracks.isNotEmpty) {
-                  for (int j = 0; j < chapterData.audioTracks.length; j++) {
-                    final audioTrackData = chapterData.audioTracks[j];
-                    final audioResult = await _uploadChapterAudio(bookId, i + 1, j + 1, audioTrackData.audioFile);
-                    newAudioPaths.add(audioResult['storagePath']!);
-                    
-                    final audioTrack = AudioTrack(
-                      id: '${bookId}_chapter_${i + 1}_audio_${j + 1}',
-                      name: audioTrackData.name,
-                      audioUrl: audioResult['url'],
-                      audioPath: audioResult['storagePath'],
-                      order: audioTrackData.order,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    );
-                    
-                    chapterAudioTracks.add(audioTrack);
-                  }
-                  
-                  if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
-                    final existingChapter = existingChapterMap[chapterData.existingId!];
-                    for (final track in existingChapter?.audioTracks ?? []) {
-                      if (track.audioPath != null && track.audioPath!.isNotEmpty) {
-                        oldPathsToDelete.add(track.audioPath!);
-                      }
-                    }
-                  }
-                } else {
-                  if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
-                    final existingChapter = existingChapterMap[chapterData.existingId!];
-                    chapterAudioTracks = List.from(existingChapter?.audioTracks ?? []);
+                // IMPORTANT: Only mark old PDF for deletion if this is an UPDATE to existing chapter
+                if (!isNewChapter && 
+                    existingChapter?.pdfPath != null && 
+                    existingChapter!.pdfPath!.isNotEmpty && 
+                    existingChapter.pdfPath != chapterResult['storagePath']) {
+                  oldPathsToDelete.add(existingChapter.pdfPath!);
+                  if (kDebugMode) {
+                    print('Marked old PDF for deletion: ${existingChapter.pdfPath}');
                   }
                 }
                 
-                if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
-                  final existingChapter = existingChapterMap[chapterData.existingId!];
-                  if (existingChapter?.pdfPath != null && existingChapter!.pdfPath!.isNotEmpty) {
-                    oldPathsToDelete.add(existingChapter.pdfPath!);
-                  }
+                // Update with new PDF info
+                chapterPdfUrl = chapterResult['url'];
+                chapterPdfPath = chapterResult['storagePath'];
+                
+                if (kDebugMode) {
+                  print('Successfully uploaded PDF for chapter $chapterId');
                 }
-                
-                final chapter = Chapter(
-                  id: chapterData.existingId ?? '${bookId}_chapter_${i + 1}',
-                  title: chapterData.title,
-                  description: chapterData.description,
-                  pdfUrl: chapterResult['url'],
-                  pdfPath: chapterResult['storagePath'],
-                  audioTracks: chapterAudioTracks,
-                  order: chapterData.order,
-                  duration: chapterData.duration,
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                );
-                
-                processedChapters.add(chapter);
               } catch (e) {
+                if (kDebugMode) {
+                  print('Failed to upload PDF for chapter $chapterId: $e');
+                }
+                // Clean up and throw
                 if (newImagePath != null) {
                   await _deleteFileByPath(newImagePath);
                 }
@@ -532,79 +622,104 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
                 for (final path in newAudioPaths) {
                   await _deleteFileByPath(path);
                 }
-                throw Exception('Failed to upload chapter ${i + 1}: $e');
+                throw Exception('Failed to upload PDF for chapter "${chapterData.title}": $e');
               }
-            } else {
-              Chapter existingChapter;
-              
-              if (chapterData.existingId != null && existingChapterMap.containsKey(chapterData.existingId)) {
-                existingChapter = existingChapterMap[chapterData.existingId!]!;
-              } else {
-                existingChapter = existingChapterMap.values.firstWhere(
-                  (ch) => ch.order == chapterData.order,
-                  orElse: () {
-                    final chapters = existingChapterMap.values.toList();
-                    if (chapters.length > i) {
-                      return chapters[i];
-                    }
-                    throw Exception('Could not find existing chapter to update. Chapter may have been deleted.');
-                  },
-                );
-              }
-              
-              List<AudioTrack> updatedAudioTracks = List.from(existingChapter.audioTracks);
-              
-              if (chapterData.audioTracks.isNotEmpty) {
-                try {
+            } else if (isNewChapter) {
+              // New chapter but no PDF provided
+              throw Exception('New chapter "${chapterData.title}" requires a PDF file');
+            } else if (chapterData.pdfFile != null) {
+              // PDF file provided but doesn't exist
+              throw Exception('PDF file for chapter "${chapterData.title}" does not exist at path: ${chapterData.pdfFile?.path}');
+            }
+            // If existing chapter and no new PDF provided, keep existing PDF
+            
+            // Handle AUDIO update - ONLY if new audio tracks are provided
+            if (chapterData.audioTracks.isNotEmpty) {
+              try {
+                if (kDebugMode) {
+                  print('Updating audio tracks for chapter $chapterId (${isNewChapter ? "new" : "existing"} chapter)');
+                }
+                
+                // IMPORTANT: Only delete existing audio tracks if this is an UPDATE to existing chapter
+                if (!isNewChapter && existingChapter != null) {
                   for (final track in existingChapter.audioTracks) {
                     if (track.audioPath != null && track.audioPath!.isNotEmpty) {
                       oldPathsToDelete.add(track.audioPath!);
+                      if (kDebugMode) {
+                        print('Marked old audio for deletion: ${track.audioPath}');
+                      }
                     }
                   }
-                  
-                  updatedAudioTracks.clear();
-                  
-                  for (int j = 0; j < chapterData.audioTracks.length; j++) {
-                    final audioTrackData = chapterData.audioTracks[j];
-                    final audioResult = await _uploadChapterAudio(bookId, i + 1, j + 1, audioTrackData.audioFile);
-                    newAudioPaths.add(audioResult['storagePath']!);
-                    
-                    final audioTrack = AudioTrack(
-                      id: '${bookId}_chapter_${i + 1}_audio_${j + 1}',
-                      name: audioTrackData.name,
-                      audioUrl: audioResult['url'],
-                      audioPath: audioResult['storagePath'],
-                      order: audioTrackData.order,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    );
-                    
-                    updatedAudioTracks.add(audioTrack);
-                  }
-                } catch (e) {
-                  if (newImagePath != null) {
-                    await _deleteFileByPath(newImagePath);
-                  }
-                  for (final path in newChapterPaths) {
-                    await _deleteFileByPath(path);
-                  }
-                  for (final path in newAudioPaths) {
-                    await _deleteFileByPath(path);
-                  }
-                  throw Exception('Failed to upload audio for chapter ${i + 1}: $e');
                 }
+                
+                // Clear audio tracks (for new chapter, this list is already empty)
+                chapterAudioTracks.clear();
+                
+                // Upload new audio tracks using chapter ID
+                for (int j = 0; j < chapterData.audioTracks.length; j++) {
+                  final audioTrackData = chapterData.audioTracks[j];
+                  final audioResult = await _uploadChapterAudio(bookId, chapterId, j + 1, audioTrackData.audioFile);
+                  newAudioPaths.add(audioResult['storagePath']!);
+                  
+                  // Generate unique audio track ID
+                  final audioTimestamp = DateTime.now().millisecondsSinceEpoch;
+                  final audioTrack = AudioTrack(
+                    id: '${chapterId}_audio_${j + 1}_$audioTimestamp',
+                    name: audioTrackData.name,
+                    audioUrl: audioResult['url'],
+                    audioPath: audioResult['storagePath'],
+                    order: audioTrackData.order,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  );
+                  
+                  chapterAudioTracks.add(audioTrack);
+                }
+                
+                if (kDebugMode) {
+                  print('Successfully updated audio tracks for chapter $chapterId');
+                }
+              } catch (e) {
+                if (kDebugMode) {
+                  print('Failed to upload audio for chapter $chapterId: $e');
+                }
+                // Clean up on failure
+                if (newImagePath != null) {
+                  await _deleteFileByPath(newImagePath);
+                }
+                for (final path in newChapterPaths) {
+                  await _deleteFileByPath(path);
+                }
+                for (final path in newAudioPaths) {
+                  await _deleteFileByPath(path);
+                }
+                throw Exception('Failed to upload audio for chapter "${chapterData.title}": $e');
               }
-              
-              final updatedChapter = existingChapter.copyWith(
-                title: chapterData.title,
-                description: chapterData.description,
-                duration: chapterData.duration,
-                order: chapterData.order,
-                audioTracks: updatedAudioTracks,
-                updatedAt: DateTime.now(),
-              );
-              
-              processedChapters.add(updatedChapter);
+            }
+            // If no new audio tracks specified, keep existing ones unchanged
+            
+            // Validate chapter has PDF content
+            if (chapterPdfUrl == null || chapterPdfUrl.isEmpty) {
+              throw Exception('Chapter "${chapterData.title}" has no PDF content');
+            }
+            
+            final updatedChapter = Chapter(
+              id: chapterId,
+              title: chapterData.title,
+              description: chapterData.description,
+              pdfUrl: chapterPdfUrl,
+              pdfPath: chapterPdfPath,
+              audioTracks: chapterAudioTracks,
+              order: chapterData.order,
+              duration: chapterData.duration,
+              createdAt: existingChapter?.createdAt ?? DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+            
+            processedChapters.add(updatedChapter);
+            
+            if (kDebugMode) {
+              print('Successfully processed ${isNewChapter ? "new" : "existing"} chapter $chapterId: ${updatedChapter.title}');
             }
           }
           
@@ -621,6 +736,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         
         await docRef.update(updateData);
         
+        // Clean up old files ONLY after successful update
         if (newImagePath != null && oldImagePath != null && oldImagePath != newImagePath) {
           await _deleteFileByPath(oldImagePath);
         }
@@ -632,6 +748,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         return finalBook.copyWith(updatedAt: DateTime.now());
         
       } catch (e) {
+        // Clean up any newly uploaded files on failure
         if (newImagePath != null) {
           await _deleteFileByPath(newImagePath);
         }
@@ -650,7 +767,7 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
       rethrow;
     }
   }
-
+  
   @override
   Future<bool> deleteBook(String bookId) async {
     try {
@@ -754,13 +871,15 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         throw Exception('Audio file does not exist at path: ${audioFile.path}');
       }
       
-      final extension = _getAudioExtension(audioFile.path);
-      final storagePath = 'books/$bookId/audio_tracks/track_$audioTrackIndex$extension';
+      final detectedExtension = _detectAudioExtension(audioFile.path);
+      final contentType = _getAudioContentType(detectedExtension);
+      
+      final storagePath = 'books/$bookId/audio_tracks/track_$audioTrackIndex$detectedExtension';
       final fileRef = storage.ref().child(storagePath);
 
       final uploadTask = await fileRef.putFile(
         audioFile,
-        SettableMetadata(contentType: _getAudioContentType(extension))
+        SettableMetadata(contentType: contentType)
       );
       
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -778,13 +897,14 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     }
   }
 
-  Future<Map<String, String>> _uploadChapterPdf(String bookId, int chapterNumber, File pdfFile) async {
+  Future<Map<String, String>> _uploadChapterPdf(String bookId, String chapterId, File pdfFile) async {
     try {
       if (!pdfFile.existsSync()) {
         throw Exception('Chapter PDF file does not exist at path: ${pdfFile.path}');
       }
       
-      final storagePath = 'books/$bookId/chapters/chapter_$chapterNumber.pdf';
+      // Use chapter ID instead of chapter number for unique storage path
+      final storagePath = 'books/$bookId/chapters/$chapterId.pdf';
       final fileRef = storage.ref().child(storagePath);
 
       final uploadTask = await fileRef.putFile(
@@ -807,19 +927,23 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     }
   }
 
-  Future<Map<String, String>> _uploadChapterAudio(String bookId, int chapterNumber, int audioTrackIndex, File audioFile) async {
+  Future<Map<String, String>> _uploadChapterAudio(String bookId, String chapterId, int audioTrackIndex, File audioFile) async {
     try {
       if (!audioFile.existsSync()) {
         throw Exception('Chapter audio file does not exist at path: ${audioFile.path}');
       }
       
-      final extension = _getAudioExtension(audioFile.path);
-      final storagePath = 'books/$bookId/chapters/chapter_${chapterNumber}_audio_$audioTrackIndex$extension';
+      final detectedExtension = _detectAudioExtension(audioFile.path);
+      final contentType = _getAudioContentType(detectedExtension);
+      
+      // Use chapter ID and timestamp for unique storage path
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storagePath = 'books/$bookId/chapters/${chapterId}_audio_${audioTrackIndex}_$timestamp$detectedExtension';
       final fileRef = storage.ref().child(storagePath);
 
       final uploadTask = await fileRef.putFile(
         audioFile,
-        SettableMetadata(contentType: _getAudioContentType(extension))
+        SettableMetadata(contentType: contentType)
       );
       
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -866,24 +990,25 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
     }
   }
 
-  String _getAudioExtension(String filePath) {
+  String _detectAudioExtension(String filePath) {
     final extension = filePath.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'm4a':
-        return '.m4a';
-      case 'mp3':
-        return '.mp3';
-      case 'wav':
-        return '.wav';
-      case 'aac':
-        return '.aac';
-      default:
-        return '.m4a';
+    
+    // Validate against supported audio formats
+    const supportedFormats = ['m4a', 'mp3', 'wav', 'aac', 'ogg', 'flac'];
+    
+    if (supportedFormats.contains(extension)) {
+      return '.$extension';
     }
+    
+    // If unsupported format, keep original but log warning
+    if (kDebugMode) {
+      print('Warning: Unsupported audio format: $extension, keeping original extension');
+    }
+    return '.$extension';
   }
 
   String _getAudioContentType(String extension) {
-    switch (extension) {
+    switch (extension.toLowerCase()) {
       case '.m4a':
         return 'audio/mp4';
       case '.mp3':
@@ -892,8 +1017,12 @@ class FirestoreBookUploadDataSource implements BookUploadRemoteDataSource {
         return 'audio/wav';
       case '.aac':
         return 'audio/aac';
+      case '.ogg':
+        return 'audio/ogg';
+      case '.flac':
+        return 'audio/flac';
       default:
-        return 'audio/mp4';
+        return 'audio/mpeg';
     }
   }
 

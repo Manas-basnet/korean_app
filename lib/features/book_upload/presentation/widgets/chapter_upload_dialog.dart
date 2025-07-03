@@ -12,6 +12,7 @@ class ChapterUploadDialog extends StatefulWidget {
   final ChapterUploadData? existingChapter;
   final List<AudioTrack>? existingAudioTracks;
   final Chapter? originalChapter;
+  final List<String>? existingChapterTitles;
 
   const ChapterUploadDialog({
     super.key,
@@ -20,6 +21,7 @@ class ChapterUploadDialog extends StatefulWidget {
     this.existingChapter,
     this.existingAudioTracks,
     this.originalChapter,
+    this.existingChapterTitles,
   });
 
   @override
@@ -37,6 +39,7 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
   bool _fileChanged = false;
   List<AudioTrackUploadData> _audioTracks = [];
   bool _showExistingAudio = true;
+  List<AudioTrack> _currentExistingAudio = [];
 
   @override
   void initState() {
@@ -67,10 +70,27 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
   }
 
   void _initializeAudioTracks() {
+    // Priority: 1. Existing chapter data, 2. Original chapter data, 3. Empty
     if (widget.existingChapter != null && widget.existingChapter!.audioTracks.isNotEmpty) {
+      // If editing an existing chapter with new audio tracks
       _audioTracks = List.from(widget.existingChapter!.audioTracks);
-    } else if (widget.existingAudioTracks != null && widget.existingAudioTracks!.isNotEmpty) {
+      _showExistingAudio = false;
+      _currentExistingAudio = [];
+    } else if (widget.originalChapter != null && widget.originalChapter!.audioTracks.isNotEmpty) {
+      // If editing and original chapter has audio tracks
+      _currentExistingAudio = List.from(widget.originalChapter!.audioTracks);
       _showExistingAudio = true;
+      _audioTracks = [];
+    } else if (widget.existingAudioTracks != null && widget.existingAudioTracks!.isNotEmpty) {
+      // Fallback to provided existing audio tracks
+      _currentExistingAudio = List.from(widget.existingAudioTracks!);
+      _showExistingAudio = true;
+      _audioTracks = [];
+    } else {
+      // No existing audio
+      _showExistingAudio = false;
+      _audioTracks = [];
+      _currentExistingAudio = [];
     }
   }
 
@@ -97,6 +117,7 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
     setState(() {
       _audioTracks = audioTracks;
       _showExistingAudio = false;
+      _currentExistingAudio = []; // Clear existing audio when new ones are added
     });
   }
 
@@ -104,6 +125,7 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
     setState(() {
       _showExistingAudio = false;
       _audioTracks.clear();
+      _currentExistingAudio = []; // Clear existing audio to show editor
     });
   }
 
@@ -112,13 +134,14 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
       return;
     }
 
+    // Determine if this chapter has been modified
     bool isModified = widget.existingChapter == null ||
         widget.existingChapter!.title != _titleController.text ||
         widget.existingChapter!.description != _descriptionController.text ||
         widget.existingChapter!.duration != _durationController.text ||
         _fileChanged ||
         !_showExistingAudio ||
-        _audioTracks.length != (widget.existingAudioTracks?.length ?? 0);
+        _audioTracks.isNotEmpty;
 
     File? pdfFileToUpload;
     if (_fileChanged && _selectedFile != null) {
@@ -127,15 +150,21 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
       pdfFileToUpload = widget.existingChapter!.pdfFile;
     }
 
+    // Only include audio tracks if they have been modified
+    List<AudioTrackUploadData> audioTracksToSave = [];
+    if (!_showExistingAudio && _audioTracks.isNotEmpty) {
+      audioTracksToSave = _audioTracks;
+    }
+
     final chapter = ChapterUploadData(
       title: _titleController.text,
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
       duration: _durationController.text.isEmpty ? null : _durationController.text,
       pdfFile: pdfFileToUpload,
-      audioTracks: _audioTracks,
+      audioTracks: audioTracksToSave,
       order: widget.chapterNumber,
       isNewOrModified: isModified,
-      existingId: widget.existingChapter?.existingId,
+      existingId: widget.existingChapter?.existingId ?? widget.originalChapter?.id,
     );
 
     Navigator.of(context).pop(chapter);
@@ -216,12 +245,43 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                           ),
                           filled: true,
                           fillColor: theme.colorScheme.surface,
+                          errorMaxLines: 2, // Allow multi-line error messages
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a title';
                           }
+                          
+                          // Check for duplicate titles
+                          if (widget.existingChapterTitles != null) {
+                            final normalizedTitle = value.toLowerCase().trim();
+                            if (widget.existingChapterTitles!.contains(normalizedTitle)) {
+                              return 'A chapter with this title already exists. Please choose a different title.';
+                            }
+                          }
+                          
+                          // Check title length
+                          if (value.trim().length < 2) {
+                            return 'Title must be at least 2 characters long';
+                          }
+                          
+                          if (value.trim().length > 100) {
+                            return 'Title must be less than 100 characters';
+                          }
+                          
                           return null;
+                        },
+                        onChanged: (value) {
+                          // Real-time validation feedback
+                          if (widget.existingChapterTitles != null) {
+                            final normalizedTitle = value.toLowerCase().trim();
+                            if (widget.existingChapterTitles!.contains(normalizedTitle) && value.isNotEmpty) {
+                              // Show immediate feedback without blocking typing
+                              setState(() {
+                                // You could add a visual indicator here if needed
+                              });
+                            }
+                          }
                         },
                       ),
                       SizedBox(height: mediaQuery.height * 0.02),
@@ -358,10 +418,10 @@ class _ChapterUploadDialogState extends State<ChapterUploadDialog> {
                       ),
                       SizedBox(height: mediaQuery.height * 0.02),
                       
-                      if (_showExistingAudio && widget.existingAudioTracks != null && widget.existingAudioTracks!.isNotEmpty) ...[
+                      if (_showExistingAudio && _currentExistingAudio.isNotEmpty) ...[
                         MultiAudioPlayerWidget(
-                          audioTracks: widget.existingAudioTracks!,
-                          label: 'Current Audio Tracks (${widget.existingAudioTracks!.length})',
+                          audioTracks: _currentExistingAudio,
+                          label: 'Current Audio Tracks (${_currentExistingAudio.length})',
                           onEdit: _onEditExistingAudio,
                         ),
                       ] else
