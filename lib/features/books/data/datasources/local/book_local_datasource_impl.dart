@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 
 import 'book_local_datasource.dart';
@@ -145,7 +145,7 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       final books = await getAllBooks();
       final bookToRemove = books.firstWhere((book) => book.id == bookId, orElse: () => const BookItem(
         id: '', title: '', description: '', chapters: [],
-        level: BookLevel.beginner, category: TestCategory.practice,
+        level: BookLevel.beginner, category: CourseCategory.korean,
       ));
       
       if (bookToRemove.id.isNotEmpty) {

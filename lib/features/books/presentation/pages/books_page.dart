@@ -719,7 +719,7 @@ class _BooksPageState extends State<BooksPage> {
           ),
           SizedBox(height: screenSize.height * 0.04),
           FilledButton.icon(
-            onPressed: () => context.push('/book-upload'),
+            onPressed: () => context.push(Routes.bookUpload),
             icon: const Icon(Icons.add),
             label: Text(
               _languageCubit.getLocalizedText(
@@ -766,7 +766,7 @@ class _BooksPageState extends State<BooksPage> {
           operation.status == BooksOperationStatus.completed && 
           booksState.selectedBook != null) {
         _snackBarCubit.dismiss();
-        context.push('/book-reading/${book.id}');
+        context.push(Routes.bookReading(book.id));
       } else {
         String errorMessage;
         if (booksState.hasError) {

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
@@ -29,7 +30,7 @@ class _BookEditPageState extends State<BookEditPage> {
   final _descriptionController = TextEditingController();
   
   BookLevel _selectedLevel = BookLevel.beginner;
-  TestCategory _selectedCategory = TestCategory.practice;
+  CourseCategory _selectedCategory = CourseCategory.korean;
   String _selectedLanguage = 'Korean';
   IconData _selectedIcon = Icons.book;
   File? _selectedImage;
@@ -387,7 +388,7 @@ class _BookEditPageState extends State<BookEditPage> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: DropdownButtonFormField<TestCategory>(
+              child: DropdownButtonFormField<CourseCategory>(
                 value: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: _languageCubit.getLocalizedText(
@@ -395,12 +396,12 @@ class _BookEditPageState extends State<BookEditPage> {
                     english: 'Category',
                   ),
                 ),
-                items: TestCategory.values
+                items: CourseCategory.values
                     .where((cat) => cat != TestCategory.all)
                     .map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category.displayName),
+                    child: Text(category.name),
                   );
                 }).toList(),
                 onChanged: (value) {

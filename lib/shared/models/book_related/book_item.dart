@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'book_chapter.dart';
 
 class BookItem {
@@ -12,7 +12,7 @@ class BookItem {
   final List<BookChapter> chapters;
   final int duration; // total duration in seconds
   final BookLevel level;
-  final TestCategory category;
+  final CourseCategory category;
   final String language;
   final IconData icon;
   final String? creatorUid;
@@ -58,7 +58,7 @@ class BookItem {
     List<BookChapter>? chapters,
     int? duration,
     BookLevel? level,
-    TestCategory? category,
+    CourseCategory? category,
     String? language,
     IconData? icon,
     String? creatorUid,
@@ -136,16 +136,16 @@ class BookItem {
       level = BookLevel.beginner;
     }
 
-    TestCategory category;
+    CourseCategory category;
     if (json['category'] is int) {
-      category = TestCategory.values[json['category']];
+      category = CourseCategory.values[json['category']];
     } else if (json['category'] is String) {
-      category = TestCategory.values.firstWhere(
+      category = CourseCategory.values.firstWhere(
         (e) => e.toString().split('.').last == json['category'],
-        orElse: () => TestCategory.practice,
+        orElse: () => CourseCategory.korean,
       );
     } else {
-      category = TestCategory.practice;
+      category = CourseCategory.korean;
     }
 
     IconData icon;

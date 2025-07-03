@@ -7,6 +7,8 @@ import 'package:korean_language_app/features/books/presentation/bloc/book_sessio
 import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_rating_dialog.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/chapter_navigation_sheet.dart';
+import 'package:korean_language_app/features/books/presentation/widgets/custom_pdf_viewer.dart';
+import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
@@ -419,7 +421,8 @@ class _BookReadingPageState extends State<BookReadingPage>
     );
   }
 
-  Widget _buildChapterContent(BookSession session, chapter) {
+
+  Widget _buildChapterContent(BookSession session,BookChapter chapter) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -429,6 +432,9 @@ class _BookReadingPageState extends State<BookReadingPage>
             _buildChapterImage(chapter),
           
           _buildChapterHeader(chapter),
+          
+          if (chapter.hasPdf)
+            _buildChapterPdf(chapter),
           
           if (chapter.hasAudioTracks)
             _buildAudioTracks(chapter),
@@ -441,6 +447,27 @@ class _BookReadingPageState extends State<BookReadingPage>
           
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChapterPdf(BookChapter chapter) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: CustomPdfViewer(
+        pdfUrl: chapter.pdfUrl,
+        pdfPath: chapter.pdfPath,
+        label: _languageCubit.getLocalizedText(
+          korean: '${chapter.title} - PDF',
+          english: '${chapter.title} - PDF',
+        ),
+        height: 500,
+        onError: () {
+          _snackBarCubit.showErrorLocalized(
+            korean: 'PDF를 불러올 수 없습니다',
+            english: 'Failed to load PDF',
+          );
+        },
       ),
     );
   }

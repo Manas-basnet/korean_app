@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/chapter_editor_page.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
@@ -28,7 +28,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
   final _descriptionController = TextEditingController();
   
   BookLevel _selectedLevel = BookLevel.beginner;
-  TestCategory _selectedCategory = TestCategory.practice;
+  CourseCategory _selectedCategory = CourseCategory.korean;
   final String _selectedLanguage = 'Korean';
   final IconData _selectedIcon = Icons.book;
   File? _selectedImage;
@@ -314,7 +314,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: DropdownButtonFormField<TestCategory>(
+              child: DropdownButtonFormField<CourseCategory>(
                 value: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: _languageCubit.getLocalizedText(
@@ -322,14 +322,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
                     english: 'Category',
                   ),
                 ),
-                items: TestCategory.values
-                    .where((cat) => cat != TestCategory.all)
-                    .map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category.displayName),
-                  );
-                }).toList(),
+                items: CourseCategory.values.map((e) => DropdownMenuItem(value: e,child: Text(e.name),)).toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {

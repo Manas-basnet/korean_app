@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 class BookCard extends StatelessWidget {
@@ -631,7 +631,7 @@ class _StatRow extends StatelessWidget {
 }
 
 class _CategoryChip extends StatelessWidget {
-  final TestCategory category;
+  final CourseCategory category;
   final ColorScheme colorScheme;
   final ThemeData theme;
   final double screenWidth;
@@ -663,7 +663,7 @@ class _CategoryChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(screenWidth * 0.03),
       ),
       child: Text(
-        category.displayName,
+        category.name,
         style: theme.textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w500,

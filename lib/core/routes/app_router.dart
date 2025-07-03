@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/pages/book_reading_page.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -230,7 +232,8 @@ class AppRouter {
                       GoRoute(
                         path: 'results',
                         name: 'testResults',
-                        builder: (context, state) => BlocProvider<TestResultsCubit>(
+                        builder: (context, state) =>
+                            BlocProvider<TestResultsCubit>(
                           create: (context) => sl<TestResultsCubit>(),
                           child: const TestResultsHistoryPage(),
                         ),
@@ -268,6 +271,9 @@ class AppRouter {
                     BlocProvider<BookUploadCubit>(
                       create: (context) => sl<BookUploadCubit>(),
                     ),
+                    BlocProvider<BookSessionCubit>(
+                      create: (context) => sl<BookSessionCubit>(),
+                    ),
                   ],
                   child: child,
                 ),
@@ -288,6 +294,14 @@ class AppRouter {
                         builder: (context, state) {
                           final bookId = state.pathParameters['bookId']!;
                           return BookEditPage(bookId: bookId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'book-reading/:bookId',
+                        name: 'bookReading',
+                        builder: (context, state) {
+                          final bookId = state.pathParameters['bookId']!;
+                          return BookReadingPage(bookId: bookId);
                         },
                       ),
                     ],
@@ -315,7 +329,8 @@ class AppRouter {
                       GoRoute(
                         path: 'language-preferences',
                         name: 'languagePreferences',
-                        builder: (context, state) => const LanguagePreferencePage(),
+                        builder: (context, state) =>
+                            const LanguagePreferencePage(),
                       ),
                       GoRoute(
                         path: 'admin-management',
@@ -392,6 +407,7 @@ class Routes {
   static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
   static String bookEdit(String bookId) => '/books/edit/$bookId';
+  static String bookReading(String bookId) => '/books/book-reading/$bookId';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {
