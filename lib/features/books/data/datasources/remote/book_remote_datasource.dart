@@ -1,5 +1,5 @@
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
@@ -11,14 +11,14 @@ abstract class BooksRemoteDataSource {
   });
   
   Future<List<BookItem>> getBooksByCategory(
-    TestCategory category, {
+    CourseCategory category, {
     int page = 0, 
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
   });
   
   Future<bool> hasMoreBooks(int currentCount, [TestSortType? sortType]);
-  Future<bool> hasMoreBooksByCategory(TestCategory category, int currentCount, [TestSortType? sortType]);
+  Future<bool> hasMoreBooksByCategory(CourseCategory category, int currentCount, [TestSortType? sortType]);
   Future<List<BookItem>> searchBooks(String query);
   Future<BookItem?> getBookById(String bookId);
   

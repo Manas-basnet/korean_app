@@ -8,6 +8,7 @@ import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/features/books/domain/usecase/check_book_permission_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/get_book_by_id_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/load_books_usecase.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
@@ -22,7 +23,7 @@ class BooksCubit extends Cubit<BooksState> {
   
   int _currentPage = 0;
   static const int _pageSize = 20;
-  TestCategory _currentCategory = TestCategory.all;
+  CourseCategory _currentCategory = CourseCategory.korean;
   TestSortType _currentSortType = TestSortType.recent;
   
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
@@ -60,7 +61,7 @@ class BooksCubit extends Cubit<BooksState> {
       return;
     }
     
-    _currentCategory = TestCategory.all;
+    _currentCategory = CourseCategory.korean;
     _currentSortType = sortType;
     _operationStopwatch.reset();
     _operationStopwatch.start();
@@ -122,7 +123,7 @@ class BooksCubit extends Cubit<BooksState> {
     }
   }
 
-  Future<void> loadBooksByCategory(TestCategory category, {TestSortType sortType = TestSortType.recent}) async {
+  Future<void> loadBooksByCategory(CourseCategory category, {TestSortType sortType = TestSortType.recent}) async {
     if (state.currentOperation.isInProgress) {
       debugPrint('Load operation already in progress, skipping...');
       return;
@@ -365,7 +366,7 @@ class BooksCubit extends Cubit<BooksState> {
     }
   }
 
-  TestCategory get currentCategory => _currentCategory;
+  CourseCategory get currentCategory => _currentCategory;
   TestSortType get currentSortType => _currentSortType;
 
   Future<void> loadBookById(String bookId) async {

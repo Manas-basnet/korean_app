@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/pages/book_reading_page.dart';
+import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
+import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -297,11 +298,17 @@ class AppRouter {
                         },
                       ),
                       GoRoute(
-                        path: 'book-reading/:bookId',
-                        name: 'bookReading',
+                        path: '/book-chapters/:bookId',
                         builder: (context, state) {
                           final bookId = state.pathParameters['bookId']!;
-                          return BookReadingPage(bookId: bookId);
+                          return ChapterListPage(bookId: bookId);
+                        },
+                      ),
+                      GoRoute(
+                        path: '/pdf-reader',
+                        builder: (context, state) {
+                          final extra = state.extra as PdfReadingPage;
+                          return PdfReadingPage(bookId: extra.bookId, chapterIndex: extra.chapterIndex,);
                         },
                       ),
                     ],
@@ -396,6 +403,7 @@ class Routes {
   // Books routes
   static const books = '/books';
   static const bookUpload = '/books/upload';
+  static const pdfReader = '/books/pdf-reader';
 
   static const profile = '/profile';
   static const languagePreferences = '/profile/language-preferences';
@@ -408,6 +416,7 @@ class Routes {
   static String testEdit(String testId) => '/tests/edit/$testId';
   static String bookEdit(String bookId) => '/books/edit/$bookId';
   static String bookReading(String bookId) => '/books/book-reading/$bookId';
+  static String bookChapters(String bookId) => '/books/book-chapters/$bookId';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {

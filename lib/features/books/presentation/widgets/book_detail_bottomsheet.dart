@@ -151,11 +151,11 @@ class BookDetailsBottomSheet extends StatelessWidget {
                               Navigator.pop(context);
                               onStartReading();
                             },
-                            icon: const Icon(Icons.menu_book_rounded),
+                            icon: const Icon(Icons.list_rounded),
                             label: Text(
                               languageCubit.getLocalizedText(
-                                korean: '읽기 시작',
-                                english: 'Start Reading',
+                                korean: '챕터 선택',
+                                english: 'Select Chapter',
                               ),
                             ),
                             style: FilledButton.styleFrom(

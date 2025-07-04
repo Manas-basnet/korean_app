@@ -12,7 +12,7 @@ import 'package:korean_language_app/features/books/presentation/widgets/book_det
 import 'package:korean_language_app/features/books/presentation/widgets/book_grid_skeleton.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_search_delegate.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/sort_bottomsheet.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
@@ -33,7 +33,7 @@ class _BooksPageState extends State<BooksPage> {
   late ScrollController _scrollController;
   bool _isRefreshing = false;
   bool _isInitialized = false;
-  TestCategory _selectedCategory = TestCategory.all;
+  CourseCategory _selectedCategory = CourseCategory.korean;
   TestSortType _selectedSortType = TestSortType.recent;
   String _searchQuery = '';
   bool _isSearching = false;
@@ -124,7 +124,7 @@ class _BooksPageState extends State<BooksPage> {
     }
   }
 
-  void _onCategoryChanged(TestCategory category) {
+  void _onCategoryChanged(CourseCategory category) {
     if (_selectedCategory == category) return;
     
     setState(() {
@@ -134,7 +134,7 @@ class _BooksPageState extends State<BooksPage> {
       _hasTriggeredLoadMore = false;
     });
     
-    if (category == TestCategory.all) {
+    if (category == CourseCategory.korean) {
       _booksCubit.loadInitialBooks(sortType: _selectedSortType);
     } else {
       _booksCubit.loadBooksByCategory(category, sortType: _selectedSortType);
@@ -367,10 +367,10 @@ class _BooksPageState extends State<BooksPage> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        itemCount: TestCategory.values.length,
+        itemCount: CourseCategory.values.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final category = TestCategory.values[index];
+          final category = CourseCategory.values[index];
           final isSelected = _selectedCategory == category;
 
           return GestureDetector(
@@ -390,7 +390,7 @@ class _BooksPageState extends State<BooksPage> {
                 ),
               ),
               child: Text(
-                category.getDisplayName(_languageCubit.getLocalizedText),
+                category.name,
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.primary
@@ -488,7 +488,7 @@ class _BooksPageState extends State<BooksPage> {
                 onRetry: () {
                   context.read<ConnectivityCubit>().checkConnectivity();
                   if (context.read<ConnectivityCubit>().state is ConnectivityConnected) {
-                    if (_selectedCategory == TestCategory.all) {
+                    if (_selectedCategory == CourseCategory.korean) {
                       _booksCubit.loadInitialBooks(sortType: _selectedSortType);
                     } else {
                       _booksCubit.loadBooksByCategory(_selectedCategory, sortType: _selectedSortType);
@@ -517,7 +517,7 @@ class _BooksPageState extends State<BooksPage> {
                 message: state.error ?? '',
                 errorType: state.errorType,
                 onRetry: () {
-                  if (_selectedCategory == TestCategory.all) {
+                  if (_selectedCategory == CourseCategory.korean) {
                     _booksCubit.loadInitialBooks(sortType: _selectedSortType);
                   } else {
                     _booksCubit.loadBooksByCategory(_selectedCategory, sortType: _selectedSortType);
@@ -766,7 +766,9 @@ class _BooksPageState extends State<BooksPage> {
           operation.status == BooksOperationStatus.completed && 
           booksState.selectedBook != null) {
         _snackBarCubit.dismiss();
-        context.push(Routes.bookReading(book.id));
+        
+        // Navigate to chapter list instead of direct reading
+        context.push(Routes.bookChapters(book.id));
       } else {
         String errorMessage;
         if (booksState.hasError) {

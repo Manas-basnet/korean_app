@@ -4,6 +4,7 @@ import 'package:korean_language_app/core/data/base_repository.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/book_local_datasource.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/book_remote_datasource.dart';
 import 'package:korean_language_app/features/books/domain/repositories/book_repository.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
@@ -247,7 +248,7 @@ class BooksRepositoryImpl extends BaseRepository implements BooksRepository {
 
   @override
   Future<ApiResult<List<BookItem>>> getBooksByCategory(
-    TestCategory category, {
+    CourseCategory category, {
     int page = 0, 
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
@@ -313,7 +314,7 @@ class BooksRepositoryImpl extends BaseRepository implements BooksRepository {
 
   @override
   Future<ApiResult<bool>> hasMoreBooksByCategory(
-    TestCategory category, 
+    CourseCategory category, 
     int currentCount, 
     [TestSortType? sortType]
   ) async {
@@ -376,7 +377,7 @@ class BooksRepositoryImpl extends BaseRepository implements BooksRepository {
 
   @override
   Future<ApiResult<List<BookItem>>> hardRefreshBooksByCategory(
-    TestCategory category, {
+    CourseCategory category, {
     int pageSize = 5, 
     TestSortType sortType = TestSortType.recent
   }) async {

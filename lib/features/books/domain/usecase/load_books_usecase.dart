@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:korean_language_app/core/usecases/usecase.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/books/domain/repositories/book_repository.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/services/auth_service.dart';
@@ -12,7 +12,7 @@ class LoadBooksParams extends Equatable {
   final int page;
   final int pageSize;
   final TestSortType sortType;
-  final TestCategory? category;
+  final CourseCategory? category;
   final bool forceRefresh;
   final bool loadMore;
 
@@ -29,7 +29,7 @@ class LoadBooksParams extends Equatable {
     int? page,
     int? pageSize,
     TestSortType? sortType,
-    TestCategory? category,
+    CourseCategory? category,
     bool? forceRefresh,
     bool? loadMore,
   }) {

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:korean_language_app/core/utils/exception_mapper.dart';
 import 'package:korean_language_app/features/books/data/datasources/remote/book_remote_datasource.dart';
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
+import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
@@ -60,7 +60,7 @@ class FirestoreBooksDataSourceImpl implements BooksRemoteDataSource {
 
   @override
   Future<List<BookItem>> getBooksByCategory(
-    TestCategory category, {
+    CourseCategory category, {
     int page = 0,
     int pageSize = 5,
     TestSortType sortType = TestSortType.recent,
@@ -119,7 +119,7 @@ class FirestoreBooksDataSourceImpl implements BooksRemoteDataSource {
   }
 
   @override
-  Future<bool> hasMoreBooksByCategory(TestCategory category, int currentCount, [TestSortType? sortType]) async {
+  Future<bool> hasMoreBooksByCategory(CourseCategory category, int currentCount, [TestSortType? sortType]) async {
     try {
       final countQuery = await firestore.collection(booksCollection)
           .where('isPublished', isEqualTo: true)
