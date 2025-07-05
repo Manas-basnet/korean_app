@@ -39,8 +39,7 @@ void registerBooksDependencies(GetIt sl) {
   ));
 
   sl.registerFactory(() => BookSessionCubit(
-    booksRepository: sl(),
-    authService: sl(),
+    localDataSource: sl(),
   ));
 
   // Use cases

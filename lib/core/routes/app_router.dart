@@ -272,9 +272,6 @@ class AppRouter {
                     BlocProvider<BookUploadCubit>(
                       create: (context) => sl<BookUploadCubit>(),
                     ),
-                    BlocProvider<BookSessionCubit>(
-                      create: (context) => sl<BookSessionCubit>(),
-                    ),
                   ],
                   child: child,
                 ),
@@ -308,7 +305,13 @@ class AppRouter {
                         path: '/pdf-reader',
                         builder: (context, state) {
                           final extra = state.extra as PdfReadingPage;
-                          return PdfReadingPage(bookId: extra.bookId, chapterIndex: extra.chapterIndex,);
+                          return PdfReadingPage(
+                            bookId: extra.bookId, 
+                            chapterIndex: extra.chapterIndex,
+                            bookTitle: extra.bookTitle,
+                            chapterTitle: extra.chapterTitle,
+                            totalChapters: extra.totalChapters,
+                          );
                         },
                       ),
                     ],

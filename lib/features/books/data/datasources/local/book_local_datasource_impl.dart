@@ -10,6 +10,7 @@ import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 
 import 'book_local_datasource.dart';
 
@@ -25,6 +26,11 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
   static const String imageMetadataKey = 'BOOK_IMAGE_METADATA';
   static const String audioMetadataKey = 'BOOK_AUDIO_METADATA';
   static const String pdfMetadataKey = 'BOOK_PDF_METADATA';
+  
+  // Reading Session Keys
+  static const String currentSessionKey = 'CURRENT_READING_SESSION';
+  static const String bookProgressPrefix = 'BOOK_PROGRESS_';
+  static const String recentlyReadBooksKey = 'RECENTLY_READ_BOOKS';
   
   Directory? _imagesCacheDir;
   Directory? _audioCacheDir;
@@ -156,6 +162,9 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       
       final updatedBooks = books.where((book) => book.id != bookId).toList();
       await saveBooks(updatedBooks);
+      
+      // Also remove book progress
+      await deleteBookProgress(bookId);
     } catch (e) {
       debugPrint('Error removing book from storage: $e');
       throw Exception('Failed to remove book: $e');
@@ -173,10 +182,12 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       await _storageService.remove(audioMetadataKey);
       await _storageService.remove(pdfMetadataKey);
       await _storageService.remove(userInteractionKey);
+      await _storageService.remove(currentSessionKey);
+      await _storageService.remove(recentlyReadBooksKey);
       
       final allKeys = _storageService.getAllKeys();
       for (final key in allKeys) {
-        if (key.startsWith(categoryCountPrefix)) {
+        if (key.startsWith(categoryCountPrefix) || key.startsWith(bookProgressPrefix)) {
           await _storageService.remove(key);
         }
       }
@@ -185,7 +196,7 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       await _clearAllAudio();
       await _clearAllPdfs();
       
-      debugPrint('Cleared all books cache, images, audio, PDFs and interactions');
+      debugPrint('Cleared all books cache, images, audio, PDFs, reading sessions and interactions');
     } catch (e) {
       debugPrint('Error clearing all books from storage: $e');
     }
@@ -539,6 +550,168 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       return false;
     }
   }
+
+  // Reading Session Methods Implementation
+
+  @override
+  Future<void> saveCurrentReadingSession(ReadingSession session) async {
+    try {
+      await _storageService.setString(currentSessionKey, json.encode(session.toJson()));
+      debugPrint('Saved current reading session: ${session.bookTitle} - Chapter ${session.chapterIndex + 1}');
+    } catch (e) {
+      debugPrint('Error saving current reading session: $e');
+      throw Exception('Failed to save reading session: $e');
+    }
+  }
+
+  @override
+  Future<ReadingSession?> getCurrentReadingSession() async {
+    try {
+      final sessionJson = _storageService.getString(currentSessionKey);
+      if (sessionJson == null) return null;
+      
+      final sessionData = json.decode(sessionJson);
+      return ReadingSession.fromJson(sessionData);
+    } catch (e) {
+      debugPrint('Error getting current reading session: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> clearCurrentReadingSession() async {
+    try {
+      await _storageService.remove(currentSessionKey);
+      debugPrint('Cleared current reading session');
+    } catch (e) {
+      debugPrint('Error clearing current reading session: $e');
+    }
+  }
+
+  // Book Progress Methods Implementation
+
+  @override
+  Future<void> saveBookProgress(BookProgress bookProgress) async {
+    try {
+      final key = '$bookProgressPrefix${bookProgress.bookId}';
+      await _storageService.setString(key, json.encode(bookProgress.toJson()));
+      debugPrint('Saved book progress: ${bookProgress.bookTitle} - ${bookProgress.formattedProgress}');
+    } catch (e) {
+      debugPrint('Error saving book progress: $e');
+      throw Exception('Failed to save book progress: $e');
+    }
+  }
+
+  @override
+  Future<BookProgress?> getBookProgress(String bookId) async {
+    try {
+      final key = '$bookProgressPrefix$bookId';
+      final progressJson = _storageService.getString(key);
+      if (progressJson == null) return null;
+      
+      final progressData = json.decode(progressJson);
+      return BookProgress.fromJson(progressData);
+    } catch (e) {
+      debugPrint('Error getting book progress for $bookId: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<List<BookProgress>> getAllBookProgress() async {
+    try {
+      final allKeys = _storageService.getAllKeys();
+      final progressKeys = allKeys.where((key) => key.startsWith(bookProgressPrefix));
+      
+      final progressList = <BookProgress>[];
+      for (final key in progressKeys) {
+        final progressJson = _storageService.getString(key);
+        if (progressJson != null) {
+          try {
+            final progressData = json.decode(progressJson);
+            final bookProgress = BookProgress.fromJson(progressData);
+            progressList.add(bookProgress);
+          } catch (e) {
+            debugPrint('Error parsing book progress for key $key: $e');
+          }
+        }
+      }
+      
+      return progressList;
+    } catch (e) {
+      debugPrint('Error getting all book progress: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> deleteBookProgress(String bookId) async {
+    try {
+      final key = '$bookProgressPrefix$bookId';
+      await _storageService.remove(key);
+      debugPrint('Deleted book progress for: $bookId');
+    } catch (e) {
+      debugPrint('Error deleting book progress for $bookId: $e');
+    }
+  }
+
+  // Recently Read Books Methods Implementation
+
+  @override
+  Future<void> addToRecentlyRead(BookProgress bookProgress) async {
+    try {
+      final recentBooks = await getRecentlyReadBooks();
+      
+      // Remove existing entry for this book if present
+      recentBooks.removeWhere((book) => book.bookId == bookProgress.bookId);
+      
+      // Add to beginning of list
+      recentBooks.insert(0, bookProgress);
+      
+      // Limit to 10 recent books
+      if (recentBooks.length > 10) {
+        recentBooks.removeRange(10, recentBooks.length);
+      }
+      
+      final recentBooksJson = recentBooks.map((book) => book.toJson()).toList();
+      await _storageService.setString(recentlyReadBooksKey, json.encode(recentBooksJson));
+      
+      debugPrint('Added ${bookProgress.bookTitle} to recently read books');
+    } catch (e) {
+      debugPrint('Error adding to recently read books: $e');
+    }
+  }
+
+  @override
+  Future<List<BookProgress>> getRecentlyReadBooks({int limit = 10}) async {
+    try {
+      final recentBooksJson = _storageService.getString(recentlyReadBooksKey);
+      if (recentBooksJson == null) return [];
+      
+      final List<dynamic> recentBooksData = json.decode(recentBooksJson);
+      final recentBooks = recentBooksData
+          .map((bookData) => BookProgress.fromJson(bookData))
+          .take(limit)
+          .toList();
+      
+      return recentBooks;
+    } catch (e) {
+      debugPrint('Error getting recently read books: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> clearRecentlyReadBooks() async {
+    try {
+      await _storageService.remove(recentlyReadBooksKey);
+      debugPrint('Cleared recently read books');
+    } catch (e) {
+      debugPrint('Error clearing recently read books: $e');
+    }
+  }
+
+  // Private helper methods (existing methods remain the same)
 
   String _generateImageFileName(String imageUrl, String bookId, String imageType) {
     final urlHash = md5.convert(utf8.encode(imageUrl)).toString().substring(0, 8);

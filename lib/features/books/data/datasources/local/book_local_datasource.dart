@@ -1,6 +1,7 @@
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 
 abstract class BooksLocalDataSource {
   Future<List<BookItem>> getAllBooks();
@@ -35,4 +36,20 @@ abstract class BooksLocalDataSource {
 
   Future<bool> saveUserBookInteraction(UserBookInteraction userInteraction);
   Future<UserBookInteraction?> getUserBookInteraction(String bookId, String userId);
+
+  // Reading Session Methods
+  Future<void> saveCurrentReadingSession(ReadingSession session);
+  Future<ReadingSession?> getCurrentReadingSession();
+  Future<void> clearCurrentReadingSession();
+  
+  // Book Progress Methods
+  Future<void> saveBookProgress(BookProgress bookProgress);
+  Future<BookProgress?> getBookProgress(String bookId);
+  Future<List<BookProgress>> getAllBookProgress();
+  Future<void> deleteBookProgress(String bookId);
+  
+  // Recently Read Books Methods
+  Future<void> addToRecentlyRead(BookProgress bookProgress);
+  Future<List<BookProgress>> getRecentlyReadBooks({int limit = 10});
+  Future<void> clearRecentlyReadBooks();
 }
