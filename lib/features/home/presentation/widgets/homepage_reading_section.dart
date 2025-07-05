@@ -55,7 +55,7 @@ class HomepageReadingSection extends StatelessWidget {
   }
 }
 
-class _ContinueReadingCard extends StatelessWidget {
+class _ContinueReadingCard extends StatefulWidget {
   final ReadingSession session;
   final bool isPaused;
 
@@ -63,6 +63,28 @@ class _ContinueReadingCard extends StatelessWidget {
     required this.session,
     this.isPaused = false,
   });
+
+  @override
+  State<_ContinueReadingCard> createState() => _ContinueReadingCardState();
+}
+
+class _ContinueReadingCardState extends State<_ContinueReadingCard> {
+  bool _hasLoadedBook = false;
+  late BooksCubit _booksCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _booksCubit = context.read<BooksCubit>();
+    _loadBook();
+  }
+
+  void _loadBook() {    
+    if (!_hasLoadedBook) {
+      _hasLoadedBook = true;
+      _booksCubit.loadBookById(widget.session.bookId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,8 +109,7 @@ class _ContinueReadingCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Card(
-            elevation: 3,
-            shadowColor: colorScheme.shadow.withValues(alpha: 0.2),
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
@@ -112,10 +133,12 @@ class _ContinueReadingCard extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: FutureBuilder<BookItem?>(
-                  future: _getBookDetails(context),
-                  builder: (context, snapshot) {
-                    final book = snapshot.data;
+                child: BlocBuilder<BooksCubit, BooksState>(
+                  builder: (context, state) {
+                    final book = state.selectedBook?.id == widget.session.bookId 
+                        ? state.selectedBook 
+                        : null;
+                    
                     return Row(
                       children: [
                         if (book?.imageUrl != null || book?.imagePath != null)
@@ -145,7 +168,7 @@ class _ContinueReadingCard extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
-                                      isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                      widget.isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                       color: colorScheme.onSecondary,
                                       size: 16,
                                     ),
@@ -153,8 +176,8 @@ class _ContinueReadingCard extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Text(
                                     languageCubit.getLocalizedText(
-                                      korean: isPaused ? '일시정지됨' : '계속 읽기',
-                                      english: isPaused ? 'Paused' : 'Continue',
+                                      korean: widget.isPaused ? '일시정지됨' : '계속 읽기',
+                                      english: widget.isPaused ? 'Paused' : 'Continue',
                                     ),
                                     style: theme.textTheme.labelLarge?.copyWith(
                                       color: colorScheme.secondary,
@@ -165,7 +188,7 @@ class _ContinueReadingCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                session.bookTitle,
+                                widget.session.bookTitle,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: colorScheme.onSurface,
@@ -175,7 +198,7 @@ class _ContinueReadingCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${session.chapterIndex + 1}: ${session.chapterTitle}',
+                                '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${widget.session.chapterIndex + 1}: ${widget.session.chapterTitle}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -183,12 +206,12 @@ class _ContinueReadingCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 12),
-                              if (session.totalPages > 0)
+                              if (widget.session.totalPages > 0)
                                 Row(
                                   children: [
                                     Expanded(
                                       child: LinearProgressIndicator(
-                                        value: session.chapterProgress,
+                                        value: widget.session.chapterProgress,
                                         backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
                                         valueColor: AlwaysStoppedAnimation<Color>(colorScheme.secondary),
                                         minHeight: 6,
@@ -197,7 +220,7 @@ class _ContinueReadingCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 12),
                                     Text(
-                                      '${session.currentPage}/${session.totalPages}',
+                                      '${widget.session.currentPage}/${widget.session.totalPages}',
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         color: colorScheme.secondary,
                                         fontWeight: FontWeight.w700,
@@ -215,7 +238,7 @@ class _ContinueReadingCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    session.formattedReadingTime,
+                                    widget.session.formattedReadingTime,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -228,7 +251,7 @@ class _ContinueReadingCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    _formatLastReadTime(session.lastActiveTime, languageCubit),
+                                    _formatLastReadTime(widget.session.lastActiveTime, languageCubit),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -250,32 +273,15 @@ class _ContinueReadingCard extends StatelessWidget {
     );
   }
 
-  Future<BookItem?> _getBookDetails(BuildContext context) async {
-    final booksCubit = context.read<BooksCubit>();
-    final currentState = booksCubit.state;
-    
-    if (currentState.selectedBook?.id == session.bookId) {
-      return currentState.selectedBook;
-    }
-    
-    try {
-      await booksCubit.loadBookById(session.bookId);
-      return booksCubit.state.selectedBook;
-    } catch (e) {
-      return null;
-    }
-  }
-
   void _continueReading(BuildContext context) async {
     final bookSessionCubit = context.read<BookSessionCubit>();
     
     try {
-      if (isPaused) {
+      if (widget.isPaused) {
         await bookSessionCubit.resumeSession();
       }
 
-      // Navigate to the book chapters page using the Routes helper
-      context.go(Routes.bookChapters(session.bookId));
+      context.go(Routes.bookChapters(widget.session.bookId));
     } catch (e) {
       final snackBarCubit = context.read<SnackBarCubit>();
       snackBarCubit.showErrorLocalized(
@@ -369,10 +375,29 @@ class _RecentBooksSection extends StatelessWidget {
   }
 }
 
-class _RecentBookCard extends StatelessWidget {
+class _RecentBookCard extends StatefulWidget {
   final BookProgress bookProgress;
 
   const _RecentBookCard({required this.bookProgress});
+
+  @override
+  State<_RecentBookCard> createState() => _RecentBookCardState();
+}
+
+class _RecentBookCardState extends State<_RecentBookCard> {
+  late BooksCubit booksCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    booksCubit = context.read<BooksCubit>();
+    _loadBook();
+  }
+
+  void _loadBook() {
+    final bookId = widget.bookProgress.bookId;
+    booksCubit.loadBookById(bookId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -383,7 +408,7 @@ class _RecentBookCard extends StatelessWidget {
       width: 120,
       margin: const EdgeInsets.only(right: 12, left: 4),
       child: Card(
-        elevation: 2,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -403,10 +428,17 @@ class _RecentBookCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: FutureBuilder<BookItem?>(
-                      future: _getBookFromProgress(context),
-                      builder: (context, snapshot) {
-                        final book = snapshot.data;
+                    child: BlocBuilder<BooksCubit, BooksState>(
+                      builder: (context, state) {
+                        BookItem? book;
+                        
+                        if (state.selectedBook?.id == widget.bookProgress.bookId) {
+                          book = state.selectedBook;
+                        } else {
+                          final books = state.books;
+                          book = books.where((b) => b.id == widget.bookProgress.bookId).firstOrNull;
+                        }
+                        
                         if (book?.imageUrl != null || book?.imagePath != null) {
                           return CustomCachedImage(
                             imageUrl: book?.imageUrl,
@@ -432,7 +464,7 @@ class _RecentBookCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        bookProgress.bookTitle,
+                        widget.bookProgress.bookTitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
@@ -442,18 +474,18 @@ class _RecentBookCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       LinearProgressIndicator(
-                        value: bookProgress.overallProgress,
+                        value: widget.bookProgress.overallProgress,
                         backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                          widget.bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
                         ),
                         minHeight: 3,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        bookProgress.formattedProgress,
+                        widget.bookProgress.formattedProgress,
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                          color: widget.bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -468,18 +500,8 @@ class _RecentBookCard extends StatelessWidget {
     );
   }
 
-  Future<BookItem?> _getBookFromProgress(BuildContext context) async {
-    final booksCubit = context.read<BooksCubit>();
-    try {
-      await booksCubit.loadBookById(bookProgress.bookId);
-      return booksCubit.state.selectedBook;
-    } catch (e) {
-      return null;
-    }
-  }
-
   void _openBook(BuildContext context) {
-    context.go(Routes.bookChapters(bookProgress.bookId));
+    context.go(Routes.bookChapters(widget.bookProgress.bookId));
   }
 }
 

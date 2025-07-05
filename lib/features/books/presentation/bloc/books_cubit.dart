@@ -46,7 +46,7 @@ class BooksCubit extends Cubit<BooksState> {
       
       if (isConnected && (state.books.isEmpty || state.hasError)) {
         debugPrint('Connection restored, reloading books...');
-        if (_currentCategory == TestCategory.all) {
+        if (_currentCategory == CourseCategory.korean) {
           loadInitialBooks(sortType: _currentSortType);
         } else {
           loadBooksByCategory(_currentCategory, sortType: _currentSortType);
