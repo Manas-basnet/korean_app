@@ -37,7 +37,6 @@ import 'package:korean_language_app/features/user_management/presentation/pages/
 import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_upload_page.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/books_page.dart';
 import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
 import 'package:korean_language_app/shared/presentation/update/widgets/update_bottomsheet.dart';
@@ -262,9 +261,6 @@ class AppRouter {
                 builder: (context, state, child) => MultiBlocProvider(
                   providers: [
                     //TODO: to implement
-                    BlocProvider<BooksCubit>(
-                      create: (context) => sl<BooksCubit>(),
-                    ),
                     BlocProvider<BookSearchCubit>(
                       create: (context) => sl<BookSearchCubit>(),
                     ),
@@ -294,14 +290,14 @@ class AppRouter {
                         },
                       ),
                       GoRoute(
-                        path: '/book-chapters/:bookId',
+                        path: 'book-chapters/:bookId',
                         builder: (context, state) {
                           final bookId = state.pathParameters['bookId']!;
                           return ChapterListPage(bookId: bookId);
                         },
                       ),
                       GoRoute(
-                        path: '/pdf-reader',
+                        path: 'pdf-reader',
                         builder: (context, state) {
                           final extra = state.extra as PdfReadingPage;
                           return PdfReadingPage(
@@ -417,7 +413,6 @@ class Routes {
   static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
   static String bookEdit(String bookId) => '/books/edit/$bookId';
-  static String bookReading(String bookId) => '/books/book-reading/$bookId';
   static String bookChapters(String bookId) => '/books/book-chapters/$bookId';
 }
 

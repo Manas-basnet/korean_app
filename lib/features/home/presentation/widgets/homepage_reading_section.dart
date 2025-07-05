@@ -1,11 +1,9 @@
-// Save this file as: lib/features/home/presentation/widgets/homepage_reading_section.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
@@ -71,37 +69,21 @@ class _ContinueReadingCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final languageCubit = context.read<LanguagePreferenceCubit>();
-    final screenSize = MediaQuery.of(context).size;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                languageCubit.getLocalizedText(
-                  korean: '읽기 계속하기',
-                  english: 'Continue Reading',
-                ),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              TextButton(
-                onPressed: () => context.push('/books'),
-                child: Text(
-                  languageCubit.getLocalizedText(
-                    korean: '도서 보기',
-                    english: 'View Books',
-                  ),
-                  style: TextStyle(color: colorScheme.primary),
-                ),
-              ),
-            ],
+          Text(
+            languageCubit.getLocalizedText(
+              korean: '읽기 계속하기',
+              english: 'Continue Reading',
+            ),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 12),
           Card(
@@ -120,7 +102,6 @@ class _ContinueReadingCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -129,157 +110,137 @@ class _ContinueReadingCard extends StatelessWidget {
                       colorScheme.secondaryContainer.withValues(alpha: 0.1),
                     ],
                   ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Column(
-                  children: [
-                    Row(
+                child: FutureBuilder<BookItem?>(
+                  future: _getBookDetails(context),
+                  builder: (context, snapshot) {
+                    final book = snapshot.data;
+                    return Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: colorScheme.secondary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                color: isPaused ? colorScheme.secondary : colorScheme.onPrimary,
-                                size: 16,
+                        if (book?.imageUrl != null || book?.imagePath != null)
+                          Container(
+                            width: 60,
+                            height: 90,
+                            margin: const EdgeInsets.only(right: 16),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: CustomCachedImage(
+                                imageUrl: book?.imageUrl,
+                                imagePath: book?.imagePath,
+                                fit: BoxFit.cover,
                               ),
-                              const SizedBox(width: 6),
+                            ),
+                          ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.secondary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                      color: colorScheme.onSecondary,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    languageCubit.getLocalizedText(
+                                      korean: isPaused ? '일시정지됨' : '계속 읽기',
+                                      english: isPaused ? 'Paused' : 'Continue',
+                                    ),
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: colorScheme.secondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               Text(
-                                languageCubit.getLocalizedText(
-                                  korean: isPaused ? '일시정지됨' : '계속',
-                                  english: isPaused ? 'Paused' : 'Continue',
-                                ),
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: isPaused ? colorScheme.secondary : colorScheme.onPrimary,
+                                session.bookTitle,
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurface,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${session.chapterIndex + 1}: ${session.chapterTitle}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 12),
+                              if (session.totalPages > 0)
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: LinearProgressIndicator(
+                                        value: session.chapterProgress,
+                                        backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
+                                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.secondary),
+                                        minHeight: 6,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      '${session.currentPage}/${session.totalPages}',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.secondary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 16,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    session.formattedReadingTime,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 16,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatLastReadTime(session.lastActiveTime, languageCubit),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        const Spacer(),
-                        if (session.totalReadingTime.inMinutes > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.access_time_rounded,
-                                  size: 12,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  session.formattedReadingTime,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                       ],
-                    ),
-                    const SizedBox(height: 16),
-                    FutureBuilder<BookItem?>(
-                      future: _getBookDetails(context),
-                      builder: (context, snapshot) {
-                        final book = snapshot.data;
-                        return Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 70,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surface,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: colorScheme.outline.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: book?.imageUrl != null || book?.imagePath != null
-                                    ? CustomCachedImage(
-                                        imageUrl: book?.imageUrl,
-                                        imagePath: book?.imagePath,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Center(
-                                        child: Icon(
-                                          Icons.library_books_rounded,
-                                          color: colorScheme.tertiary,
-                                          size: 24,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    session.bookTitle,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${session.chapterIndex + 1}: ${session.chapterTitle}',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (session.totalPages > 0) ...[
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: LinearProgressIndicator(
-                                            value: session.chapterProgress,
-                                            backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
-                                            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.tertiary),
-                                            minHeight: 6,
-                                            borderRadius: BorderRadius.circular(3),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          '${session.currentPage}/${session.totalPages}',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: colorScheme.tertiary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -306,47 +267,42 @@ class _ContinueReadingCard extends StatelessWidget {
   }
 
   void _continueReading(BuildContext context) async {
-    final booksCubit = context.read<BooksCubit>();
     final bookSessionCubit = context.read<BookSessionCubit>();
-    final snackBarCubit = context.read<SnackBarCubit>();
     
     try {
-      await booksCubit.loadBookById(session.bookId);
-      
-      final book = booksCubit.state.selectedBook;
-      if (book == null || session.chapterIndex >= book.chapters.length) {
-        snackBarCubit.showErrorLocalized(
-          korean: '도서 또는 챕터를 찾을 수 없습니다',
-          english: 'Book or chapter not found',
-        );
-        return;
-      }
-
-      final chapter = book.chapters[session.chapterIndex];
-      
       if (isPaused) {
         await bookSessionCubit.resumeSession();
       }
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PdfReadingPage(
-            bookId: session.bookId,
-            bookTitle: session.bookTitle,
-            chapterTitle: session.chapterTitle,
-            chapterIndex: session.chapterIndex,
-            pdfPath: chapter.pdfPath,
-            pdfUrl: chapter.pdfUrl,
-            audioTracks: chapter.audioTracks,
-            totalChapters: book.chapters.length,
-          ),
-        ),
-      );
+      // Navigate to the book chapters page using the Routes helper
+      context.go(Routes.bookChapters(session.bookId));
     } catch (e) {
+      final snackBarCubit = context.read<SnackBarCubit>();
       snackBarCubit.showErrorLocalized(
         korean: '읽기를 계속할 수 없습니다',
         english: 'Cannot continue reading',
+      );
+    }
+  }
+
+  String _formatLastReadTime(DateTime lastRead, LanguagePreferenceCubit languageCubit) {
+    final now = DateTime.now();
+    final difference = now.difference(lastRead);
+
+    if (difference.inDays > 0) {
+      return languageCubit.getLocalizedText(
+        korean: '${difference.inDays}일 전',
+        english: '${difference.inDays}d ago',
+      );
+    } else if (difference.inHours > 0) {
+      return languageCubit.getLocalizedText(
+        korean: '${difference.inHours}시간 전',
+        english: '${difference.inHours}h ago',
+      );
+    } else {
+      return languageCubit.getLocalizedText(
+        korean: '방금 전',
+        english: 'Just now',
       );
     }
   }
@@ -364,7 +320,7 @@ class _RecentBooksSection extends StatelessWidget {
     final languageCubit = context.read<LanguagePreferenceCubit>();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -384,20 +340,19 @@ class _RecentBooksSection extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/books'),
+                  onPressed: () => context.push('/reading-history'),
                   child: Text(
                     languageCubit.getLocalizedText(
-                      korean: '모두 보기',
+                      korean: '더보기',
                       english: 'See All',
                     ),
-                    style: TextStyle(color: colorScheme.tertiary),
                   ),
                 ),
               ],
             ),
           ),
           SizedBox(
-            height: 160,
+            height: 200,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -423,24 +378,18 @@ class _RecentBookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final languageCubit = context.read<LanguagePreferenceCubit>();
 
     return Container(
-      width: 100,
+      width: 120,
       margin: const EdgeInsets.only(right: 12, left: 4),
       child: Card(
         elevation: 2,
-        shadowColor: colorScheme.tertiary.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: colorScheme.tertiary.withValues(alpha: 0.2),
-            width: 0.5,
-          ),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: InkWell(
           onTap: () => _openBook(context),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -449,11 +398,11 @@ class _RecentBookCard extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    color: colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    color: colorScheme.surfaceContainerHighest,
                   ),
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     child: FutureBuilder<BookItem?>(
                       future: _getBookFromProgress(context),
                       builder: (context, snapshot) {
@@ -465,12 +414,10 @@ class _RecentBookCard extends StatelessWidget {
                             fit: BoxFit.cover,
                           );
                         }
-                        return Center(
-                          child: Icon(
-                            Icons.library_books_rounded,
-                            size: 32,
-                            color: colorScheme.tertiary,
-                          ),
+                        return Icon(
+                          Icons.library_books_rounded,
+                          size: 40,
+                          color: colorScheme.onSurfaceVariant,
                         );
                       },
                     ),
@@ -483,7 +430,6 @@ class _RecentBookCard extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         bookProgress.bookTitle,
@@ -494,25 +440,22 @@ class _RecentBookCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Column(
-                        children: [
-                          LinearProgressIndicator(
-                            value: bookProgress.overallProgress,
-                            backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              bookProgress.overallProgress >= 1.0 ? colorScheme.tertiary : colorScheme.tertiary.withValues(alpha: 0.8),
-                            ),
-                            minHeight: 3,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            bookProgress.formattedProgress,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.tertiary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: bookProgress.overallProgress,
+                        backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                        ),
+                        minHeight: 3,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        bookProgress.formattedProgress,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -536,7 +479,7 @@ class _RecentBookCard extends StatelessWidget {
   }
 
   void _openBook(BuildContext context) {
-    context.push('/book-chapters/${bookProgress.bookId}');
+    context.go(Routes.bookChapters(bookProgress.bookId));
   }
 }
 
@@ -557,7 +500,7 @@ class _ReadingStatsSection extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final languageCubit = context.read<LanguagePreferenceCubit>();
 
-    final activeBooks = recentBooks.where((book) => 
+    final inProgressBooks = recentBooks.where((book) => 
       book.overallProgress > 0 && book.overallProgress < 1.0
     ).length;
     
@@ -571,7 +514,7 @@ class _ReadingStatsSection extends StatelessWidget {
     );
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      margin: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -595,8 +538,9 @@ class _ReadingStatsSection extends StatelessWidget {
                     korean: '읽는 중',
                     english: 'Reading',
                   ),
-                  value: activeBooks.toString(),
-                  color: colorScheme.tertiary,
+                  value: inProgressBooks.toString(),
+                  color: colorScheme.primary,
+                  theme: theme,
                 ),
               ),
               const SizedBox(width: 12),
@@ -608,7 +552,8 @@ class _ReadingStatsSection extends StatelessWidget {
                     english: 'Completed',
                   ),
                   value: completedBooks.toString(),
-                  color: colorScheme.tertiary.withValues(alpha: 0.8),
+                  color: Colors.green,
+                  theme: theme,
                 ),
               ),
               const SizedBox(width: 12),
@@ -620,7 +565,8 @@ class _ReadingStatsSection extends StatelessWidget {
                     english: 'Total Time',
                   ),
                   value: _formatTotalTime(totalReadingTime),
-                  color: colorScheme.secondary,
+                  color: colorScheme.tertiary,
+                  theme: theme,
                 ),
               ),
             ],
@@ -635,8 +581,7 @@ class _ReadingStatsSection extends StatelessWidget {
     if (hours > 0) {
       return '${hours}h';
     } else {
-      final minutes = totalTime.inMinutes;
-      return '${minutes}m';
+      return '${totalTime.inMinutes}m';
     }
   }
 }
@@ -646,18 +591,18 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
+  final ThemeData theme;
 
   const _StatCard({
     required this.icon,
     required this.title,
     required this.value,
     required this.color,
+    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -685,11 +630,9 @@ class _StatCard extends StatelessWidget {
               color: color,
               fontWeight: FontWeight.w500,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 }
-

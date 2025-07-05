@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/di/di.dart' as di;
 import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/shared/presentation/theme/constants/app_theme.dart';
@@ -60,6 +61,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<BookSessionCubit>(
           create: (context) => di.sl<BookSessionCubit>(),
+        ),
+        BlocProvider<BooksCubit>(
+          create: (context) => di.sl<BooksCubit>(),
         ),
         BlocProvider<UpdateCubit>(
           create: (context) =>
