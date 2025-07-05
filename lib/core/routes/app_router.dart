@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';

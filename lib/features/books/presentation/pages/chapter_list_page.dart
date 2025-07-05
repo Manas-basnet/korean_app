@@ -20,14 +20,19 @@ class ChapterListPage extends StatefulWidget {
 }
 
 class _ChapterListPageState extends State<ChapterListPage> {
-  BooksCubit get _booksCubit => context.read<BooksCubit>();
-  LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
-  SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
-  BookSessionCubit get _bookSessionCubit => context.read<BookSessionCubit>();
+  late BooksCubit _booksCubit;
+  late LanguagePreferenceCubit _languageCubit;
+  late SnackBarCubit _snackBarCubit;
+  late BookSessionCubit _bookSessionCubit;
 
   @override
   void initState() {
     super.initState();
+    _booksCubit = context.read<BooksCubit>();
+    _languageCubit = context.read<LanguagePreferenceCubit>();
+    _snackBarCubit = context.read<SnackBarCubit>();
+    _bookSessionCubit = context.read<BookSessionCubit>();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBook();
     });
