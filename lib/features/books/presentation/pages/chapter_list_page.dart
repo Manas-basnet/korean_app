@@ -72,6 +72,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
           pdfUrl: chapter.pdfUrl,
           audioTracks: chapter.audioTracks,
           totalChapters: book.chapters.length,
+          bookItem: book,
           onPreviousChapter: chapterIndex > 0 ? () {
             Navigator.pushReplacement(
               context,
@@ -105,6 +106,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
       pdfUrl: chapter.pdfUrl,
       audioTracks: chapter.audioTracks,
       totalChapters: book.chapters.length,
+      bookItem: book,
       onPreviousChapter: chapterIndex > 0 ? () {
         Navigator.pushReplacement(
           context,

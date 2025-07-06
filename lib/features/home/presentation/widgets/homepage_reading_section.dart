@@ -3,8 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
-import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
@@ -55,7 +53,7 @@ class HomepageReadingSection extends StatelessWidget {
   }
 }
 
-class _ContinueReadingCard extends StatefulWidget {
+class _ContinueReadingCard extends StatelessWidget {
   final ReadingSession session;
   final bool isPaused;
 
@@ -63,28 +61,6 @@ class _ContinueReadingCard extends StatefulWidget {
     required this.session,
     this.isPaused = false,
   });
-
-  @override
-  State<_ContinueReadingCard> createState() => _ContinueReadingCardState();
-}
-
-class _ContinueReadingCardState extends State<_ContinueReadingCard> {
-  bool _hasLoadedBook = false;
-  late BooksCubit _booksCubit;
-
-  @override
-  void initState() {
-    super.initState();
-    _booksCubit = context.read<BooksCubit>();
-    _loadBook();
-  }
-
-  void _loadBook() {    
-    if (!_hasLoadedBook) {
-      _hasLoadedBook = true;
-      _booksCubit.loadBookById(widget.session.bookId);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,15 +109,15 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: BlocBuilder<BooksCubit, BooksState>(
-                  builder: (context, state) {
-                    final book = state.selectedBook?.id == widget.session.bookId 
-                        ? state.selectedBook 
-                        : null;
+                child: FutureBuilder<BookProgress?>(
+                  future: context.read<BookSessionCubit>().getBookProgress(session.bookId),
+                  builder: (context, snapshot) {
+                    final bookProgress = snapshot.data;
+                    final bookItem = bookProgress?.bookItem;
                     
                     return Row(
                       children: [
-                        if (book?.imageUrl != null || book?.imagePath != null)
+                        if (bookItem?.imageUrl != null || bookItem?.imagePath != null)
                           Container(
                             width: 60,
                             height: 90,
@@ -149,8 +125,8 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: CustomCachedImage(
-                                imageUrl: book?.imageUrl,
-                                imagePath: book?.imagePath,
+                                imageUrl: bookItem?.imageUrl,
+                                imagePath: bookItem?.imagePath,
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -168,7 +144,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
-                                      widget.isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                      isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                       color: colorScheme.onSecondary,
                                       size: 16,
                                     ),
@@ -176,8 +152,8 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                   const SizedBox(width: 8),
                                   Text(
                                     languageCubit.getLocalizedText(
-                                      korean: widget.isPaused ? '일시정지됨' : '계속 읽기',
-                                      english: widget.isPaused ? 'Paused' : 'Continue',
+                                      korean: isPaused ? '일시정지됨' : '계속 읽기',
+                                      english: isPaused ? 'Paused' : 'Continue',
                                     ),
                                     style: theme.textTheme.labelLarge?.copyWith(
                                       color: colorScheme.secondary,
@@ -188,7 +164,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                widget.session.bookTitle,
+                                session.bookTitle,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: colorScheme.onSurface,
@@ -198,7 +174,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${widget.session.chapterIndex + 1}: ${widget.session.chapterTitle}',
+                                '${languageCubit.getLocalizedText(korean: "챕터", english: "Chapter")} ${session.chapterIndex + 1}: ${session.chapterTitle}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -206,12 +182,12 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 12),
-                              if (widget.session.totalPages > 0)
+                              if (session.totalPages > 0)
                                 Row(
                                   children: [
                                     Expanded(
                                       child: LinearProgressIndicator(
-                                        value: widget.session.chapterProgress,
+                                        value: session.chapterProgress,
                                         backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
                                         valueColor: AlwaysStoppedAnimation<Color>(colorScheme.secondary),
                                         minHeight: 6,
@@ -220,7 +196,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                     ),
                                     const SizedBox(width: 12),
                                     Text(
-                                      '${widget.session.currentPage}/${widget.session.totalPages}',
+                                      '${session.currentPage}/${session.totalPages}',
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         color: colorScheme.secondary,
                                         fontWeight: FontWeight.w700,
@@ -238,7 +214,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    widget.session.formattedReadingTime,
+                                    session.formattedReadingTime,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -251,7 +227,7 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    _formatLastReadTime(widget.session.lastActiveTime, languageCubit),
+                                    _formatLastReadTime(session.lastActiveTime, languageCubit),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -277,11 +253,11 @@ class _ContinueReadingCardState extends State<_ContinueReadingCard> {
     final bookSessionCubit = context.read<BookSessionCubit>();
     
     try {
-      if (widget.isPaused) {
+      if (isPaused) {
         await bookSessionCubit.resumeSession();
       }
 
-      context.go(Routes.bookChapters(widget.session.bookId));
+      context.go(Routes.bookChapters(session.bookId));
     } catch (e) {
       final snackBarCubit = context.read<SnackBarCubit>();
       snackBarCubit.showErrorLocalized(
@@ -375,29 +351,10 @@ class _RecentBooksSection extends StatelessWidget {
   }
 }
 
-class _RecentBookCard extends StatefulWidget {
+class _RecentBookCard extends StatelessWidget {
   final BookProgress bookProgress;
 
   const _RecentBookCard({required this.bookProgress});
-
-  @override
-  State<_RecentBookCard> createState() => _RecentBookCardState();
-}
-
-class _RecentBookCardState extends State<_RecentBookCard> {
-  late BooksCubit booksCubit;
-
-  @override
-  void initState() {
-    super.initState();
-    booksCubit = context.read<BooksCubit>();
-    _loadBook();
-  }
-
-  void _loadBook() {
-    final bookId = widget.bookProgress.bookId;
-    booksCubit.loadBookById(bookId);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -428,31 +385,7 @@ class _RecentBookCardState extends State<_RecentBookCard> {
                   ),
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: BlocBuilder<BooksCubit, BooksState>(
-                      builder: (context, state) {
-                        BookItem? book;
-                        
-                        if (state.selectedBook?.id == widget.bookProgress.bookId) {
-                          book = state.selectedBook;
-                        } else {
-                          final books = state.books;
-                          book = books.where((b) => b.id == widget.bookProgress.bookId).firstOrNull;
-                        }
-                        
-                        if (book?.imageUrl != null || book?.imagePath != null) {
-                          return CustomCachedImage(
-                            imageUrl: book?.imageUrl,
-                            imagePath: book?.imagePath,
-                            fit: BoxFit.cover,
-                          );
-                        }
-                        return Icon(
-                          Icons.library_books_rounded,
-                          size: 40,
-                          color: colorScheme.onSurfaceVariant,
-                        );
-                      },
-                    ),
+                    child: _buildBookImage(colorScheme),
                   ),
                 ),
               ),
@@ -464,7 +397,7 @@ class _RecentBookCardState extends State<_RecentBookCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.bookProgress.bookTitle,
+                        bookProgress.bookTitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
@@ -474,18 +407,18 @@ class _RecentBookCardState extends State<_RecentBookCard> {
                       ),
                       const SizedBox(height: 4),
                       LinearProgressIndicator(
-                        value: widget.bookProgress.overallProgress,
+                        value: bookProgress.overallProgress,
                         backgroundColor: colorScheme.outline.withValues(alpha: 0.2),
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          widget.bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                          bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
                         ),
                         minHeight: 3,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.bookProgress.formattedProgress,
+                        bookProgress.formattedProgress,
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: widget.bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
+                          color: bookProgress.overallProgress >= 1.0 ? Colors.green : colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -500,8 +433,26 @@ class _RecentBookCardState extends State<_RecentBookCard> {
     );
   }
 
+  Widget _buildBookImage(ColorScheme colorScheme) {
+    final bookItem = bookProgress.bookItem;
+    
+    if (bookItem?.imageUrl != null || bookItem?.imagePath != null) {
+      return CustomCachedImage(
+        imageUrl: bookItem?.imageUrl,
+        imagePath: bookItem?.imagePath,
+        fit: BoxFit.cover,
+      );
+    }
+    
+    return Icon(
+      bookItem?.icon ?? Icons.library_books_rounded,
+      size: 40,
+      color: colorScheme.onSurfaceVariant,
+    );
+  }
+
   void _openBook(BuildContext context) {
-    context.go(Routes.bookChapters(widget.bookProgress.bookId));
+    context.go(Routes.bookChapters(bookProgress.bookId));
   }
 }
 

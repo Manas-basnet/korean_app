@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/core/data/base_state.dart';
 import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/features/books/data/datasources/local/book_local_datasource.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 part 'book_session_state.dart';
 
@@ -108,6 +109,7 @@ class ReadingSession {
 class BookProgress {
   final String bookId;
   final String bookTitle;
+  final BookItem? bookItem;
   final Map<int, ChapterProgress> chapters;
   final DateTime lastReadTime;
   final Duration totalReadingTime;
@@ -117,6 +119,7 @@ class BookProgress {
   const BookProgress({
     required this.bookId,
     required this.bookTitle,
+    this.bookItem,
     this.chapters = const {},
     required this.lastReadTime,
     this.totalReadingTime = Duration.zero,
@@ -127,6 +130,7 @@ class BookProgress {
   BookProgress copyWith({
     String? bookId,
     String? bookTitle,
+    BookItem? bookItem,
     Map<int, ChapterProgress>? chapters,
     DateTime? lastReadTime,
     Duration? totalReadingTime,
@@ -136,6 +140,7 @@ class BookProgress {
     return BookProgress(
       bookId: bookId ?? this.bookId,
       bookTitle: bookTitle ?? this.bookTitle,
+      bookItem: bookItem ?? this.bookItem,
       chapters: chapters ?? this.chapters,
       lastReadTime: lastReadTime ?? this.lastReadTime,
       totalReadingTime: totalReadingTime ?? this.totalReadingTime,
@@ -174,6 +179,7 @@ class BookProgress {
     return {
       'bookId': bookId,
       'bookTitle': bookTitle,
+      'bookItem': bookItem?.toJson(),
       'chapters': chapters.map((key, value) => MapEntry(key.toString(), value.toJson())),
       'lastReadTime': lastReadTime.millisecondsSinceEpoch,
       'totalReadingTime': totalReadingTime.inMilliseconds,
@@ -193,9 +199,19 @@ class BookProgress {
       }
     });
 
+    BookItem? bookItem;
+    if (json['bookItem'] != null) {
+      try {
+        bookItem = BookItem.fromJson(json['bookItem'] as Map<String, dynamic>);
+      } catch (e) {
+        debugPrint('Error parsing BookItem from BookProgress: $e');
+      }
+    }
+
     return BookProgress(
       bookId: json['bookId'] as String,
       bookTitle: json['bookTitle'] as String,
+      bookItem: bookItem,
       chapters: chapters,
       lastReadTime: DateTime.fromMillisecondsSinceEpoch(json['lastReadTime'] as int),
       totalReadingTime: Duration(milliseconds: json['totalReadingTime'] as int? ?? 0),
@@ -314,8 +330,9 @@ class BookSessionCubit extends Cubit<BookSessionState> {
     String bookId,
     String bookTitle,
     int chapterIndex,
-    String chapterTitle,
-  ) async {
+    String chapterTitle, {
+    BookItem? bookItem,
+  }) async {
     try {
       _sessionStartTime = DateTime.now();
       
@@ -330,6 +347,10 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       );
 
       await localDataSource.saveCurrentReadingSession(session);
+      
+      if (bookItem != null) {
+        await _updateBookProgress(session, bookItem: bookItem);
+      }
       
       _startSessionTimer();
 
@@ -525,7 +546,7 @@ class BookSessionCubit extends Cubit<BookSessionState> {
     });
   }
 
-  Future<void> _updateBookProgress(ReadingSession session) async {
+  Future<void> _updateBookProgress(ReadingSession session, {BookItem? bookItem}) async {
     try {
       final existingProgress = await localDataSource.getBookProgress(session.bookId);
       
@@ -545,9 +566,12 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       final totalReadingTime = existingProgress?.totalReadingTime ?? Duration.zero;
       final newTotalReadingTime = totalReadingTime + session.totalReadingTime;
 
+      final bookProgressItem = bookItem ?? existingProgress?.bookItem;
+
       final bookProgress = BookProgress(
         bookId: session.bookId,
         bookTitle: session.bookTitle,
+        bookItem: bookProgressItem,
         chapters: updatedChapters,
         lastReadTime: session.lastActiveTime,
         totalReadingTime: newTotalReadingTime,

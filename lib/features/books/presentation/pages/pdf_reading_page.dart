@@ -6,10 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:korean_language_app/shared/models/book_related/audio_track.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/widgets/audio_player.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 
 class PdfReadingPage extends StatefulWidget {
   final String bookId;
@@ -20,6 +22,7 @@ class PdfReadingPage extends StatefulWidget {
   final String? pdfUrl;
   final List<AudioTrack> audioTracks;
   final int totalChapters;
+  final BookItem? bookItem;
   final VoidCallback? onPreviousChapter;
   final VoidCallback? onNextChapter;
 
@@ -33,6 +36,7 @@ class PdfReadingPage extends StatefulWidget {
     this.pdfUrl,
     this.audioTracks = const [],
     required this.totalChapters,
+    this.bookItem,
     this.onPreviousChapter,
     this.onNextChapter,
   });
@@ -50,6 +54,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   Timer? _hideControlsTimer;
   int _currentPage = 1;
   int _totalPages = 0;
+  BookItem? _currentBook;
   
   late AnimationController _controlsAnimationController;
   late Animation<double> _controlsAnimation;
@@ -59,6 +64,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
   BookSessionCubit get _bookSessionCubit => context.read<BookSessionCubit>();
+  BooksCubit get _booksCubit => context.read<BooksCubit>();
 
   @override
   void initState() {
@@ -87,13 +93,27 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     _startHideControlsTimer();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _bookSessionCubit.startReadingSession(
-        widget.bookId,
-        widget.bookTitle,
-        widget.chapterIndex,
-        widget.chapterTitle,
-      );
+      _initializeSession();
     });
+  }
+
+  void _initializeSession() {
+    _currentBook = widget.bookItem;
+    
+    if (_currentBook == null) {
+      final booksState = _booksCubit.state;
+      _currentBook = booksState.selectedBook?.id == widget.bookId 
+          ? booksState.selectedBook 
+          : null;
+    }
+
+    _bookSessionCubit.startReadingSession(
+      widget.bookId,
+      widget.bookTitle,
+      widget.chapterIndex,
+      widget.chapterTitle,
+      bookItem: _currentBook,
+    );
   }
 
   @override
