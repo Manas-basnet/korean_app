@@ -5,40 +5,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/shared/models/book_related/audio_track.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/widgets/audio_player.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 
 class PdfReadingPage extends StatefulWidget {
-  final String bookId;
-  final String bookTitle;
-  final String chapterTitle;
+  final BookItem bookItem;
   final int chapterIndex;
-  final String? pdfPath;
-  final String? pdfUrl;
-  final List<AudioTrack> audioTracks;
-  final int totalChapters;
-  final BookItem? bookItem;
-  final VoidCallback? onPreviousChapter;
-  final VoidCallback? onNextChapter;
 
   const PdfReadingPage({
     super.key,
-    required this.bookId,
-    required this.bookTitle,
-    required this.chapterTitle,
+    required this.bookItem,
     required this.chapterIndex,
-    this.pdfPath,
-    this.pdfUrl,
-    this.audioTracks = const [],
-    required this.totalChapters,
-    this.bookItem,
-    this.onPreviousChapter,
-    this.onNextChapter,
   });
 
   @override
@@ -54,17 +37,26 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   Timer? _hideControlsTimer;
   int _currentPage = 1;
   int _totalPages = 0;
-  BookItem? _currentBook;
   
   late AnimationController _controlsAnimationController;
   late Animation<double> _controlsAnimation;
   late AnimationController _audioPanelAnimationController;
   late Animation<double> _audioPanelAnimation;
 
+  BookChapter get currentChapter => widget.bookItem.chapters[widget.chapterIndex];
+  String get bookId => widget.bookItem.id;
+  String get bookTitle => widget.bookItem.title;
+  String get chapterTitle => currentChapter.title;
+  String? get pdfPath => currentChapter.pdfPath;
+  String? get pdfUrl => currentChapter.pdfUrl;
+  List<AudioTrack> get audioTracks => currentChapter.audioTracks;
+  int get totalChapters => widget.bookItem.chapters.length;
+  bool get isFirstChapter => widget.chapterIndex == 0;
+  bool get isLastChapter => widget.chapterIndex == totalChapters - 1;
+
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
   BookSessionCubit get _bookSessionCubit => context.read<BookSessionCubit>();
-  BooksCubit get _booksCubit => context.read<BooksCubit>();
 
   @override
   void initState() {
@@ -98,21 +90,12 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   }
 
   void _initializeSession() {
-    _currentBook = widget.bookItem;
-    
-    if (_currentBook == null) {
-      final booksState = _booksCubit.state;
-      _currentBook = booksState.selectedBook?.id == widget.bookId 
-          ? booksState.selectedBook 
-          : null;
-    }
-
     _bookSessionCubit.startReadingSession(
-      widget.bookId,
-      widget.bookTitle,
+      bookId,
+      bookTitle,
       widget.chapterIndex,
-      widget.chapterTitle,
-      bookItem: _currentBook,
+      chapterTitle,
+      bookItem: widget.bookItem,
     );
   }
 
@@ -235,9 +218,27 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     });
   }
 
+  void _navigateToPreviousChapter() {
+    if (!isFirstChapter) {
+      context.pushReplacement(
+        Routes.bookChapterReading(bookId, widget.chapterIndex - 1), 
+        extra: widget.bookItem,
+      );
+    }
+  }
+
+  void _navigateToNextChapter() {
+    if (!isLastChapter) {
+      context.pushReplacement(
+        Routes.bookChapterReading(bookId, widget.chapterIndex + 1), 
+        extra: widget.bookItem,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (widget.pdfPath == null && widget.pdfUrl == null) {
+    if (pdfPath == null && pdfUrl == null) {
       return _buildNoPdfScreen();
     }
 
@@ -251,7 +252,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.chapterTitle),
+        title: Text(chapterTitle),
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
       ),
@@ -261,14 +262,14 @@ class _PdfReadingPageState extends State<PdfReadingPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.chapterTitle,
+              chapterTitle,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 20),
             
-            if (widget.audioTracks.isNotEmpty) ...[
+            if (audioTracks.isNotEmpty) ...[
               Text(
                 _languageCubit.getLocalizedText(
                   korean: '오디오 트랙',
@@ -279,7 +280,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                 ),
               ),
               const SizedBox(height: 12),
-              ...widget.audioTracks.map((track) => Container(
+              ...audioTracks.map((track) => Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: AudioPlayerWidget(
                   audioUrl: track.audioUrl,
@@ -379,7 +380,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             ),
           ),
           
-          if (widget.audioTracks.isNotEmpty)
+          if (audioTracks.isNotEmpty)
             Positioned(
               top: 120,
               left: 16,
@@ -468,19 +469,19 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   Widget _buildPdfViewer() {
     final colorScheme = Theme.of(context).colorScheme;
 
-    String? pdfSource = widget.pdfPath;
+    String? pdfSource = pdfPath;
     bool isLocalFile = false;
 
-    if (widget.pdfPath != null && widget.pdfPath!.isNotEmpty) {
-      final file = File(widget.pdfPath!);
+    if (pdfPath != null && pdfPath!.isNotEmpty) {
+      final file = File(pdfPath!);
       if (file.existsSync()) {
-        pdfSource = widget.pdfPath!;
+        pdfSource = pdfPath!;
         isLocalFile = true;
       }
     }
 
-    if (pdfSource == null && widget.pdfUrl != null && widget.pdfUrl!.isNotEmpty) {
-      pdfSource = widget.pdfUrl!;
+    if (pdfSource == null && pdfUrl != null && pdfUrl!.isNotEmpty) {
+      pdfSource = pdfUrl!;
       isLocalFile = false;
     }
 
@@ -597,7 +598,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.chapterTitle,
+                      chapterTitle,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -606,7 +607,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      '${widget.chapterIndex + 1}/${widget.totalChapters} - ${widget.bookTitle}',
+                      '${widget.chapterIndex + 1}/$totalChapters - $bookTitle',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: Colors.white.withValues(alpha: 0.8),
                       ),
@@ -633,7 +634,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                 ),
                 const SizedBox(width: 8),
               ],
-              if (widget.audioTracks.isNotEmpty)
+              if (audioTracks.isNotEmpty)
                 IconButton(
                   onPressed: _toggleAudioPanel,
                   icon: Icon(
@@ -654,8 +655,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   Widget _buildBottomControls() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isFirstChapter = widget.chapterIndex == 0;
-    final isLastChapter = widget.chapterIndex == widget.totalChapters - 1;
 
     return Container(
       decoration: BoxDecoration(
@@ -673,10 +672,10 @@ class _PdfReadingPageState extends State<PdfReadingPage>
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              if (!isFirstChapter && widget.onPreviousChapter != null)
+              if (!isFirstChapter)
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: widget.onPreviousChapter,
+                    onPressed: _navigateToPreviousChapter,
                     icon: const Icon(Icons.arrow_back_rounded, size: 18),
                     label: Text(
                       _languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
@@ -689,13 +688,13 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                   ),
                 ),
               
-              if (!isFirstChapter && !isLastChapter && widget.onPreviousChapter != null && widget.onNextChapter != null) 
+              if (!isFirstChapter && !isLastChapter) 
                 const SizedBox(width: 12),
               
-              if (!isLastChapter && widget.onNextChapter != null)
+              if (!isLastChapter)
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: widget.onNextChapter,
+                    onPressed: _navigateToNextChapter,
                     icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                     label: Text(
                       _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
@@ -715,8 +714,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
 
   Widget _buildNavigationBar() {
     final colorScheme = Theme.of(context).colorScheme;
-    final isFirstChapter = widget.chapterIndex == 0;
-    final isLastChapter = widget.chapterIndex == widget.totalChapters - 1;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -729,10 +726,10 @@ class _PdfReadingPageState extends State<PdfReadingPage>
       child: SafeArea(
         child: Row(
           children: [
-            if (!isFirstChapter && widget.onPreviousChapter != null) ...[
+            if (!isFirstChapter) ...[
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: widget.onPreviousChapter,
+                  onPressed: _navigateToPreviousChapter,
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   label: Text(
                     _languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
@@ -741,10 +738,10 @@ class _PdfReadingPageState extends State<PdfReadingPage>
               ),
               const SizedBox(width: 12),
             ],
-            if (!isLastChapter && widget.onNextChapter != null)
+            if (!isLastChapter)
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: widget.onNextChapter,
+                  onPressed: _navigateToNextChapter,
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: Text(
                     _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
@@ -819,7 +816,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
-                children: widget.audioTracks.map((track) {
+                children: audioTracks.map((track) {
                   final isPlaying = _currentlyPlayingTrack?.id == track.id;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/core/routes/app_router.dart';
+import 'package:korean_language_app/features/books/data/model/book_progress.dart';
+import 'package:korean_language_app/features/books/data/model/chapter_progress.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
@@ -58,71 +60,9 @@ class _ChapterListPageState extends State<ChapterListPage> {
   }
 
   void _navigateToChapterReading(BookItem book, int chapterIndex) {
-    final chapter = book.chapters[chapterIndex];
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PdfReadingPage(
-          bookId: book.id,
-          bookTitle: book.title,
-          chapterTitle: chapter.title,
-          chapterIndex: chapterIndex,
-          pdfPath: chapter.pdfPath,
-          pdfUrl: chapter.pdfUrl,
-          audioTracks: chapter.audioTracks,
-          totalChapters: book.chapters.length,
-          bookItem: book,
-          onPreviousChapter: chapterIndex > 0 ? () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => _buildChapterReadingPage(book, chapterIndex - 1),
-              ),
-            );
-          } : null,
-          onNextChapter: chapterIndex < book.chapters.length - 1 ? () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => _buildChapterReadingPage(book, chapterIndex + 1),
-              ),
-            );
-          } : null,
-        ),
-      ),
-    );
-  }
-
-  PdfReadingPage _buildChapterReadingPage(BookItem book, int chapterIndex) {
-    final chapter = book.chapters[chapterIndex];
-    
-    return PdfReadingPage(
-      bookId: book.id,
-      bookTitle: book.title,
-      chapterTitle: chapter.title,
-      chapterIndex: chapterIndex,
-      pdfPath: chapter.pdfPath,
-      pdfUrl: chapter.pdfUrl,
-      audioTracks: chapter.audioTracks,
-      totalChapters: book.chapters.length,
-      bookItem: book,
-      onPreviousChapter: chapterIndex > 0 ? () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => _buildChapterReadingPage(book, chapterIndex - 1),
-          ),
-        );
-      } : null,
-      onNextChapter: chapterIndex < book.chapters.length - 1 ? () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => _buildChapterReadingPage(book, chapterIndex + 1),
-          ),
-        );
-      } : null,
+    context.go(
+      Routes.bookChapterReading(book.id, chapterIndex),
+      extra: book,
     );
   }
 

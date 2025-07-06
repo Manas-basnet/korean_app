@@ -5,6 +5,7 @@ import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
+import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -136,6 +137,7 @@ class AppRouter {
         builder: (context, state) => const ForgotPasswordPage(),
       ),
 
+      // Test result routes (outside main navigation)
       GoRoute(
         path: '/test-result',
         name: 'testResult',
@@ -157,6 +159,60 @@ class AppRouter {
           return BlocProvider<TestsCubit>(
             create: (context) => sl<TestsCubit>(),
             child: TestReviewPage(testResult: result),
+          );
+        },
+      ),
+
+      // Book reading routes (outside main navigation for direct access)
+      GoRoute(
+        path: '/book/:bookId/chapters',
+        name: 'bookChapters',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          return ChapterListPage(bookId: bookId);
+        },
+      ),
+      GoRoute(
+        path: '/book/:bookId/chapter/:chapterIndex',
+        name: 'chapterReading',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          final chapterIndex = int.parse(state.pathParameters['chapterIndex']!);
+          final bookItem = state.extra as BookItem?;
+          
+          if (bookItem == null) {
+            // Fallback: redirect to chapter list if BookItem is not provided
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Loading...'),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go(Routes.bookChapters(bookId)),
+                ),
+              ),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text('Loading book...'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => context.go(Routes.bookChapters(bookId)),
+                      child: const Text('Go to Chapter List'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          
+          return PdfReadingPage(
+            bookItem: bookItem,
+            chapterIndex: chapterIndex,
           );
         },
       ),
@@ -260,7 +316,6 @@ class AppRouter {
               ShellRoute(
                 builder: (context, state, child) => MultiBlocProvider(
                   providers: [
-                    //TODO: to implement
                     BlocProvider<BookSearchCubit>(
                       create: (context) => sl<BookSearchCubit>(),
                     ),
@@ -287,26 +342,6 @@ class AppRouter {
                         builder: (context, state) {
                           final bookId = state.pathParameters['bookId']!;
                           return BookEditPage(bookId: bookId);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'book-chapters/:bookId',
-                        builder: (context, state) {
-                          final bookId = state.pathParameters['bookId']!;
-                          return ChapterListPage(bookId: bookId);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'pdf-reader',
-                        builder: (context, state) {
-                          final extra = state.extra as PdfReadingPage;
-                          return PdfReadingPage(
-                            bookId: extra.bookId, 
-                            chapterIndex: extra.chapterIndex,
-                            bookTitle: extra.bookTitle,
-                            chapterTitle: extra.chapterTitle,
-                            totalChapters: extra.totalChapters,
-                          );
                         },
                       ),
                     ],
@@ -401,7 +436,6 @@ class Routes {
   // Books routes
   static const books = '/books';
   static const bookUpload = '/books/upload';
-  static const pdfReader = '/books/pdf-reader';
 
   static const profile = '/profile';
   static const languagePreferences = '/profile/language-preferences';
@@ -410,10 +444,14 @@ class Routes {
   static const adminSignup = '/profile/admin-management/admin-signup';
   static const userManagement = '/profile/user-management';
 
+  // Helper methods for dynamic routes
   static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
   static String bookEdit(String bookId) => '/books/edit/$bookId';
-  static String bookChapters(String bookId) => '/books/book-chapters/$bookId';
+  
+  // Book reading routes (at root level for direct access)
+  static String bookChapters(String bookId) => '/book/$bookId/chapters';
+  static String bookChapterReading(String bookId, int chapterIndex) => '/book/$bookId/chapter/$chapterIndex';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {
@@ -430,7 +468,11 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final location = GoRouterState.of(context).uri.path;
 
-    final shouldHideBottomNav = location.startsWith('/tests/taking');
+    // Hide bottom nav for certain pages
+    final shouldHideBottomNav = location.startsWith('/tests/taking') ||
+        location.startsWith('/book/') ||
+        location == '/test-result' ||
+        location == '/test-review';
 
     return BlocListener<UpdateCubit, UpdateState>(
       listener: (context, state) {

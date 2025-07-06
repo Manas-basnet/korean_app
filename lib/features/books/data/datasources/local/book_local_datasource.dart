@@ -1,7 +1,8 @@
+import 'package:korean_language_app/features/books/data/model/book_progress.dart';
+import 'package:korean_language_app/features/books/data/model/reading_session.dart';
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 
 abstract class BooksLocalDataSource {
   Future<List<BookItem>> getAllBooks();

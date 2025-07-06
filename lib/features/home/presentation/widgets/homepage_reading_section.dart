@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
+import 'package:korean_language_app/features/books/data/model/book_progress.dart';
+import 'package:korean_language_app/features/books/data/model/reading_session.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
@@ -251,13 +253,22 @@ class _ContinueReadingCard extends StatelessWidget {
 
   void _continueReading(BuildContext context) async {
     final bookSessionCubit = context.read<BookSessionCubit>();
+    final bookProgress = await bookSessionCubit.getBookProgress(session.bookId);
+    final bookItem = bookProgress?.bookItem;
     
     try {
       if (isPaused) {
         await bookSessionCubit.resumeSession();
       }
 
-      context.go(Routes.bookChapters(session.bookId));
+      if (bookItem != null) {
+        context.push(
+          Routes.bookChapterReading(session.bookId, session.chapterIndex),
+          extra: bookItem,
+        );
+      } else {
+        context.push(Routes.bookChapters(session.bookId));
+      }
     } catch (e) {
       final snackBarCubit = context.read<SnackBarCubit>();
       snackBarCubit.showErrorLocalized(
@@ -451,8 +462,17 @@ class _RecentBookCard extends StatelessWidget {
     );
   }
 
-  void _openBook(BuildContext context) {
-    context.go(Routes.bookChapters(bookProgress.bookId));
+  void _openBook(BuildContext context) async {
+    
+    if (bookProgress.bookItem != null) {
+      final chapterIndex = bookProgress.lastChapterIndex;
+      context.push(
+        Routes.bookChapterReading(bookProgress.bookId, chapterIndex),
+        extra: bookProgress.bookItem,
+      );
+    } else {
+      context.push(Routes.bookChapters(bookProgress.bookId));
+    }
   }
 }
 

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:korean_language_app/features/books/data/model/book_progress.dart';
+import 'package:korean_language_app/features/books/data/model/reading_session.dart';
 import 'package:korean_language_app/features/books/domain/entities/user_book_interaction.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +12,6 @@ import 'package:korean_language_app/shared/services/storage_service.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
 
 import 'book_local_datasource.dart';
 
@@ -27,7 +28,6 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
   static const String audioMetadataKey = 'BOOK_AUDIO_METADATA';
   static const String pdfMetadataKey = 'BOOK_PDF_METADATA';
   
-  // Reading Session Keys
   static const String currentSessionKey = 'CURRENT_READING_SESSION';
   static const String bookProgressPrefix = 'BOOK_PROGRESS_';
   static const String recentlyReadBooksKey = 'RECENTLY_READ_BOOKS';
@@ -551,8 +551,6 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
     }
   }
 
-  // Reading Session Methods Implementation
-
   @override
   Future<void> saveCurrentReadingSession(ReadingSession session) async {
     try {
@@ -587,8 +585,6 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       debugPrint('Error clearing current reading session: $e');
     }
   }
-
-  // Book Progress Methods Implementation
 
   @override
   Future<void> saveBookProgress(BookProgress bookProgress) async {
@@ -655,8 +651,6 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
     }
   }
 
-  // Recently Read Books Methods Implementation
-
   @override
   Future<void> addToRecentlyRead(BookProgress bookProgress) async {
     try {
@@ -710,8 +704,6 @@ class BooksLocalDataSourceImpl implements BooksLocalDataSource {
       debugPrint('Error clearing recently read books: $e');
     }
   }
-
-  // Private helper methods (existing methods remain the same)
 
   String _generateImageFileName(String imageUrl, String bookId, String imageType) {
     final urlHash = md5.convert(utf8.encode(imageUrl)).toString().substring(0, 8);
