@@ -63,8 +63,7 @@ class _TestCardContainer extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     
     return Card(
-      elevation: 1,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(

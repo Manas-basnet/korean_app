@@ -97,14 +97,18 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   }
 
   @override
-  void dispose() {
+  void deactivate() {
     _bookSessionCubit.updateReadingProgress(
       widget.chapterIndex,
       _currentPage,
       _totalPages,
     );
     _bookSessionCubit.pauseSession();
-    
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {    
     _pdfViewerController?.dispose();
     _hideControlsTimer?.cancel();
     _controlsAnimationController.dispose();
