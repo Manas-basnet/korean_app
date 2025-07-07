@@ -697,47 +697,42 @@ class FirestoreBookUploadDataSourceImpl implements BookUploadRemoteDataSource {
         (currentUrl == null || currentUrl.isEmpty)) {
       return false;
     }
-    
+
     if ((existingPath == null || existingPath.isEmpty) &&
         (existingUrl == null || existingUrl.isEmpty)) {
       return true;
     }
-    
+
     if (currentPath != null && 
         currentPath.startsWith('/') && 
         !_isFirebaseStoragePath(currentPath) &&
         !_isCachedFile(currentPath)) {
-      try {
-        final file = File(currentPath);
-        if (file.existsSync()) {
-          if (kDebugMode) {
-            print('Detected new local file: $currentPath');
+      if (currentPath != existingPath) {
+        try {
+          final file = File(currentPath);
+          if (file.existsSync()) {
+            if (kDebugMode) {
+              print('Detected new local file: $currentPath');
+            }
+            return true;
           }
-          return true;
-        } else {
+        } catch (e) {
           if (kDebugMode) {
-            print('Local file does not exist: $currentPath');
+            print('Error checking file existence for $currentPath: $e');
           }
           return false;
         }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error checking file existence for $currentPath: $e');
-        }
-        return false;
       }
     }
-    
-    if (currentUrl != null && existingUrl != null) {
-      return currentUrl != existingUrl;
+
+    if (currentUrl == existingUrl && currentPath == existingPath) {
+      return false;
     }
-    
-    if (currentPath != null && existingPath != null) {
-      return currentPath != existingPath;
-    }
-    
-    if ((currentUrl != null && existingPath != null) ||
-        (currentPath != null && existingUrl != null)) {
+
+    if ((currentUrl == null || currentUrl.isEmpty) && 
+        (currentPath == null || currentPath.isEmpty) &&
+        ((existingUrl != null && existingUrl.isNotEmpty) || 
+        (existingPath != null && existingPath.isNotEmpty))) {
       return true;
     }
     
@@ -758,12 +753,10 @@ class FirestoreBookUploadDataSourceImpl implements BookUploadRemoteDataSource {
     final pathsToDelete = <String>[];
     
     try {
-      // Collect cover image path
       if (data.containsKey('imagePath') && data['imagePath'] != null) {
         pathsToDelete.add(data['imagePath'] as String);
       }
       
-      // Collect chapter file paths
       if (data.containsKey('chapters') && data['chapters'] is List) {
         final chapters = data['chapters'] as List;
         for (final chapterData in chapters) {
@@ -789,10 +782,8 @@ class FirestoreBookUploadDataSourceImpl implements BookUploadRemoteDataSource {
         }
       }
       
-      // Cleanup files
       await _cleanupFiles(pathsToDelete);
       
-      // Delete by URL if path cleanup failed
       if (data.containsKey('imageUrl') && data['imageUrl'] != null) {
         try {
           final imageRef = storage.refFromURL(data['imageUrl'] as String);
@@ -804,7 +795,6 @@ class FirestoreBookUploadDataSourceImpl implements BookUploadRemoteDataSource {
         }
       }
       
-      // Delete document
       batch.delete(docRef);
       await batch.commit();
       

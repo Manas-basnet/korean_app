@@ -868,9 +868,9 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       imagePath: _chapterImage?.path ?? _existingImagePath,
-      imageUrl: _chapterImage != null ? null : _existingImageUrl,
+      imageUrl: _existingImageUrl,
       pdfPath: _chapterPdf?.path ?? _existingPdfPath,
-      pdfUrl: _chapterPdf != null ? null : _existingPdfUrl,
+      pdfUrl: _existingPdfUrl,
       audioTracks: _audioTracks,
       order: widget.chapter?.order ?? 0,
       createdAt: widget.chapter?.createdAt ?? DateTime.now(),
@@ -1109,7 +1109,7 @@ class _AudioTrackEditorDialogState extends State<AudioTrackEditorDialog> {
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       audioPath: _audioFile?.path ?? _existingAudioPath,
-      audioUrl: _audioFile != null ? null : _existingAudioUrl,
+      audioUrl: _existingAudioUrl,
       order: widget.audioTrack?.order ?? 0,
     );
 
