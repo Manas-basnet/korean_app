@@ -75,10 +75,12 @@ class BookSessionIdle extends BookSessionState {
 
 class BookSessionActive extends BookSessionState {
   final ReadingSession currentSession;
+  final BookProgress? currentBookProgress;
   final List<BookProgress> recentlyReadBooks;
 
   const BookSessionActive({
     required this.currentSession,
+    this.currentBookProgress,
     required this.recentlyReadBooks,
     super.isLoading = false,
     super.error,
@@ -87,6 +89,7 @@ class BookSessionActive extends BookSessionState {
 
   BookSessionActive copyWith({
     ReadingSession? currentSession,
+    BookProgress? currentBookProgress,
     List<BookProgress>? recentlyReadBooks,
     bool? isLoading,
     String? error,
@@ -94,6 +97,7 @@ class BookSessionActive extends BookSessionState {
   }) {
     return BookSessionActive(
       currentSession: currentSession ?? this.currentSession,
+      currentBookProgress: currentBookProgress ?? this.currentBookProgress,
       recentlyReadBooks: recentlyReadBooks ?? this.recentlyReadBooks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -109,6 +113,7 @@ class BookSessionActive extends BookSessionState {
   }) {
     return BookSessionActive(
       currentSession: currentSession,
+      currentBookProgress: currentBookProgress,
       recentlyReadBooks: recentlyReadBooks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -117,15 +122,17 @@ class BookSessionActive extends BookSessionState {
   }
 
   @override
-  List<Object?> get props => [currentSession, recentlyReadBooks, isLoading, error, errorType];
+  List<Object?> get props => [currentSession, currentBookProgress, recentlyReadBooks, isLoading, error, errorType];
 }
 
 class BookSessionPaused extends BookSessionState {
   final ReadingSession pausedSession;
+  final BookProgress? currentBookProgress;
   final List<BookProgress> recentlyReadBooks;
 
   const BookSessionPaused({
     required this.pausedSession,
+    this.currentBookProgress,
     required this.recentlyReadBooks,
     super.isLoading = false,
     super.error,
@@ -134,6 +141,7 @@ class BookSessionPaused extends BookSessionState {
 
   BookSessionPaused copyWith({
     ReadingSession? pausedSession,
+    BookProgress? currentBookProgress,
     List<BookProgress>? recentlyReadBooks,
     bool? isLoading,
     String? error,
@@ -141,6 +149,7 @@ class BookSessionPaused extends BookSessionState {
   }) {
     return BookSessionPaused(
       pausedSession: pausedSession ?? this.pausedSession,
+      currentBookProgress: currentBookProgress ?? this.currentBookProgress,
       recentlyReadBooks: recentlyReadBooks ?? this.recentlyReadBooks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -156,6 +165,7 @@ class BookSessionPaused extends BookSessionState {
   }) {
     return BookSessionPaused(
       pausedSession: pausedSession,
+      currentBookProgress: currentBookProgress,
       recentlyReadBooks: recentlyReadBooks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -164,7 +174,7 @@ class BookSessionPaused extends BookSessionState {
   }
 
   @override
-  List<Object?> get props => [pausedSession, recentlyReadBooks, isLoading, error, errorType];
+  List<Object?> get props => [pausedSession, currentBookProgress, recentlyReadBooks, isLoading, error, errorType];
 }
 
 class BookSessionError extends BookSessionState {

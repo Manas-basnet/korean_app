@@ -11,7 +11,6 @@ import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 
 part 'book_session_state.dart';
 
-
 class BookSessionCubit extends Cubit<BookSessionState> {
   final BooksLocalDataSource localDataSource;
   
@@ -30,8 +29,10 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       final recentBooks = await localDataSource.getRecentlyReadBooks();
       
       if (currentSession != null) {
+        final currentBookProgress = await localDataSource.getBookProgress(currentSession.bookId);
         emit(BookSessionActive(
           currentSession: currentSession,
+          currentBookProgress: currentBookProgress,
           recentlyReadBooks: recentBooks,
         ));
       } else {
@@ -72,8 +73,11 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       _startSessionTimer();
 
       final recentBooks = await localDataSource.getRecentlyReadBooks();
+      final currentBookProgress = await localDataSource.getBookProgress(bookId);
+      
       emit(BookSessionActive(
         currentSession: session,
+        currentBookProgress: currentBookProgress,
         recentlyReadBooks: recentBooks,
       ));
       
@@ -108,7 +112,12 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       await localDataSource.saveCurrentReadingSession(updatedSession);
       await _updateBookProgress(updatedSession);
 
-      emit(currentState.copyWith(currentSession: updatedSession));
+      final updatedBookProgress = await localDataSource.getBookProgress(updatedSession.bookId);
+
+      emit(currentState.copyWith(
+        currentSession: updatedSession,
+        currentBookProgress: updatedBookProgress,
+      ));
       
       debugPrint('Updated reading progress: Chapter $chapterIndex, Page $currentPage/$totalPages');
     } catch (e) {
@@ -121,9 +130,9 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       final currentState = state;
       if (currentState is! BookSessionActive) return 1;
 
-      final bookProgress = await localDataSource.getBookProgress(currentState.currentSession.bookId);
-      if (bookProgress != null && bookProgress.chapters.containsKey(chapterIndex)) {
-        final chapterProgress = bookProgress.chapters[chapterIndex]!;
+      if (currentState.currentBookProgress != null && 
+          currentState.currentBookProgress!.chapters.containsKey(chapterIndex)) {
+        final chapterProgress = currentState.currentBookProgress!.chapters[chapterIndex]!;
         return chapterProgress.currentPage;
       }
     } catch (e) {
@@ -153,8 +162,11 @@ class BookSessionCubit extends Cubit<BookSessionState> {
       await localDataSource.saveCurrentReadingSession(pausedSession);
       await _updateBookProgress(pausedSession);
 
+      final updatedBookProgress = await localDataSource.getBookProgress(pausedSession.bookId);
+
       emit(BookSessionPaused(
         pausedSession: pausedSession,
+        currentBookProgress: updatedBookProgress,
         recentlyReadBooks: currentState.recentlyReadBooks,
       ));
       
@@ -183,6 +195,7 @@ class BookSessionCubit extends Cubit<BookSessionState> {
 
       emit(BookSessionActive(
         currentSession: resumedSession,
+        currentBookProgress: currentState.currentBookProgress,
         recentlyReadBooks: currentState.recentlyReadBooks,
       ));
       
@@ -210,7 +223,22 @@ class BookSessionCubit extends Cubit<BookSessionState> {
 
   Future<BookProgress?> getBookProgress(String bookId) async {
     try {
-      return await localDataSource.getBookProgress(bookId);
+      final currentState = state;
+      
+      if ((currentState is BookSessionActive || currentState is BookSessionPaused) &&
+          currentState is BookSessionActive && currentState.currentSession.bookId == bookId) {
+        return currentState.currentBookProgress;
+      }
+      
+      if (currentState is BookSessionPaused && currentState.pausedSession.bookId == bookId) {
+        return currentState.currentBookProgress;
+      }
+      
+      final progress = currentState is BookSessionIdle 
+          ? currentState.recentlyReadBooks.where((book) => book.bookId == bookId).firstOrNull
+          : null;
+      
+      return progress ?? await localDataSource.getBookProgress(bookId);
     } catch (e) {
       debugPrint('Error getting book progress: $e');
       return null;
@@ -219,6 +247,15 @@ class BookSessionCubit extends Cubit<BookSessionState> {
 
   Future<List<BookProgress>> getRecentlyReadBooks() async {
     try {
+      final currentState = state;
+      if (currentState is BookSessionIdle) {
+        return currentState.recentlyReadBooks;
+      } else if (currentState is BookSessionActive) {
+        return currentState.recentlyReadBooks;
+      } else if (currentState is BookSessionPaused) {
+        return currentState.recentlyReadBooks;
+      }
+      
       return await localDataSource.getRecentlyReadBooks();
     } catch (e) {
       debugPrint('Error getting recently read books: $e');
@@ -228,7 +265,19 @@ class BookSessionCubit extends Cubit<BookSessionState> {
 
   Future<void> markChapterCompleted(String bookId, int chapterIndex) async {
     try {
-      final bookProgress = await localDataSource.getBookProgress(bookId);
+      final currentState = state;
+      BookProgress? bookProgress;
+
+      if ((currentState is BookSessionActive || currentState is BookSessionPaused) &&
+          ((currentState is BookSessionActive && currentState.currentSession.bookId == bookId) ||
+           (currentState is BookSessionPaused && currentState.pausedSession.bookId == bookId))) {
+        bookProgress = currentState is BookSessionActive 
+            ? currentState.currentBookProgress
+            : (currentState as BookSessionPaused).currentBookProgress;
+      } else {
+        bookProgress = await localDataSource.getBookProgress(bookId);
+      }
+
       if (bookProgress != null && bookProgress.chapters.containsKey(chapterIndex)) {
         final updatedChapters = Map<int, ChapterProgress>.from(bookProgress.chapters);
         final chapterProgress = updatedChapters[chapterIndex]!;
@@ -243,6 +292,13 @@ class BookSessionCubit extends Cubit<BookSessionState> {
         );
 
         await localDataSource.saveBookProgress(updatedBookProgress);
+        
+        if (currentState is BookSessionActive && currentState.currentSession.bookId == bookId) {
+          emit(currentState.copyWith(currentBookProgress: updatedBookProgress));
+        } else if (currentState is BookSessionPaused && currentState.pausedSession.bookId == bookId) {
+          emit(currentState.copyWith(currentBookProgress: updatedBookProgress));
+        }
+        
         debugPrint('Marked chapter $chapterIndex as completed for book $bookId');
       }
     } catch (e) {

@@ -157,7 +157,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
 
   void _startHideControlsTimer() {
     _hideControlsTimer?.cancel();
-    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
       if (mounted && !_isAudioPanelExpanded) {
         _hideControls();
       }
@@ -199,8 +199,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
       _currentPage,
       _totalPages,
     );
-    
-    _showControls();
   }
 
   void _onDocumentLoaded(PdfDocumentLoadedDetails details) {
@@ -327,17 +325,19 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   }
 
   Widget _buildReadingScreen() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
+          // PDF Viewer with tap detection
           Positioned.fill(
-            child: _buildPdfViewer(),
+            child: GestureDetector(
+              onTap: _toggleControls,
+              child: _buildPdfViewer(),
+            ),
           ),
           
+          // Top controls
           Positioned(
             top: 0,
             left: 0,
@@ -359,6 +359,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             ),
           ),
           
+          // Bottom controls
           Positioned(
             bottom: 0,
             left: 0,
@@ -380,6 +381,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             ),
           ),
           
+          // Audio panel
           if (audioTracks.isNotEmpty)
             Positioned(
               top: 120,
@@ -402,61 +404,44 @@ class _PdfReadingPageState extends State<PdfReadingPage>
               ),
             ),
 
-          Positioned(
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 80,
-            child: GestureDetector(
-              onTap: _toggleControls,
-              behavior: HitTestBehavior.translucent,
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-          
-          Positioned(
-            top: 0,
-            bottom: 0,
-            right: 0,
-            width: 80,
-            child: GestureDetector(
-              onTap: _toggleControls,
-              behavior: HitTestBehavior.translucent,
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-          
+          // Tap hint when controls are hidden
           if (!_isControlsVisible)
             Positioned(
               bottom: 80,
               left: 20,
               right: 20,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.touch_app_rounded,
-                        color: Colors.white,
-                        size: 16,
+              child: IgnorePointer(
+                child: Center(
+                  child: AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 500),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _languageCubit.getLocalizedText(
-                          korean: '화면 가장자리를 터치하여 조작 버튼 표시',
-                          english: 'Tap screen edges to show controls',
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.touch_app_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _languageCubit.getLocalizedText(
+                              korean: '화면을 터치하여 조작 버튼 표시',
+                              english: 'Tap screen to show controls',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -511,7 +496,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     }
 
     return Container(
-      color: colorScheme.surface,
+      color: Colors.white,
       child: isLocalFile
           ? SfPdfViewer.file(
               File(pdfSource),
@@ -531,11 +516,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                 );
               },
               onPageChanged: _onPageChanged,
-              onTextSelectionChanged: (details) {
-                if (details.selectedText?.isNotEmpty == true) {
-                  _showControls();
-                }
-              },
             )
           : SfPdfViewer.network(
               pdfSource,
@@ -555,11 +535,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                 );
               },
               onPageChanged: _onPageChanged,
-              onTextSelectionChanged: (details) {
-                if (details.selectedText?.isNotEmpty == true) {
-                  _showControls();
-                }
-              },
             ),
     );
   }
@@ -574,7 +549,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.7),
+            Colors.black.withValues(alpha: 0.8),
             Colors.transparent,
           ],
         ),
@@ -662,7 +637,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.7),
+            Colors.black.withValues(alpha: 0.8),
             Colors.transparent,
           ],
         ),

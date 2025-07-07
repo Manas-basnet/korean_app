@@ -25,7 +25,6 @@ class _ChapterListPageState extends State<ChapterListPage> {
   late BooksCubit _booksCubit;
   late LanguagePreferenceCubit _languageCubit;
   late SnackBarCubit _snackBarCubit;
-  late BookSessionCubit _bookSessionCubit;
 
   @override
   void initState() {
@@ -33,7 +32,6 @@ class _ChapterListPageState extends State<ChapterListPage> {
     _booksCubit = context.read<BooksCubit>();
     _languageCubit = context.read<LanguagePreferenceCubit>();
     _snackBarCubit = context.read<SnackBarCubit>();
-    _bookSessionCubit = context.read<BookSessionCubit>();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBook();
@@ -60,7 +58,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
   }
 
   void _navigateToChapterReading(BookItem book, int chapterIndex) {
-    context.go(
+    context.push(
       Routes.bookChapterReading(book.id, chapterIndex),
       extra: book,
     );
@@ -214,14 +212,25 @@ class _ChapterListPageState extends State<ChapterListPage> {
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final chapter = book.chapters[index];
-                  return FutureBuilder<BookProgress?>(
-                    future: _bookSessionCubit.getBookProgress(book.id),
-                    builder: (context, snapshot) {
-                      final bookProgress = snapshot.data;
+            sliver: BlocBuilder<BookSessionCubit, BookSessionState>(
+              builder: (context, sessionState) {
+                BookProgress? bookProgress;
+                
+                if ((sessionState is BookSessionActive && sessionState.currentSession.bookId == book.id) ||
+                    (sessionState is BookSessionPaused && sessionState.pausedSession.bookId == book.id)) {
+                  bookProgress = sessionState is BookSessionActive 
+                      ? sessionState.currentBookProgress
+                      : (sessionState as BookSessionPaused).currentBookProgress;
+                } else if (sessionState is BookSessionIdle) {
+                  bookProgress = sessionState.recentlyReadBooks
+                      .where((progress) => progress.bookId == book.id)
+                      .firstOrNull;
+                }
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final chapter = book.chapters[index];
                       final chapterProgress = bookProgress?.chapters[index];
                       
                       return _buildChapterCard(
@@ -233,10 +242,10 @@ class _ChapterListPageState extends State<ChapterListPage> {
                         chapterProgress,
                       );
                     },
-                  );
-                },
-                childCount: book.chapters.length,
-              ),
+                    childCount: book.chapters.length,
+                  ),
+                );
+              },
             ),
           ),
         ],
