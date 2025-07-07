@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'book_chapter.dart';
@@ -10,11 +9,10 @@ class BookItem {
   final String? imageUrl;
   final String? imagePath;
   final List<BookChapter> chapters;
-  final int duration; // total duration in seconds
+  final int duration;
   final BookLevel level;
   final CourseCategory category;
   final String language;
-  final IconData icon;
   final String? creatorUid;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -37,7 +35,6 @@ class BookItem {
     required this.level,
     required this.category,
     this.language = 'Korean',
-    this.icon = Icons.book,
     this.creatorUid,
     this.createdAt,
     this.updatedAt,
@@ -60,7 +57,6 @@ class BookItem {
     BookLevel? level,
     CourseCategory? category,
     String? language,
-    IconData? icon,
     String? creatorUid,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -82,7 +78,6 @@ class BookItem {
       level: level ?? this.level,
       category: category ?? this.category,
       language: language ?? this.language,
-      icon: icon ?? this.icon,
       creatorUid: creatorUid ?? this.creatorUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -100,7 +95,7 @@ class BookItem {
     return chapters.fold(0, (sum, chapter) => sum + chapter.totalAudioDuration);
   }
   String get formattedDuration => _formatDuration(Duration(seconds: totalDuration));
-  String get formattedRating => rating > 0 ? rating.toStringAsFixed(1) : '0.0';
+  String get formattedRating => rating.isNaN || rating <= 0 ? '0.0' : rating.toStringAsFixed(1);
   String get formattedViewCount => viewCount > 999 ? '${(viewCount / 1000).toStringAsFixed(1)}k' : viewCount.toString();
 
   String _formatDuration(Duration duration) {
@@ -122,6 +117,21 @@ class BookItem {
 
   @override
   int get hashCode => id.hashCode;
+
+  static double _sanitizeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) {
+      return value.isNaN || value.isInfinite ? 0.0 : value;
+    }
+    if (value is int) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed?.isNaN == false && parsed?.isInfinite == false ? parsed! : 0.0;
+    }
+    return 0.0;
+  }
 
   factory BookItem.fromJson(Map<String, dynamic> json) {
     BookLevel level;
@@ -146,13 +156,6 @@ class BookItem {
       );
     } else {
       category = CourseCategory.korean;
-    }
-
-    IconData icon;
-    if (json['iconCodePoint'] != null) {
-      icon = _iconMapping[json['iconCodePoint']] ?? Icons.book;
-    } else {
-      icon = Icons.book;
     }
 
     DateTime? createdAt;
@@ -197,16 +200,15 @@ class BookItem {
       level: level,
       category: category,
       language: json['language'] as String? ?? 'Korean',
-      icon: icon,
       creatorUid: json['creatorUid'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
       isPublished: json['isPublished'] as bool? ?? true,
       metadata: json['metadata'] as Map<String, dynamic>?,
       viewCount: json['viewCount'] as int? ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      rating: _sanitizeDouble(json['rating']),
       ratingCount: json['ratingCount'] as int? ?? 0,
-      popularity: (json['popularity'] as num?)?.toDouble() ?? 0.0,
+      popularity: _sanitizeDouble(json['popularity']),
     );
   }
 
@@ -222,28 +224,15 @@ class BookItem {
       'level': level.toString().split('.').last,
       'category': category.toString().split('.').last,
       'language': language,
-      'iconCodePoint': icon.codePoint,
-      'iconFontFamily': icon.fontFamily,
-      'iconFontPackage': icon.fontPackage,
       'creatorUid': creatorUid,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
       'isPublished': isPublished,
       'metadata': metadata,
       'viewCount': viewCount,
-      'rating': rating,
+      'rating': rating.isNaN || rating.isInfinite ? 0.0 : rating,
       'ratingCount': ratingCount,
-      'popularity': popularity,
+      'popularity': popularity.isNaN || popularity.isInfinite ? 0.0 : popularity,
     };
   }
-
-  static final Map<int, IconData> _iconMapping = {
-    Icons.book.codePoint: Icons.book,
-    Icons.library_books.codePoint: Icons.library_books,
-    Icons.menu_book.codePoint: Icons.menu_book,
-    Icons.auto_stories.codePoint: Icons.auto_stories,
-    Icons.chrome_reader_mode.codePoint: Icons.chrome_reader_mode,
-    Icons.import_contacts.codePoint: Icons.import_contacts,
-    Icons.book_outlined.codePoint: Icons.book_outlined,
-  };
 }

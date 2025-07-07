@@ -18,7 +18,7 @@ class SortBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     
     final maxHeight = screenSize.height * 0.6;

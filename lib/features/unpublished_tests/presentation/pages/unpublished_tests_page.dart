@@ -194,7 +194,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
   }
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     final expandedHeight = screenSize.height * 0.16; // Slightly smaller for unpublished
     final minHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
     
@@ -335,7 +335,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
     required double iconSize,
   }) {
     return Container(
-      margin: EdgeInsets.only(left: MediaQuery.of(context).size.width * 0.01),
+      margin: EdgeInsets.only(left: MediaQuery.sizeOf(context).width * 0.01),
       child: IconButton(
         onPressed: onPressed,
         icon: Icon(icon, size: iconSize),
@@ -343,7 +343,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
         style: IconButton.styleFrom(
           foregroundColor: colorScheme.onSurfaceVariant,
           backgroundColor: Colors.transparent,
-          padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.025),
+          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width * 0.025),
         ),
       ),
     );
@@ -429,7 +429,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
         }
       },
       builder: (context, state) {
-        final screenSize = MediaQuery.of(context).size;
+        final screenSize = MediaQuery.sizeOf(context);
         
         if (isOffline && state.tests.isEmpty && state.isLoading) {
           return SliverToBoxAdapter(
@@ -562,7 +562,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
   Widget _buildEmptyTestsView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     
     return Container(
       width: double.infinity,
@@ -663,7 +663,7 @@ class _UnpublishedTestsPageState extends State<UnpublishedTestsPage> {
   Widget _buildTestDetailsBottomSheet(TestItem test) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     
     return Container(
       margin: EdgeInsets.all(screenSize.width * 0.04),

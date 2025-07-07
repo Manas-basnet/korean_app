@@ -592,7 +592,6 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
       return AudioPlayerWidget(
         audioPath: _answerAudios[index]!.path,
         label: widget.languageCubit.getLocalizedText(korean: '새 오디오', english: 'New Audio'),
-        height: 50,
         onRemove: () => setState(() => _answerAudios[index] = null),
         onEdit: () => _showAudioRecorderDialog(answerIndex: index),
       );
@@ -601,7 +600,6 @@ class _QuestionEditorPageState extends State<QuestionEditorPage> {
         audioUrl: _existingAnswerAudioUrls[index],
         audioPath: _existingAnswerAudioPaths[index],
         label: widget.languageCubit.getLocalizedText(korean: '기존 오디오', english: 'Existing Audio'),
-        height: 50,
         onRemove: () => setState(() {
           _existingAnswerAudioUrls[index] = null;
           _existingAnswerAudioPaths[index] = null;

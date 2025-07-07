@@ -4,28 +4,20 @@ import 'package:audioplayers/audioplayers.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String? audioUrl;
-  final String? audioPath; // Should be a resolved/absolute path
+  final String? audioPath;
   final String? label;
-  final double? height;
-  final double? minHeight;
-  final double? maxHeight;
   final VoidCallback? onRemove;
   final VoidCallback? onEdit;
-  final bool isCompact;
-  final Function(bool)? onPlayStateChanged; // Added callback
+  final Function(bool)? onPlayStateChanged;
 
   const AudioPlayerWidget({
     super.key,
     this.audioUrl,
     this.audioPath,
     this.label,
-    this.height,
-    this.minHeight = 40,
-    this.maxHeight,
     this.onRemove,
     this.onEdit,
-    this.isCompact = false,
-    this.onPlayStateChanged, // Added callback
+    this.onPlayStateChanged,
   });
 
   @override
@@ -38,22 +30,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isLoading = false;
-  
-  // State class variables
-  late String? audioUrl;
-  late String? audioPath;
-  late String? label;
-  late double? height;
-  late double? minHeight;
-  late double? maxHeight;
-  late VoidCallback? onRemove;
-  late VoidCallback? onEdit;
-  late bool isCompact;
 
   @override
   void initState() {
     super.initState();
-    _initializeStateVariables();
     _audioPlayer = AudioPlayer();
     _setupAudioPlayer();
   }
@@ -62,26 +42,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   void didUpdateWidget(AudioPlayerWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    final oldAudioPath = audioPath;
-    final oldAudioUrl = audioUrl;
-    
-    _initializeStateVariables();
-    
-    if (oldAudioPath != audioPath || oldAudioUrl != audioUrl) {
+    if (oldWidget.audioPath != widget.audioPath || 
+        oldWidget.audioUrl != widget.audioUrl) {
       _resetPlayer();
     }
-  }
-  
-  void _initializeStateVariables() {
-    audioUrl = widget.audioUrl;
-    audioPath = widget.audioPath;
-    label = widget.label;
-    height = widget.height;
-    minHeight = widget.minHeight;
-    maxHeight = widget.maxHeight;
-    onRemove = widget.onRemove;
-    onEdit = widget.onEdit;
-    isCompact = widget.isCompact;
   }
 
   void _resetPlayer() {
@@ -119,7 +83,6 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           _isLoading = state == PlayerState.playing && _duration == Duration.zero;
         });
         
-        // Call the callback when play state changes
         if (wasPlaying != _isPlaying) {
           widget.onPlayStateChanged?.call(_isPlaying);
         }
@@ -142,16 +105,16 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           String? source;
           bool isLocalFile = false;
           
-          if (audioPath != null && audioPath!.isNotEmpty) {
-            final file = File(audioPath!);
+          if (widget.audioPath != null && widget.audioPath!.isNotEmpty) {
+            final file = File(widget.audioPath!);
             if (await file.exists()) {
-              source = audioPath!;
+              source = widget.audioPath!;
               isLocalFile = true;
             }
           }
           
-          if (source == null && audioUrl != null && audioUrl!.isNotEmpty) {
-            source = audioUrl!;
+          if (source == null && widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
+            source = widget.audioUrl!;
             isLocalFile = false;
           }
           
@@ -197,143 +160,134 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final availableWidth = constraints.maxWidth;
-        
-        final shouldUseCompactLayout = isCompact || 
-            availableHeight < 50 || 
-            availableWidth < 200;
-
-        return Container(
-          width: double.infinity,
-          constraints: BoxConstraints(
-            minHeight: minHeight ?? (shouldUseCompactLayout ? 35 : 40),
-            maxHeight: maxHeight ?? 
-                (height ?? (shouldUseCompactLayout ? 45 : 60)),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: shouldUseCompactLayout ? 8 : 12,
-            vertical: shouldUseCompactLayout ? 4 : 8,
-          ),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues( alpha: 0.3),
-            borderRadius: BorderRadius.circular(shouldUseCompactLayout ? 6 : 8),
-            border: Border.all(
-              color: colorScheme.outline.withValues(alpha : 0.3),
-              width: 0.5,
-            ),
-          ),
-          child: shouldUseCompactLayout 
-              ? _buildCompactLayout(theme, colorScheme)
-              : _buildNormalLayout(theme, colorScheme),
-        );
-      },
-    );
-  }
-
-  Widget _buildCompactLayout(ThemeData theme, ColorScheme colorScheme) {
-    return Row(
-      children: [
-        _buildPlayButton(colorScheme, size: 24),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (label != null)
-                Flexible(
-                  child: Text(
-                    label!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 9,
+    return Container(
+      padding: EdgeInsets.all(theme.spacing.medium),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(theme.spacing.medium),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha:0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.label != null || widget.onEdit != null || widget.onRemove != null)
+            Padding(
+              padding: EdgeInsets.only(bottom: theme.spacing.small),
+              child: Row(
+                children: [
+                  if (widget.label != null)
+                    Expanded(
+                      child: Text(
+                        widget.label!,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  if (widget.onEdit != null)
+                    IconButton(
+                      onPressed: widget.onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      iconSize: theme.iconSizes.small,
+                      visualDensity: VisualDensity.compact,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  if (widget.onRemove != null)
+                    IconButton(
+                      onPressed: widget.onRemove,
+                      icon: const Icon(Icons.close),
+                      iconSize: theme.iconSizes.small,
+                      visualDensity: VisualDensity.compact,
+                      color: colorScheme.error,
+                    ),
+                ],
+              ),
+            ),
+          
+          // Player controls
+          Row(
+            children: [
+              // Play/Pause button
+              Container(
+                decoration: BoxDecoration(
+                  color: _isPlaying ? colorScheme.primary : colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
                 ),
-              Flexible(
-                child: Row(
+                child: IconButton(
+                  onPressed: _playPause,
+                  icon: Icon(
+                    _isLoading
+                        ? Icons.hourglass_empty
+                        : _isPlaying
+                            ? Icons.pause
+                            : Icons.play_arrow,
+                    color: _isPlaying ? colorScheme.onPrimary : colorScheme.onPrimaryContainer,
+                  ),
+                  iconSize: theme.iconSizes.medium,
+                  padding: EdgeInsets.all(theme.spacing.small),
+                ),
+              ),
+              SizedBox(width: theme.spacing.medium),
+              
+              // Time and progress bar
+              Expanded(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      _formatDuration(_position),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 8,
+                    // Progress bar
+                    SizedBox(
+                      height: theme.spacing.large,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 4,
+                          thumbShape: RoundSliderThumbShape(
+                            enabledThumbRadius: theme.spacing.small,
+                          ),
+                          overlayShape: RoundSliderOverlayShape(
+                            overlayRadius: theme.spacing.medium,
+                          ),
+                          activeTrackColor: colorScheme.primary,
+                          inactiveTrackColor: colorScheme.primaryContainer,
+                          thumbColor: colorScheme.primary,
+                          overlayColor: colorScheme.primary.withValues(alpha:0.1),
+                        ),
+                        child: Slider(
+                          value: _duration.inSeconds > 0
+                              ? _position.inSeconds / _duration.inSeconds
+                              : 0.0,
+                          onChanged: _duration.inSeconds > 0 ? (value) => _seek(value) : null,
+                        ),
                       ),
                     ),
-                    Expanded(
-                      child: _buildSlider(colorScheme, height: 2),
-                    ),
-                    Text(
-                      _formatDuration(_duration),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (onEdit != null || onRemove != null) ...[
-          const SizedBox(width: 4),
-          _buildActionButtons(colorScheme, isCompact: true),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildNormalLayout(ThemeData theme, ColorScheme colorScheme) {
-    return Row(
-      children: [
-        _buildPlayButton(colorScheme),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (label != null) ...[
-                Flexible(
-                  child: Text(
-                    label!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 2),
-              ],
-              Flexible(
-                child: Row(
-                  children: [
-                    Text(
-                      _formatDuration(_position),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildSlider(colorScheme),
-                    ),
-                    Text(
-                      _formatDuration(_duration),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 10,
+                    
+                    // Time labels
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: theme.spacing.small),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(_position),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            _formatDuration(_duration),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -341,109 +295,33 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
               ),
             ],
           ),
-        ),
-        if (onEdit != null || onRemove != null) ...[
-          const SizedBox(width: 4),
-          _buildActionButtons(colorScheme),
         ],
-      ],
+      ),
     );
   }
+}
 
-  Widget _buildPlayButton(ColorScheme colorScheme, {double size = 36}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        onPressed: _playPause,
-        padding: EdgeInsets.zero,
-        icon: Icon(
-          _isLoading
-              ? Icons.hourglass_empty
-              : _isPlaying
-                  ? Icons.pause
-                  : Icons.play_arrow,
-          color: colorScheme.onPrimary,
-          size: size * 0.5,
-        ),
-      ),
-    );
-  }
+extension ThemeSpacing on ThemeData {
+  Spacing get spacing => Spacing(this);
+  IconSizes get iconSizes => IconSizes(this);
+}
 
-  Widget _buildSlider(ColorScheme colorScheme, {double height = 2}) {
-    return SliderTheme(
-      data: SliderTheme.of(context).copyWith(
-        trackHeight: height,
-        thumbShape: RoundSliderThumbShape(
-          enabledThumbRadius: height + 2,
-        ),
-        overlayShape: RoundSliderOverlayShape(
-          overlayRadius: (height + 2) * 2,
-        ),
-        activeTrackColor: colorScheme.primary,
-        inactiveTrackColor: colorScheme.outline.withValues(alpha : 0.3),
-        thumbColor: colorScheme.primary,
-        overlayColor: colorScheme.primary.withValues(alpha : 0.1),
-      ),
-      child: Slider(
-        value: _duration.inSeconds > 0
-            ? _position.inSeconds / _duration.inSeconds
-            : 0.0,
-        onChanged: _duration.inSeconds > 0 ? (value) => _seek(value) : null,
-      ),
-    );
-  }
+class Spacing {
+  final ThemeData theme;
+  
+  Spacing(this.theme);
+  
+  double get small => theme.textTheme.bodySmall?.fontSize ?? 12;
+  double get medium => theme.textTheme.bodyMedium?.fontSize ?? 14;
+  double get large => theme.textTheme.bodyLarge?.fontSize ?? 16;
+}
 
-  Widget _buildActionButtons(ColorScheme colorScheme, {bool isCompact = false}) {
-    final buttonSize = isCompact ? 20.0 : 24.0;
-    final iconSize = isCompact ? 12.0 : 16.0;
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (onEdit != null)
-          SizedBox(
-            width: buttonSize,
-            height: buttonSize,
-            child: IconButton(
-              onPressed: onEdit,
-              icon: Icon(Icons.edit, size: iconSize),
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: buttonSize,
-                minHeight: buttonSize,
-              ),
-              style: IconButton.styleFrom(
-                foregroundColor: colorScheme.onSurfaceVariant,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-        if (onEdit != null && onRemove != null)
-          SizedBox(width: isCompact ? 2 : 4),
-        if (onRemove != null)
-          SizedBox(
-            width: buttonSize,
-            height: buttonSize,
-            child: IconButton(
-              onPressed: onRemove,
-              icon: Icon(Icons.close, size: iconSize),
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: buttonSize,
-                minHeight: buttonSize,
-              ),
-              style: IconButton.styleFrom(
-                foregroundColor: colorScheme.error,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
+class IconSizes {
+  final ThemeData theme;
+  
+  IconSizes(this.theme);
+  
+  double get small => (theme.textTheme.bodySmall?.fontSize ?? 12) * 1.5;
+  double get medium => (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.7;
+  double get large => (theme.textTheme.bodyLarge?.fontSize ?? 16) * 2;
 }

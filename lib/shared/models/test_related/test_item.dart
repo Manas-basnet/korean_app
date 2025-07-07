@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/models/test_related/test_question.dart';
@@ -15,14 +14,12 @@ class TestItem {
   final BookLevel level;
   final TestCategory category;
   final String language;
-  final IconData icon;
   final String? creatorUid;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isPublished;
   final Map<String, dynamic>? metadata;
   
-  // New fields for enhanced features
   final int viewCount;
   final double rating;
   final int ratingCount;
@@ -40,7 +37,6 @@ class TestItem {
     required this.level,
     required this.category,
     this.language = 'Korean',
-    this.icon = Icons.quiz,
     this.creatorUid,
     this.createdAt,
     this.updatedAt,
@@ -64,7 +60,6 @@ class TestItem {
     BookLevel? level,
     TestCategory? category,
     String? language,
-    IconData? icon,
     String? creatorUid,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -87,7 +82,6 @@ class TestItem {
       level: level ?? this.level,
       category: category ?? this.category,
       language: language ?? this.language,
-      icon: icon ?? this.icon,
       creatorUid: creatorUid ?? this.creatorUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -104,7 +98,7 @@ class TestItem {
   int get totalTimeLimit => timeLimit;
   String get formattedTimeLimit => timeLimit > 0 ? '$timeLimit분' : '무제한';
   String get formattedPassingScore => '$passingScore%';
-  String get formattedRating => rating > 0 ? rating.toStringAsFixed(1) : '0.0';
+  String get formattedRating => rating.isNaN || rating <= 0 ? '0.0' : rating.toStringAsFixed(1);
   String get formattedViewCount => viewCount > 999 ? '${(viewCount / 1000).toStringAsFixed(1)}k' : viewCount.toString();
 
   @override
@@ -115,6 +109,21 @@ class TestItem {
 
   @override
   int get hashCode => id.hashCode;
+
+  static double _sanitizeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) {
+      return value.isNaN || value.isInfinite ? 0.0 : value;
+    }
+    if (value is int) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed?.isNaN == false && parsed?.isInfinite == false ? parsed! : 0.0;
+    }
+    return 0.0;
+  }
 
   factory TestItem.fromJson(Map<String, dynamic> json) {
     BookLevel level;
@@ -139,13 +148,6 @@ class TestItem {
       );
     } else {
       category = TestCategory.practice;
-    }
-
-    IconData icon;
-    if (json['iconCodePoint'] != null) {
-      icon = _iconMapping[json['iconCodePoint']] ?? Icons.quiz;
-    } else {
-      icon = Icons.quiz;
     }
 
     DateTime? createdAt;
@@ -191,16 +193,15 @@ class TestItem {
       level: level,
       category: category,
       language: json['language'] as String? ?? 'Korean',
-      icon: icon,
       creatorUid: json['creatorUid'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
       isPublished: json['isPublished'] as bool? ?? true,
       metadata: json['metadata'] as Map<String, dynamic>?,
       viewCount: json['viewCount'] as int? ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      rating: _sanitizeDouble(json['rating']),
       ratingCount: json['ratingCount'] as int? ?? 0,
-      popularity: (json['popularity'] as num?)?.toDouble() ?? 0.0,
+      popularity: _sanitizeDouble(json['popularity']),
     );
   }
 
@@ -217,28 +218,16 @@ class TestItem {
       'level': level.toString().split('.').last,
       'category': category.toString().split('.').last,
       'language': language,
-      'iconCodePoint': icon.codePoint,
-      'iconFontFamily': icon.fontFamily,
-      'iconFontPackage': icon.fontPackage,
       'creatorUid': creatorUid,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'updatedAt': updatedAt?.millisecondsSinceEpoch,
       'isPublished': isPublished,
       'metadata': metadata,
       'viewCount': viewCount,
-      'rating': rating,
+      'rating': rating.isNaN || rating.isInfinite ? 0.0 : rating,
       'ratingCount': ratingCount,
-      'popularity': popularity,
+      'popularity': popularity.isNaN || popularity.isInfinite ? 0.0 : popularity,
     };
   }
 
-  static final Map<int, IconData> _iconMapping = {
-    Icons.quiz.codePoint: Icons.quiz,
-    Icons.school.codePoint: Icons.school,
-    Icons.assignment.codePoint: Icons.assignment,
-    Icons.fact_check.codePoint: Icons.fact_check,
-    Icons.psychology.codePoint: Icons.psychology,
-    Icons.edit_note.codePoint: Icons.edit_note,
-    Icons.help_outline.codePoint: Icons.help_outline,
-  };
 }

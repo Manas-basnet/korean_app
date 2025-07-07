@@ -94,7 +94,7 @@ class _TestRatingDialogState extends State<TestRatingDialog>
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final maxHeight = MediaQuery.of(context).size.height * 0.8;
+                final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
                 
                 return ConstrainedBox(
                   constraints: BoxConstraints(

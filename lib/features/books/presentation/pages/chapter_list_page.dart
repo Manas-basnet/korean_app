@@ -195,7 +195,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
   Widget _buildChapterListScreen(BookItem book) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,

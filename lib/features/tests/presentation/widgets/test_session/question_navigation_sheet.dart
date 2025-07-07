@@ -18,7 +18,7 @@ class QuestionNavigationSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     
     // Account for header height and padding when calculating max height
@@ -167,7 +167,7 @@ class QuestionNavigationSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * (isLandscape ? 0.9 : 0.8),
+        maxHeight: MediaQuery.sizeOf(context).height * (isLandscape ? 0.9 : 0.8),
       ),
       builder: (context) => QuestionNavigationSheet(
         session: session,

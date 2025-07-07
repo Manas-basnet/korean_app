@@ -151,18 +151,15 @@ class _BookCardHeader extends StatelessWidget {
       return _OptimizedBookImage(
         imageUrl: book.imageUrl!,
         imagePath: book.imagePath,
-        icon: book.icon,
         colorScheme: colorScheme,
       );
     } else if (book.imagePath != null && book.imagePath!.isNotEmpty) {
       return _OptimizedBookImage(
         imagePath: book.imagePath,
-        icon: book.icon,
         colorScheme: colorScheme,
       );
     } else {
       return _ImagePlaceholder(
-        icon: book.icon,
         colorScheme: colorScheme,
       );
     }
@@ -172,13 +169,11 @@ class _BookCardHeader extends StatelessWidget {
 class _OptimizedBookImage extends StatelessWidget {
   final String? imageUrl;
   final String? imagePath;
-  final IconData icon;
   final ColorScheme colorScheme;
 
   const _OptimizedBookImage({
     this.imageUrl,
     this.imagePath,
-    required this.icon,
     required this.colorScheme,
   });
 
@@ -192,7 +187,7 @@ class _OptimizedBookImage extends StatelessWidget {
       return _buildNetworkImage();
     }
     
-    return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+    return _ImagePlaceholder(colorScheme: colorScheme);
   }
 
   Widget _buildLocalImage() {
@@ -216,7 +211,7 @@ class _OptimizedBookImage extends StatelessWidget {
             if (imageUrl != null && imageUrl!.isNotEmpty) {
               return _buildNetworkImage();
             }
-            return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+            return _ImagePlaceholder(colorScheme: colorScheme);
           },
         );
       },
@@ -237,12 +232,10 @@ class _OptimizedBookImage extends StatelessWidget {
           maxWidthDiskCache: targetWidth.clamp(100, 200),
           maxHeightDiskCache: targetHeight.clamp(100, 200),
           placeholder: (context, url) => _ImagePlaceholder(
-            icon: icon,
             colorScheme: colorScheme,
             showLoading: true,
           ),
           errorWidget: (context, url, error) => _ImagePlaceholder(
-            icon: icon,
             colorScheme: colorScheme,
           ),
           fadeInDuration: const Duration(milliseconds: 200),
@@ -254,12 +247,10 @@ class _OptimizedBookImage extends StatelessWidget {
 }
 
 class _ImagePlaceholder extends StatelessWidget {
-  final IconData icon;
   final ColorScheme colorScheme;
   final bool showLoading;
 
   const _ImagePlaceholder({
-    required this.icon,
     required this.colorScheme,
     this.showLoading = false,
   });
@@ -281,7 +272,7 @@ class _ImagePlaceholder extends StatelessWidget {
         children: [
           Center(
             child: Icon(
-              icon,
+              Icons.image_outlined,
               size: 28,
               color: Colors.white.withValues(alpha: 0.9),
             ),

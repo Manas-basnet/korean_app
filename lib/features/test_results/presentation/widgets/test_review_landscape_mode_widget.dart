@@ -184,7 +184,7 @@ class TestReviewLandscapeModeWidget extends StatelessWidget {
   Widget _buildResponsiveAnswerOptions(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final screenHeight = MediaQuery.of(context).size.height;
+        final screenHeight = MediaQuery.sizeOf(context).height;
         final availableHeight = constraints.maxHeight;
         
         final isSmallScreen = screenHeight < 400;

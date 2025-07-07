@@ -23,7 +23,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     
     return Container(
       margin: EdgeInsets.all(screenSize.width * 0.04),
@@ -277,7 +277,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
       ),
       child: Center(
         child: Icon(
-          book.icon,
+          Icons.image_rounded,
           size: 48,
           color: Colors.white.withValues(alpha: 0.9),
         ),
@@ -321,7 +321,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
   }
 
   Widget _buildChaptersList(BuildContext context, Size screenSize, ThemeData theme, ColorScheme colorScheme) {
-    final maxChaptersToShow = 3;
+    const maxChaptersToShow = 3;
     final chaptersToShow = book.chapters.take(maxChaptersToShow).toList();
     final hasMoreChapters = book.chapters.length > maxChaptersToShow;
     

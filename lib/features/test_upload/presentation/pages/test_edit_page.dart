@@ -34,7 +34,6 @@ class _TestEditPageState extends State<TestEditPage> {
   BookLevel _selectedLevel = BookLevel.beginner;
   TestCategory _selectedCategory = TestCategory.practice;
   String _selectedLanguage = 'Korean';
-  IconData _selectedIcon = Icons.quiz;
   File? _selectedImage;
   String? _currentImageUrl;
   bool _isPublished = true;
@@ -108,7 +107,6 @@ class _TestEditPageState extends State<TestEditPage> {
       _selectedLevel = test.level;
       _selectedCategory = test.category;
       _selectedLanguage = test.language;
-      _selectedIcon = test.icon;
       _currentImageUrl = test.imageUrl;
       _isPublished = test.isPublished;
       _questions = List.from(test.questions);
@@ -1026,7 +1024,6 @@ class _TestEditPageState extends State<TestEditPage> {
         level: _selectedLevel,
         category: _selectedCategory,
         language: _selectedLanguage,
-        icon: _selectedIcon,
         isPublished: _isPublished,
         updatedAt: DateTime.now(),
         imageUrl: _selectedImage != null ? null : _currentImageUrl,

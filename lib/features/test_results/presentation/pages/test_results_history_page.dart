@@ -484,7 +484,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
   Widget _buildLoadingView() {
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.4,
+        height: MediaQuery.sizeOf(context).height * 0.4,
         child: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -499,7 +499,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverToBoxAdapter(
       child: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.4,
+        height: MediaQuery.sizeOf(context).height * 0.4,
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -567,7 +567,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverToBoxAdapter(
       child: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.4,
+        height: MediaQuery.sizeOf(context).height * 0.4,
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -638,7 +638,7 @@ Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverToBoxAdapter(
       child: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.3,
+        height: MediaQuery.sizeOf(context).height * 0.3,
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

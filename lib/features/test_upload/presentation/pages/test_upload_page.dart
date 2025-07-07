@@ -32,7 +32,6 @@ class _TestUploadPageState extends State<TestUploadPage> {
   BookLevel _selectedLevel = BookLevel.beginner;
   TestCategory _selectedCategory = TestCategory.practice;
   final String _selectedLanguage = 'Korean';
-  final IconData _selectedIcon = Icons.quiz;
   File? _selectedImage;
   bool _isPublished = true;
   
@@ -858,7 +857,6 @@ class _TestUploadPageState extends State<TestUploadPage> {
         level: _selectedLevel,
         category: _selectedCategory,
         language: _selectedLanguage,
-        icon: _selectedIcon,
         creatorUid: authState.user.uid,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

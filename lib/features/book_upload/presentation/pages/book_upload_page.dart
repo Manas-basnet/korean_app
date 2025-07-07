@@ -30,7 +30,6 @@ class _BookUploadPageState extends State<BookUploadPage> {
   BookLevel _selectedLevel = BookLevel.beginner;
   CourseCategory _selectedCategory = CourseCategory.korean;
   final String _selectedLanguage = 'Korean';
-  final IconData _selectedIcon = Icons.book;
   File? _selectedImage;
   bool _isPublished = true;
   
@@ -802,7 +801,6 @@ class _BookUploadPageState extends State<BookUploadPage> {
         level: _selectedLevel,
         category: _selectedCategory,
         language: _selectedLanguage,
-        icon: _selectedIcon,
         creatorUid: authState.user.uid,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

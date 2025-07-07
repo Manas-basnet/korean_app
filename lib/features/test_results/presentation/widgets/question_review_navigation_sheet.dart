@@ -21,7 +21,7 @@ class TestReviewQuestionNavigationSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     
     const headerHeight = 80.0;
@@ -182,7 +182,7 @@ class TestReviewQuestionNavigationSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * (isLandscape ? 0.9 : 0.8),
+        maxHeight: MediaQuery.sizeOf(context).height * (isLandscape ? 0.9 : 0.8),
       ),
       builder: (context) => TestReviewQuestionNavigationSheet(
         testResult: testResult,

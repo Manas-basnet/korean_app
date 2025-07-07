@@ -386,7 +386,7 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
                       audioUrl: audioTrack.audioUrl,
                       audioPath: audioTrack.audioPath,
                       label: audioTrack.title,
-                      isCompact: true,
+                      // isCompact: true,
                     ),
                   ],
                 ],

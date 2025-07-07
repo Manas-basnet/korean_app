@@ -32,7 +32,6 @@ class _BookEditPageState extends State<BookEditPage> {
   BookLevel _selectedLevel = BookLevel.beginner;
   CourseCategory _selectedCategory = CourseCategory.korean;
   String _selectedLanguage = 'Korean';
-  IconData _selectedIcon = Icons.book;
   File? _selectedImage;
   String? _currentImageUrl;
   bool _isPublished = true;
@@ -102,7 +101,6 @@ class _BookEditPageState extends State<BookEditPage> {
       _selectedLevel = book.level;
       _selectedCategory = book.category;
       _selectedLanguage = book.language;
-      _selectedIcon = book.icon;
       _currentImageUrl = book.imageUrl;
       _isPublished = book.isPublished;
       _chapters = List.from(book.chapters);
@@ -947,7 +945,6 @@ class _BookEditPageState extends State<BookEditPage> {
         level: _selectedLevel,
         category: _selectedCategory,
         language: _selectedLanguage,
-        icon: _selectedIcon,
         isPublished: _isPublished,
         updatedAt: DateTime.now(),
         imageUrl: _selectedImage != null ? null : _currentImageUrl,

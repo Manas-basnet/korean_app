@@ -150,18 +150,15 @@ class _TestCardHeader extends StatelessWidget {
       return _OptimizedTestImage(
         imageUrl: test.imageUrl!,
         imagePath: test.imagePath,
-        icon: test.icon,
         colorScheme: colorScheme,
       );
     } else if (test.imagePath != null && test.imagePath!.isNotEmpty) {
       return _OptimizedTestImage(
         imagePath: test.imagePath,
-        icon: test.icon,
         colorScheme: colorScheme,
       );
     } else {
       return _ImagePlaceholder(
-        icon: test.icon,
         colorScheme: colorScheme,
       );
     }
@@ -171,13 +168,11 @@ class _TestCardHeader extends StatelessWidget {
 class _OptimizedTestImage extends StatelessWidget {
   final String? imageUrl;
   final String? imagePath;
-  final IconData icon;
   final ColorScheme colorScheme;
 
   const _OptimizedTestImage({
     this.imageUrl,
     this.imagePath,
-    required this.icon,
     required this.colorScheme,
   });
 
@@ -191,7 +186,7 @@ class _OptimizedTestImage extends StatelessWidget {
       return _buildNetworkImage();
     }
     
-    return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+    return _ImagePlaceholder(colorScheme: colorScheme);
   }
 
   Widget _buildLocalImage() {
@@ -215,7 +210,7 @@ class _OptimizedTestImage extends StatelessWidget {
             if (imageUrl != null && imageUrl!.isNotEmpty) {
               return _buildNetworkImage();
             }
-            return _ImagePlaceholder(icon: icon, colorScheme: colorScheme);
+            return _ImagePlaceholder(colorScheme: colorScheme);
           },
         );
       },
@@ -236,12 +231,10 @@ class _OptimizedTestImage extends StatelessWidget {
           maxWidthDiskCache: targetWidth.clamp(100, 200),
           maxHeightDiskCache: targetHeight.clamp(100, 200),
           placeholder: (context, url) => _ImagePlaceholder(
-            icon: icon,
             colorScheme: colorScheme,
             showLoading: true,
           ),
           errorWidget: (context, url, error) => _ImagePlaceholder(
-            icon: icon,
             colorScheme: colorScheme,
           ),
           fadeInDuration: const Duration(milliseconds: 200),
@@ -253,12 +246,10 @@ class _OptimizedTestImage extends StatelessWidget {
 }
 
 class _ImagePlaceholder extends StatelessWidget {
-  final IconData icon;
   final ColorScheme colorScheme;
   final bool showLoading;
 
   const _ImagePlaceholder({
-    required this.icon,
     required this.colorScheme,
     this.showLoading = false,
   });
@@ -280,7 +271,7 @@ class _ImagePlaceholder extends StatelessWidget {
         children: [
           Center(
             child: Icon(
-              icon,
+              Icons.image_outlined,
               size: 28,
               color: Colors.white.withValues(alpha: 0.9),
             ),

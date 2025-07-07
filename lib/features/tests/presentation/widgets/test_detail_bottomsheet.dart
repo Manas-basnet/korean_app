@@ -22,7 +22,7 @@ class TestDetailsBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     
     return Container(
       margin: EdgeInsets.all(screenSize.width * 0.04),
@@ -259,7 +259,7 @@ class TestDetailsBottomSheet extends StatelessWidget {
       ),
       child: Center(
         child: Icon(
-          test.icon,
+          Icons.image_rounded,
           size: 48,
           color: Colors.white.withValues(alpha: 0.9),
         ),

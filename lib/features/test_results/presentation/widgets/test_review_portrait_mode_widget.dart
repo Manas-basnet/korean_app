@@ -206,7 +206,7 @@ class _TestReviewPortraitModeWidgetState extends State<TestReviewPortraitModeWid
   Widget _buildResponsiveContent(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final screenHeight = MediaQuery.of(context).size.height;
+        final screenHeight = MediaQuery.sizeOf(context).height;
         final availableHeight = constraints.maxHeight;
         
         final isSmallScreen = screenHeight < 700;

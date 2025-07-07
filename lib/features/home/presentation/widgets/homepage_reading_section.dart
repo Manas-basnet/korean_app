@@ -455,7 +455,7 @@ class _RecentBookCard extends StatelessWidget {
     }
     
     return Icon(
-      bookItem?.icon ?? Icons.library_books_rounded,
+      Icons.library_books_rounded,
       size: 40,
       color: colorScheme.onSurfaceVariant,
     );

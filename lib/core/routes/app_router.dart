@@ -39,6 +39,7 @@ import 'package:korean_language_app/features/book_upload/presentation/bloc/book_
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_upload_page.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/book_edit_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/books_page.dart';
+import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
 import 'package:korean_language_app/shared/presentation/update/widgets/update_bottomsheet.dart';
 import 'package:korean_language_app/shared/presentation/widgets/splash/splash_screen.dart';
@@ -468,23 +469,76 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final location = GoRouterState.of(context).uri.path;
 
-    // Hide bottom nav for certain pages
     final shouldHideBottomNav = location.startsWith('/tests/taking') ||
         location.startsWith('/book/') ||
         location == '/test-result' ||
         location == '/test-review';
 
-    return BlocListener<UpdateCubit, UpdateState>(
-      listener: (context, state) {
-        if (state.status == AppUpdateStatus.available) {
-          showUpdateBottomSheet(context);
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<UpdateCubit, UpdateState>(
+          listener: (context, state) {
+            if (state.status == AppUpdateStatus.available) {
+              showUpdateBottomSheet(context);
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         body: navigationShell,
-        bottomNavigationBar: shouldHideBottomNav
-            ? null
-            : BottomNavigationBar(
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BlocBuilder<ConnectivityCubit, ConnectivityState>(
+              builder: (context, state) {
+                if (state is ConnectivityDisconnected) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.error.withValues(alpha: 0.9),
+                          colorScheme.error,
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 2,
+                          offset: const Offset(0, -1),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.wifi_off_rounded,
+                          color: colorScheme.onError,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'No Internet Connection',
+                          style: TextStyle(
+                            color: colorScheme.onError,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            if (!shouldHideBottomNav)
+              BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
                 backgroundColor: colorScheme.surface,
                 selectedItemColor: colorScheme.primary,
@@ -512,6 +566,8 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
                   ),
                 ],
               ),
+          ],
+        ),
       ),
     );
   }

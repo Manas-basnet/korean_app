@@ -184,7 +184,6 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
     return AudioPlayerWidget(
       audioPath: path,
       label: label,
-      height: height,
     );
   }
 
@@ -192,7 +191,6 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
     return AudioPlayerWidget(
       audioUrl: url,
       label: label,
-      height: height,
     );
   }
 

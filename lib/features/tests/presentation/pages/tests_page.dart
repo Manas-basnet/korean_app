@@ -9,7 +9,6 @@ import 'package:korean_language_app/features/tests/presentation/widgets/sort_bot
 import 'package:korean_language_app/features/tests/presentation/widgets/test_detail_bottomsheet.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/enums/test_sort_type.dart';
-import 'package:korean_language_app/shared/presentation/connectivity/bloc/connectivity_cubit.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/presentation/widgets/errors/error_widget.dart';
@@ -55,7 +54,6 @@ class _TestsPageState extends State<TestsPage> {
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _testsCubit.loadInitialTests();
-      context.read<ConnectivityCubit>().checkConnectivity();
       setState(() {
         _isInitialized = true;
       });
@@ -214,36 +212,18 @@ class _TestsPageState extends State<TestsPage> {
         ),
         child: const Icon(Icons.add),
       ),
-      body: BlocBuilder<ConnectivityCubit, ConnectivityState>(
-        builder: (context, connectivityState) {
-          final bool isOffline = connectivityState is ConnectivityDisconnected;
-          
-          return RefreshIndicator(
-            onRefresh: _refreshData,
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              cacheExtent: 600,
-              slivers: [
-                if (isOffline)
-                  SliverToBoxAdapter(
-                    child: ErrorView(
-                      message: '',
-                      errorType: FailureType.network,
-                      onRetry: () {
-                        context.read<ConnectivityCubit>().checkConnectivity();
-                      },
-                      isCompact: true,
-                    ),
-                  ),
-                
-                _buildSliverAppBar(theme, colorScheme),
-                _buildSliverContent(isOffline),
-              ],
-            ),
-          );
-        },
-      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          cacheExtent: 600,
+          slivers: [                
+            _buildSliverAppBar(theme, colorScheme),
+            _buildSliverContent(),
+          ],
+        ),
+      )
     );
   }
 
@@ -451,7 +431,7 @@ class _TestsPageState extends State<TestsPage> {
     );
   }
   
-  Widget _buildSliverContent(bool isOffline) {
+  Widget _buildSliverContent() {
     return BlocConsumer<TestsCubit, TestsState>(
       listener: (context, state) {
         final operation = state.currentOperation;
@@ -487,29 +467,7 @@ class _TestsPageState extends State<TestsPage> {
         }
       },
       builder: (context, state) {
-        final screenSize = MediaQuery.of(context).size;
-        
-        if (isOffline && state.tests.isEmpty && state.isLoading) {
-          return SliverToBoxAdapter(
-            child: SizedBox(
-              height: screenSize.height * 0.7,
-              child: ErrorView(
-                message: '',
-                errorType: FailureType.network,
-                onRetry: () {
-                  context.read<ConnectivityCubit>().checkConnectivity();
-                  if (context.read<ConnectivityCubit>().state is ConnectivityConnected) {
-                    if (_selectedCategory == TestCategory.all) {
-                      _testsCubit.loadInitialTests(sortType: _selectedSortType);
-                    } else {
-                      _testsCubit.loadTestsByCategory(_selectedCategory, sortType: _selectedSortType);
-                    }
-                  }
-                },
-              ),
-            ),
-          );
-        }
+        final screenSize = MediaQuery.sizeOf(context);
         
         if (state.isLoading && state.tests.isEmpty) {
           return SliverToBoxAdapter(
@@ -682,7 +640,7 @@ class _TestsPageState extends State<TestsPage> {
   Widget _buildEmptyTestsView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.sizeOf(context);
     
     return Container(
       width: double.infinity,
