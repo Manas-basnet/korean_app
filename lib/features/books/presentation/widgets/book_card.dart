@@ -62,26 +62,25 @@ class _BookCardContainer extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    return Card(
-      elevation: 1,
-      shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
-          width: 0.5,
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
         ),
       ),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: 45,
-              child: _BookCardHeader(
+              flex: 7,
+              child: _BookCover(
                 book: book,
                 canEdit: canEdit,
                 onEdit: onEdit,
@@ -92,8 +91,8 @@ class _BookCardContainer extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 55,
-              child: _BookCardContent(
+              flex: 3,
+              child: _BookInfo(
                 book: book,
                 theme: theme,
               ),
@@ -105,7 +104,7 @@ class _BookCardContainer extends StatelessWidget {
   }
 }
 
-class _BookCardHeader extends StatelessWidget {
+class _BookCover extends StatelessWidget {
   final BookItem book;
   final bool canEdit;
   final VoidCallback? onEdit;
@@ -114,7 +113,7 @@ class _BookCardHeader extends StatelessWidget {
   final VoidCallback onTap;
   final ColorScheme colorScheme;
 
-  const _BookCardHeader({
+  const _BookCover({
     required this.book,
     required this.canEdit,
     this.onEdit,
@@ -126,52 +125,67 @@ class _BookCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildImageSection(context),
-        if (canEdit)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: _MenuButton(
-              onEdit: onEdit,
-              onDelete: onDelete,
-              onViewDetails: onViewDetails,
-              onTap: onTap,
-              colorScheme: colorScheme,
-            ),
-          ),
-      ],
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildCoverImage(context),
+            if (canEdit)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: _MenuButton(
+                  onEdit: onEdit,
+                  onDelete: onDelete,
+                  onViewDetails: onViewDetails,
+                  onTap: onTap,
+                  colorScheme: colorScheme,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildImageSection(BuildContext context) {
+  Widget _buildCoverImage(BuildContext context) {
     if (book.imageUrl != null && book.imageUrl!.isNotEmpty) {
-      return _OptimizedBookImage(
+      return _BookCoverImage(
         imageUrl: book.imageUrl!,
         imagePath: book.imagePath,
         colorScheme: colorScheme,
       );
     } else if (book.imagePath != null && book.imagePath!.isNotEmpty) {
-      return _OptimizedBookImage(
+      return _BookCoverImage(
         imagePath: book.imagePath,
         colorScheme: colorScheme,
       );
     } else {
-      return _ImagePlaceholder(
+      return _BookPlaceholder(
+        title: book.title,
+        category: book.category,
         colorScheme: colorScheme,
       );
     }
   }
 }
 
-class _OptimizedBookImage extends StatelessWidget {
+class _BookCoverImage extends StatelessWidget {
   final String? imageUrl;
   final String? imagePath;
   final ColorScheme colorScheme;
 
-  const _OptimizedBookImage({
+  const _BookCoverImage({
     this.imageUrl,
     this.imagePath,
     required this.colorScheme,
@@ -180,116 +194,144 @@ class _OptimizedBookImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imagePath != null && imagePath!.isNotEmpty) {
-      return _buildLocalImage();
+      return Image.file(
+        File(imagePath!),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          if (imageUrl != null && imageUrl!.isNotEmpty) {
+            return _buildNetworkImage();
+          }
+          return Container(
+            color: colorScheme.surfaceContainerHigh,
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: colorScheme.onSurfaceVariant,
+              size: 32,
+            ),
+          );
+        },
+      );
     }
     
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return _buildNetworkImage();
     }
     
-    return _ImagePlaceholder(colorScheme: colorScheme);
-  }
-
-  Widget _buildLocalImage() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Image.file(
-          File(imagePath!),
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          cacheWidth: (constraints.maxWidth * 2).toInt(),
-          cacheHeight: (constraints.maxHeight * 2).toInt(),
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 150),
-              child: child,
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            if (imageUrl != null && imageUrl!.isNotEmpty) {
-              return _buildNetworkImage();
-            }
-            return _ImagePlaceholder(colorScheme: colorScheme);
-          },
-        );
-      },
+    return Container(
+      color: colorScheme.surfaceContainerHigh,
+      child: Icon(
+        Icons.image_outlined,
+        color: colorScheme.onSurfaceVariant,
+        size: 32,
+      ),
     );
   }
 
   Widget _buildNetworkImage() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final targetWidth = (constraints.maxWidth * 2).toInt();
-        final targetHeight = (constraints.maxHeight * 2).toInt();
-        
-        return CachedNetworkImage(
-          imageUrl: imageUrl!,
-          fit: BoxFit.cover,
-          memCacheWidth: targetWidth.clamp(100, 200),
-          memCacheHeight: targetHeight.clamp(100, 200),
-          maxWidthDiskCache: targetWidth.clamp(100, 200),
-          maxHeightDiskCache: targetHeight.clamp(100, 200),
-          placeholder: (context, url) => _ImagePlaceholder(
-            colorScheme: colorScheme,
-            showLoading: true,
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: colorScheme.surfaceContainerHigh,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary,
+            ),
           ),
-          errorWidget: (context, url, error) => _ImagePlaceholder(
-            colorScheme: colorScheme,
-          ),
-          fadeInDuration: const Duration(milliseconds: 200),
-          fadeOutDuration: const Duration(milliseconds: 100),
-        );
-      },
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: colorScheme.surfaceContainerHigh,
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: colorScheme.onSurfaceVariant,
+          size: 32,
+        ),
+      ),
     );
   }
 }
 
-class _ImagePlaceholder extends StatelessWidget {
+class _BookPlaceholder extends StatelessWidget {
+  final String title;
+  final CourseCategory category;
   final ColorScheme colorScheme;
-  final bool showLoading;
 
-  const _ImagePlaceholder({
+  const _BookPlaceholder({
+    required this.title,
+    required this.category,
     required this.colorScheme,
-    this.showLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    Color spineColor;
+    switch (category) {
+      case CourseCategory.korean:
+        spineColor = Colors.blue.shade600;
+        break;
+      case CourseCategory.global:
+        spineColor = Colors.green.shade600;
+        break;
+      case CourseCategory.nepali:
+        spineColor = Colors.red.shade600;
+        break;
+      case CourseCategory.test:
+        spineColor = Colors.purple.shade600;
+        break;
+      default:
+        spineColor = colorScheme.primary;
+    }
+    
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.8),
-            colorScheme.primary.withValues(alpha: 0.6),
-          ],
-        ),
-      ),
+      color: spineColor.withValues(alpha: 0.1),
       child: Stack(
         children: [
-          Center(
-            child: Icon(
-              Icons.image_outlined,
-              size: 28,
-              color: Colors.white.withValues(alpha: 0.9),
+          Container(
+            width: 8,
+            color: spineColor,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Spacer(),
+                Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: spineColor,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: spineColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    category.name.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          if (showLoading)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -313,75 +355,66 @@ class _MenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: PopupMenuButton<String>(
-        icon: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.more_vert_rounded,
-            color: Colors.white,
-            size: 16,
+    return PopupMenuButton<String>(
+      icon: Icon(
+        Icons.more_vert,
+        size: 16,
+        color: colorScheme.onSurface,
+      ),
+      iconSize: 16,
+      padding: const EdgeInsets.all(4),
+      onSelected: (value) => _handleMenuAction(context, value),
+      itemBuilder: (context) => [
+        const PopupMenuItem<String>(
+          value: 'read',
+          child: Row(
+            children: [
+              Icon(Icons.menu_book_outlined, size: 16),
+              SizedBox(width: 8),
+              Text('Read'),
+            ],
           ),
         ),
-        onSelected: (value) => _handleMenuAction(context, value),
-        itemBuilder: (context) => [
+        const PopupMenuItem<String>(
+          value: 'details',
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, size: 16),
+              SizedBox(width: 8),
+              Text('Details'),
+            ],
+          ),
+        ),
+        if (onEdit != null)
           const PopupMenuItem<String>(
-            value: 'read',
+            value: 'edit',
             child: Row(
               children: [
-                Icon(Icons.menu_book_rounded, size: 18),
+                Icon(Icons.edit_outlined, size: 16),
                 SizedBox(width: 8),
-                Text('Start Reading'),
+                Text('Edit'),
               ],
             ),
           ),
-          const PopupMenuItem<String>(
-            value: 'details',
+        if (onDelete != null)
+          PopupMenuItem<String>(
+            value: 'delete',
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, size: 18),
-                SizedBox(width: 8),
-                Text('View Details'),
+                Icon(
+                  Icons.delete_outline, 
+                  size: 16, 
+                  color: colorScheme.error
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Delete',
+                  style: TextStyle(color: colorScheme.error),
+                ),
               ],
             ),
           ),
-          if (onEdit != null)
-            const PopupMenuItem<String>(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_rounded, size: 18),
-                  SizedBox(width: 8),
-                  Text('Edit'),
-                ],
-              ),
-            ),
-          if (onDelete != null)
-            PopupMenuItem<String>(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.delete_outline_rounded, 
-                    size: 18, 
-                    color: colorScheme.error
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Delete',
-                    style: TextStyle(color: colorScheme.error),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -403,11 +436,11 @@ class _MenuButton extends StatelessWidget {
   }
 }
 
-class _BookCardContent extends StatelessWidget {
+class _BookInfo extends StatelessWidget {
   final BookItem book;
   final ThemeData theme;
 
-  const _BookCardContent({
+  const _BookInfo({
     required this.book,
     required this.theme,
   });
@@ -415,254 +448,57 @@ class _BookCardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.sizeOf(context);
-    final isSmallScreen = screenSize.height < 700;
     
-    final horizontalPadding = screenSize.width * 0.025;
-    final verticalPadding = screenSize.height * 0.008;
-    final titleToContentGap = screenSize.height * 0.004;
-    final statsToChipGap = screenSize.height * 0.002;
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final availableWidth = constraints.maxWidth;
-        
-        final paddingHeight = verticalPadding * 2;
-        final gapsHeight = titleToContentGap + statsToChipGap;
-        final contentHeight = availableHeight - paddingHeight - gapsHeight;
-        
-        final titleFontSize = isSmallScreen 
-            ? (availableWidth * 0.035).clamp(10.0, 14.0)
-            : (availableWidth * 0.04).clamp(12.0, 16.0);
-            
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: verticalPadding,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: contentHeight * 0.45,
-                  minHeight: contentHeight * 0.25,
-                ),
-                child: Text(
-                  book.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                    fontSize: titleFontSize,
-                    height: 1.1,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              
-              SizedBox(height: titleToContentGap),
-              
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, contentConstraints) {
-                    final remainingHeight = contentConstraints.maxHeight;
-                    
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Flexible(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: remainingHeight - statsToChipGap - (screenSize.height * 0.022),
-                            ),
-                            child: _buildStatsSection(colorScheme, availableWidth, isSmallScreen),
-                          ),
-                        ),
-                        
-                        SizedBox(height: statsToChipGap),
-                        
-                        _CategoryChip(
-                          category: book.category,
-                          colorScheme: colorScheme,
-                          theme: theme,
-                          screenWidth: availableWidth,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatsSection(ColorScheme colorScheme, double availableWidth, bool isSmallScreen) {
-    final iconSize = isSmallScreen 
-        ? (availableWidth * 0.035).clamp(10.0, 12.0)
-        : (availableWidth * 0.04).clamp(12.0, 14.0);
-    final fontSize = isSmallScreen 
-        ? (availableWidth * 0.028).clamp(9.0, 11.0)
-        : (availableWidth * 0.032).clamp(10.0, 12.0);
-        
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 7,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _StatRow(
-                icon: Icons.book_outlined,
-                text: '${book.chapterCount}개 챕터',
-                color: colorScheme.onSurfaceVariant,
-                theme: theme,
-                iconSize: iconSize,
-                fontSize: fontSize,
-              ),
-              if (book.totalDuration > 0) ...[
-                SizedBox(height: availableWidth * 0.008),
-                _StatRow(
-                  icon: Icons.access_time_rounded,
-                  text: book.formattedDuration,
-                  color: colorScheme.primary,
-                  theme: theme,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
-                ),
-              ],
-              if (book.rating > 0) ...[
-                SizedBox(height: availableWidth * 0.008),
-                _StatRow(
-                  icon: Icons.star_rounded,
-                  text: book.formattedRating,
-                  color: Colors.amber[600]!,
-                  theme: theme,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
-                ),
-              ],
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Align(
-            alignment: Alignment.topRight,
-            child: _StatRow(
-              icon: Icons.visibility_rounded,
-              text: book.formattedViewCount,
-              color: colorScheme.onSurfaceVariant,
-              theme: theme,
-              iconSize: iconSize,
-              fontSize: fontSize,
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            book.title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+              height: 1.2,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color color;
-  final ThemeData theme;
-  final double iconSize;
-  final double fontSize;
-
-  const _StatRow({
-    required this.icon,
-    required this.text,
-    required this.color,
-    required this.theme,
-    required this.iconSize,
-    required this.fontSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          size: iconSize,
-          color: color,
-        ),
-        SizedBox(width: iconSize * 0.3),
-        Flexible(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-              fontSize: fontSize,
-              height: 1.1,
-            ),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final CourseCategory category;
-  final ColorScheme colorScheme;
-  final ThemeData theme;
-  final double screenWidth;
-  final bool isSmallScreen;
-
-  const _CategoryChip({
-    required this.category,
-    required this.colorScheme,
-    required this.theme,
-    required this.screenWidth,
-    required this.isSmallScreen,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final horizontalPadding = screenWidth * 0.02;
-    final verticalPadding = screenWidth * 0.008;
-    final fontSize = isSmallScreen 
-        ? (screenWidth * 0.025).clamp(8.0, 10.0)
-        : (screenWidth * 0.028).clamp(9.0, 11.0);
-    
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-      ),
-      child: Text(
-        category.name,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-          fontSize: fontSize,
-          height: 1.0,
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                Icons.menu_book_outlined,
+                size: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${book.chapterCount}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              if (book.rating > 0) ...[
+                Icon(
+                  Icons.star,
+                  size: 12,
+                  color: Colors.amber.shade600,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  book.formattedRating,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

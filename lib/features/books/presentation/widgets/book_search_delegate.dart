@@ -358,8 +358,10 @@ class BookSearchDelegate extends SearchDelegate<BookItem?> {
                 close(context, book);
                 onDeleteBook(book);
               } : null,
+              onLongPress: () {
+                onViewDetails(book);
+              },
               onViewDetails: () {
-                close(context, book);
                 onViewDetails(book);
               },
             );

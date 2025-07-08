@@ -175,19 +175,6 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  IconData _getSortTypeIcon(TestSortType sortType) {
-    switch (sortType) {
-      case TestSortType.recent:
-        return Icons.schedule_rounded;
-      case TestSortType.popular:
-        return Icons.trending_up_rounded;
-      case TestSortType.rating:
-        return Icons.star_rounded;
-      case TestSortType.viewCount:
-        return Icons.visibility_rounded;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -228,7 +215,7 @@ class _BooksPageState extends State<BooksPage> {
 
   Widget _buildSliverAppBar(ThemeData theme, ColorScheme colorScheme) {
     return SliverAppBar(
-      expandedHeight: 150,
+      expandedHeight: 140,
       pinned: false,
       floating: true,
       snap: true,
@@ -240,20 +227,12 @@ class _BooksPageState extends State<BooksPage> {
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
           final expandRatio =
-              (constraints.maxHeight - kToolbarHeight) / (140 - kToolbarHeight);
+              (constraints.maxHeight - kToolbarHeight) / (120 - kToolbarHeight);
           final isExpanded = expandRatio > 0.1;
 
           return FlexibleSpaceBar(
             background: Container(
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                    width: 0.5,
-                  ),
-                ),
-              ),
+              color: colorScheme.surface,
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -266,21 +245,31 @@ class _BooksPageState extends State<BooksPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _languageCubit.getLocalizedText(
-                                korean: '도서',
-                                english: 'Books',
-                              ),
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.library_books,
+                                  color: colorScheme.primary,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _languageCubit.getLocalizedText(
+                                    korean: '도서관',
+                                    english: 'Books',
+                                  ),
+                                  style: theme.textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
                             ),
                             Row(
                               children: [
                                 if(kIsWeb)
                                   IconButton(
-                                    icon: const Icon(Icons.refresh),
+                                    icon: const Icon(Icons.refresh_outlined),
                                     onPressed: () {
                                       context.read<BooksCubit>().hardRefresh();
                                     },
@@ -289,43 +278,43 @@ class _BooksPageState extends State<BooksPage> {
                                       english: 'Refresh',
                                     ),
                                     style: IconButton.styleFrom(
-                                      foregroundColor: colorScheme.onSurface,
+                                      foregroundColor: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 IconButton(
-                                  icon: const Icon(Icons.search),
+                                  icon: const Icon(Icons.search_outlined),
                                   onPressed: _showSearchDelegate,
                                   tooltip: _languageCubit.getLocalizedText(
                                     korean: '검색',
                                     english: 'Search',
                                   ),
                                   style: IconButton.styleFrom(
-                                    foregroundColor: colorScheme.onSurface,
+                                    foregroundColor: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.library_books_outlined),
+                                  icon: const Icon(Icons.person_outline),
                                   onPressed: () => context.push('/my-books'),
                                   tooltip: _languageCubit.getLocalizedText(
                                     korean: '내 도서',
                                     english: 'My Books',
                                   ),
                                   style: IconButton.styleFrom(
-                                    foregroundColor: colorScheme.onSurface,
+                                    foregroundColor: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         Row(
                           children: [
                             Expanded(
-                              child: _buildCategoryTabsSliver(theme),
+                              child: _buildCategoryTabs(theme),
                             ),
                             const SizedBox(width: 12),
-                            _buildSortButtonSliver(theme, colorScheme),
+                            _buildSortButton(theme, colorScheme),
                           ],
                         ),
                       ],
@@ -340,9 +329,9 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildCategoryTabsSliver(ThemeData theme) {
+  Widget _buildCategoryTabs(ThemeData theme) {
     return SizedBox(
-      height: 40,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -358,9 +347,9 @@ class _BooksPageState extends State<BooksPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    ? theme.colorScheme.primary
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
@@ -372,9 +361,9 @@ class _BooksPageState extends State<BooksPage> {
                 category.name,
                 style: TextStyle(
                   color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 14,
                 ),
               ),
@@ -385,38 +374,36 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildSortButtonSliver(ThemeData theme, ColorScheme colorScheme) {
-    return GestureDetector(
-      onTap: _showSortBottomSheet,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.3),
-            width: 1,
-          ),
+  Widget _buildSortButton(ThemeData theme, ColorScheme colorScheme) {
+    return OutlinedButton.icon(
+      onPressed: _showSortBottomSheet,
+      icon: Icon(
+        _getSortTypeIcon(_selectedSortType),
+        size: 16,
+      ),
+      label: const Icon(Icons.sort, size: 16),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colorScheme.onSurfaceVariant,
+        side: BorderSide(
+          color: colorScheme.outline.withValues(alpha: 0.3),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _getSortTypeIcon(_selectedSortType),
-              size: 16,
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.sort_rounded,
-              size: 16,
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ],
-        ),
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
       ),
     );
+  }
+  
+  IconData _getSortTypeIcon(TestSortType sortType) {
+    switch (sortType) {
+      case TestSortType.recent:
+        return Icons.schedule_outlined;
+      case TestSortType.popular:
+        return Icons.trending_up_outlined;
+      case TestSortType.rating:
+        return Icons.star_outline;
+      case TestSortType.viewCount:
+        return Icons.visibility_outlined;
+    }
   }
   
   Widget _buildSliverContent() {
@@ -496,8 +483,9 @@ class _BooksPageState extends State<BooksPage> {
     }
     
     final isTablet = screenSize.width > 600;
-    final crossAxisCount = isTablet ? 3 : 2;
-    final childAspectRatio = isTablet ? 0.7 : 0.75;
+    final isMonitor = screenSize.width > 1024;
+    final crossAxisCount = isMonitor ? 4 : isTablet ? 3 : 2;
+    final childAspectRatio = isMonitor ? 0.7 : isTablet ? 0.6 : 0.65;
     
     return SliverList(
       delegate: SliverChildListDelegate([
@@ -510,7 +498,7 @@ class _BooksPageState extends State<BooksPage> {
               crossAxisCount: crossAxisCount,
               childAspectRatio: childAspectRatio,
               crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              mainAxisSpacing: 20,
             ),
             itemCount: state.books.length,
             itemBuilder: (context, index) {
@@ -542,41 +530,25 @@ class _BooksPageState extends State<BooksPage> {
     if (isLoadingMore) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colorScheme.outline.withValues(alpha: 0.2),
-                  width: 1,
-                ),
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    _languageCubit.getLocalizedText(
-                      korean: '더 많은 도서를 불러오는 중...',
-                      english: 'Loading more books...',
-                    ),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _languageCubit.getLocalizedText(
+                korean: '더 많은 도서를 불러오는 중...',
+                english: 'Loading more books...',
+              ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -606,7 +578,7 @@ class _BooksPageState extends State<BooksPage> {
                   const SizedBox(width: 8),
                   Text(
                     _languageCubit.getLocalizedText(
-                      korean: '더 이상 도서가 없습니다',
+                      korean: '무한 도서가 없습니다',
                       english: 'No more books',
                     ),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -637,20 +609,12 @@ class _BooksPageState extends State<BooksPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: screenSize.width * 0.2,
-            height: screenSize.width * 0.2,
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.library_books_outlined,
-              size: screenSize.width * 0.1,
-              color: colorScheme.primary,
-            ),
+          Icon(
+            Icons.library_books_outlined,
+            size: 64,
+            color: colorScheme.onSurfaceVariant,
           ),
-          SizedBox(height: screenSize.height * 0.03),
+          const SizedBox(height: 24),
           Text(
             _languageCubit.getLocalizedText(
               korean: '도서가 없습니다',
@@ -659,22 +623,20 @@ class _BooksPageState extends State<BooksPage> {
             style: theme.textTheme.titleLarge?.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
-              fontSize: screenSize.width * 0.05,
             ),
           ),
-          SizedBox(height: screenSize.height * 0.015),
+          const SizedBox(height: 8),
           Text(
             _languageCubit.getLocalizedText(
-              korean: '새 도서를 만들려면 + 버튼을 누르세요',
-              english: 'Tap the + button to create a new book',
+              korean: '새 도서를 만들어보세요',
+              english: 'Create your first book',
             ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
-              fontSize: screenSize.width * 0.035,
             ),
           ),
-          SizedBox(height: screenSize.height * 0.04),
+          const SizedBox(height: 32),
           FilledButton.icon(
             onPressed: () => context.push(Routes.bookUpload),
             icon: const Icon(Icons.add),
@@ -682,15 +644,6 @@ class _BooksPageState extends State<BooksPage> {
               _languageCubit.getLocalizedText(
                 korean: '도서 만들기',
                 english: 'Create Book',
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenSize.width * 0.06,
-                vertical: screenSize.height * 0.015,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
@@ -770,14 +723,13 @@ class _BooksPageState extends State<BooksPage> {
             english: 'Are you sure you want to delete "${book.title}"? This action cannot be undone.',
           ),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               _languageCubit.getLocalizedText(
                 korean: '취소',
-                english: 'CANCEL',
+                english: 'Cancel',
               ),
             ),
           ),
@@ -789,7 +741,7 @@ class _BooksPageState extends State<BooksPage> {
             child: Text(
               _languageCubit.getLocalizedText(
                 korean: '삭제',
-                english: 'DELETE',
+                english: 'Delete',
               ),
             ),
           ),
