@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
 import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/widgets/book_card.dart';
@@ -165,7 +164,7 @@ class _BooksPageState extends State<BooksPage> {
       delegate: BookSearchDelegate(
         bookSearchCubit: _bookSearchCubit,
         languageCubit: _languageCubit,
-        onBookSelected: _startReading,
+        onBookSelected: _goToChapters,
         checkEditPermission: (book) async {
           return await _booksCubit.canUserEditBook(book);
         },
@@ -519,7 +518,7 @@ class _BooksPageState extends State<BooksPage> {
               return BookCard(
                 book: book,
                 canEdit: true,
-                onTap: () => _startReading(book),
+                onTap: () => _goToChapters(book),
                 onLongPress: () => _viewBookDetails(book),
                 onEdit: () => _editBook(book),
                 onDelete: () => _deleteBook(book),
@@ -700,7 +699,7 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
   
-  void _startReading(BookItem book) async {
+  void _goToChapters(BookItem book) async {
     if (book.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
         korean: '도서 ID가 유효하지 않습니다',
@@ -708,52 +707,7 @@ class _BooksPageState extends State<BooksPage> {
       );
       return;
     }
-
-    _snackBarCubit.showProgressLocalized(
-      korean: '도서를 준비하고 있습니다...',
-      english: 'Preparing book...',
-    );
-
-    try {
-      await _booksCubit.loadBookById(book.id);
-
-      final booksState = _booksCubit.state;
-      final operation = booksState.currentOperation;
-      
-      if (operation.type == BooksOperationType.loadBookById && 
-          operation.status == BooksOperationStatus.completed && 
-          booksState.selectedBook != null) {
-        _snackBarCubit.dismiss();
-        
-        // Navigate to chapter list instead of direct reading
-        context.push(Routes.bookChapters(book.id));
-      } else {
-        String errorMessage;
-        if (booksState.hasError) {
-          errorMessage = booksState.errorType == FailureType.network
-              ? _languageCubit.getLocalizedText(
-                  korean: '오프라인 상태에서는 캐시된 도서만 이용할 수 있습니다',
-                  english: 'Only cached books are available offline',
-                )
-              : booksState.error ?? _languageCubit.getLocalizedText(
-                  korean: '도서를 불러올 수 없습니다',
-                  english: 'Failed to load book',
-                );
-        } else {
-          errorMessage = _languageCubit.getLocalizedText(
-            korean: '도서를 찾을 수 없습니다',
-            english: 'Book not found',
-          );
-        }
-        
-        _snackBarCubit.showError(message: errorMessage);
-      }
-    } catch (e) {
-      _snackBarCubit.showErrorLocalized(
-        korean: '도서를 불러오는 중 오류가 발생했습니다',
-        english: 'Error loading book',
-      );
-    }
+    context.push(Routes.bookChapters(book.id));
   }
     
   void _viewBookDetails(BookItem book) {
@@ -762,7 +716,7 @@ class _BooksPageState extends State<BooksPage> {
       context, 
       book: book,
       languageCubit: _languageCubit,
-      onStartReading: () => _startReading(book),
+      onStartReading: () => _goToChapters(book),
     );
   }
   

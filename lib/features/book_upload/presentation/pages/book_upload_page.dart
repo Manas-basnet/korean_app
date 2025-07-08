@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/features/book_upload/presentation/pages/chapter_editor_page.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/bloc/pdf_extractor_cubit.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/presentation/pages/pdf_extractor_page.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
@@ -528,23 +532,39 @@ class _BookUploadPageState extends State<BookUploadPage> {
                 const SizedBox(height: 8),
                 Text(
                   _languageCubit.getLocalizedText(
-                    korean: '첫 번째 챕터를 추가해보세요',
-                    english: 'Add your first chapter to get started',
+                    korean: '챕터를 추가하거나 PDF에서 추출하세요',
+                    english: 'Add chapters or extract from PDF',
                   ),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _addChapter,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(
-                    _languageCubit.getLocalizedText(
-                      korean: '첫 번째 챕터 추가',
-                      english: 'Add First Chapter',
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _addChapter,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(
+                        _languageCubit.getLocalizedText(
+                          korean: '챕터 추가',
+                          english: 'Add Chapter',
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: _extractFromPdf,
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: Text(
+                        _languageCubit.getLocalizedText(
+                          korean: 'PDF 추출',
+                          english: 'Extract PDF',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -655,21 +675,40 @@ class _BookUploadPageState extends State<BookUploadPage> {
             );
           }),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _addChapter,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(
-                _languageCubit.getLocalizedText(
-                  korean: '챕터 추가',
-                  english: 'Add Chapter',
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addChapter,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(
+                    _languageCubit.getLocalizedText(
+                      korean: '챕터 추가',
+                      english: 'Add Chapter',
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _extractFromPdf,
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: Text(
+                    _languageCubit.getLocalizedText(
+                      korean: 'PDF 추출',
+                      english: 'Extract PDF',
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ],
@@ -700,6 +739,43 @@ class _BookUploadPageState extends State<BookUploadPage> {
         fullscreenDialog: true,
       ),
     );
+  }
+
+  Future<void> _extractFromPdf() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      allowMultiple: false,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final pdfFile = File(result.files.first.path!);
+      
+      if (!mounted) return;
+      
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => BlocProvider<PdfExtractorCubit>(
+            create: (context) => sl<PdfExtractorCubit>(),
+            child: PdfExtractorPage(
+              sourcePdf: pdfFile,
+              onChaptersGenerated: (bookChapters) {
+                setState(() {
+                  _chapters.addAll(bookChapters.map((chapter) => 
+                    chapter.copyWith(order: _chapters.length + bookChapters.indexOf(chapter))));
+                });
+                
+                _snackBarCubit.showSuccessLocalized(
+                  korean: '${bookChapters.length}개의 챕터가 PDF에서 추출되었습니다',
+                  english: '${bookChapters.length} chapters extracted from PDF',
+                );
+              },
+            ),
+          ),
+          fullscreenDialog: true,
+        ),
+      );
+    }
   }
 
   void _editChapter(int index) {
@@ -750,7 +826,6 @@ class _BookUploadPageState extends State<BookUploadPage> {
             onPressed: () {
               setState(() {
                 _chapters.removeAt(index);
-                // Update order for remaining chapters
                 for (int i = 0; i < _chapters.length; i++) {
                   _chapters[i] = _chapters[i].copyWith(order: i);
                 }

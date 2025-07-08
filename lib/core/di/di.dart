@@ -8,6 +8,7 @@ import 'package:korean_language_app/core/di/admin_di.dart';
 import 'package:korean_language_app/core/di/auth_di.dart';
 import 'package:korean_language_app/core/di/books_di.dart';
 import 'package:korean_language_app/core/di/core_di.dart';
+import 'package:korean_language_app/core/di/pdf_extractor_di.dart';
 import 'package:korean_language_app/core/di/profile_di.dart';
 import 'package:korean_language_app/core/di/test_results_di.dart';
 import 'package:korean_language_app/core/di/tests_di.dart';
@@ -27,6 +28,7 @@ Future<void> init() async {
   registerAuthDependencies(sl);
   registerProfileDependencies(sl);
   registerBooksDependencies(sl);
+  registerPdfExtractorDependencies(sl);
   registerAdminDependencies(sl);
   registerTestsDependencies(sl);
   registerUnpublishedTestsDependencies(sl);
