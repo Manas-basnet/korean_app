@@ -60,8 +60,9 @@ class PdfCacheService {
 
   Future<String> cachePdfThumbnailsStreaming(
     String pdfId, 
-    Stream<Uint8List> thumbnailStream
-  ) async {
+    Stream<Uint8List> thumbnailStream, {
+    Function(double)? onProgress,
+  }) async {
     try {
       await _cleanupExpiredCache();
       await _enforceMaxCacheSize();
@@ -81,6 +82,8 @@ class PdfCacheService {
         final thumbnailFile = File('${pdfCacheDir.path}/page_$pageCount.png');
         await thumbnailFile.writeAsBytes(thumbnailBytes);
         totalSize += thumbnailBytes.length;
+        
+        onProgress?.call(pageCount.toDouble());
       }
       
       await _updateCacheMetadata(pdfId, pageCount, totalSize);

@@ -42,6 +42,9 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
   String? _existingPdfUrl;
   String? _existingPdfPath;
   
+  bool _isPickingPdf = false;
+  bool _isPickingImage = false;
+  
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -196,7 +199,9 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
         ),
         const SizedBox(height: 16),
         
-        if (_chapterImage != null)
+        if (_isPickingImage)
+          _buildImageLoadingIndicator()
+        else if (_chapterImage != null)
           _buildNewImageDisplay()
         else if (_hasExistingImage())
           _buildExistingImageDisplay()
@@ -223,13 +228,103 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
         ),
         const SizedBox(height: 16),
         
-        if (_chapterPdf != null)
+        if (_isPickingPdf)
+          _buildPdfLoadingIndicator()
+        else if (_chapterPdf != null)
           _buildNewPdfDisplay()
         else if (_hasExistingPdf())
           _buildExistingPdfDisplay()
         else
           _buildPdfPlaceholder(),
       ],
+    );
+  }
+
+  Widget _buildPdfLoadingIndicator() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.languageCubit.getLocalizedText(
+              korean: 'PDF 파일을 처리하는 중...',
+              english: 'Processing PDF file...',
+            ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.languageCubit.getLocalizedText(
+              korean: '큰 파일의 경우 시간이 걸릴 수 있습니다',
+              english: 'Large files may take longer to process',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageLoadingIndicator() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      height: 160,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.languageCubit.getLocalizedText(
+              korean: '이미지를 처리하는 중...',
+              english: 'Processing image...',
+            ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -386,7 +481,6 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
                       audioUrl: audioTrack.audioUrl,
                       audioPath: audioTrack.audioPath,
                       label: audioTrack.title,
-                      // isCompact: true,
                     ),
                   ],
                 ],
@@ -584,6 +678,22 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                FutureBuilder<int>(
+                  future: _chapterPdf!.length(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final sizeInMB = snapshot.data! / (1024 * 1024);
+                      return Text(
+                        '${sizeInMB.toStringAsFixed(1)} MB',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               ],
             ),
           ),
@@ -642,8 +752,11 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
             ),
           ),
           IconButton(
-            onPressed: _pickPdf,
-            icon: Icon(Icons.edit, color: colorScheme.primary),
+            onPressed: _isPickingPdf ? null : _pickPdf,
+            icon: Icon(
+              Icons.edit, 
+              color: _isPickingPdf ? colorScheme.onSurfaceVariant.withValues(alpha: 0.5) : colorScheme.primary,
+            ),
           ),
           IconButton(
             onPressed: () => setState(() {
@@ -662,7 +775,7 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
     final colorScheme = theme.colorScheme;
     
     return GestureDetector(
-      onTap: _pickPdf,
+      onTap: _isPickingPdf ? null : _pickPdf,
       child: Container(
         height: 120,
         width: double.infinity,
@@ -677,7 +790,9 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
             Icon(
               Icons.picture_as_pdf_outlined,
               size: 40,
-              color: colorScheme.onSurfaceVariant,
+              color: _isPickingPdf 
+                  ? colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
+                  : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 8),
             Text(
@@ -686,7 +801,9 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
                 english: 'Select PDF File',
               ),
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+                color: _isPickingPdf 
+                    ? colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -740,30 +857,91 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
            (_existingPdfPath != null && _existingPdfPath!.isNotEmpty);
   }
 
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   Future<void> _pickImage() async {
-    final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
+    if (_isPickingImage) return;
+    
+    setState(() {
+      _isPickingImage = true;
+    });
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final file = File(image.path);
+        
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        setState(() {
+          _chapterImage = file;
+          _existingImageUrl = null;
+          _existingImagePath = null;
+        });
+      }
+    } catch (e) {
+      widget.snackBarCubit.showErrorLocalized(
+        korean: '이미지 선택 중 오류가 발생했습니다',
+        english: 'Error selecting image',
+      );
+    } finally {
       setState(() {
-        _chapterImage = File(image.path);
-        _existingImageUrl = null;
-        _existingImagePath = null;
+        _isPickingImage = false;
       });
     }
   }
 
   Future<void> _pickPdf() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      allowMultiple: false,
-    );
+    if (_isPickingPdf) return;
+    
+    setState(() {
+      _isPickingPdf = true;
+    });
 
-    if (result != null && result.files.isNotEmpty) {
-      final file = File(result.files.first.path!);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = File(result.files.first.path!);
+        
+        final fileSize = await file.length();
+        if (fileSize > 50 * 1024 * 1024) {
+          widget.snackBarCubit.showErrorLocalized(
+            korean: 'PDF 파일이 너무 큽니다 (최대 50MB)',
+            english: 'PDF file is too large (max 50MB)',
+          );
+          return;
+        }
+        
+        await Future.delayed(const Duration(milliseconds: 800));
+        
+        setState(() {
+          _chapterPdf = file;
+          _existingPdfUrl = null;
+          _existingPdfPath = null;
+        });
+        
+        widget.snackBarCubit.showSuccessLocalized(
+          korean: 'PDF 파일이 성공적으로 선택되었습니다 (${_formatFileSize(fileSize)})',
+          english: 'PDF file selected successfully (${_formatFileSize(fileSize)})',
+        );
+      }
+    } catch (e) {
+      widget.snackBarCubit.showErrorLocalized(
+        korean: 'PDF 파일 선택 중 오류가 발생했습니다',
+        english: 'Error selecting PDF file',
+      );
+    } finally {
       setState(() {
-        _chapterPdf = file;
-        _existingPdfUrl = null;
-        _existingPdfPath = null;
+        _isPickingPdf = false;
       });
     }
   }
@@ -806,7 +984,6 @@ class _ChapterEditorPageState extends State<ChapterEditorPage> {
             onPressed: () {
               setState(() {
                 _audioTracks.removeAt(index);
-                // Update order for remaining tracks
                 for (int i = 0; i < _audioTracks.length; i++) {
                   _audioTracks[i] = _audioTracks[i].copyWith(order: i);
                 }

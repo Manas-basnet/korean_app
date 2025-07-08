@@ -5,6 +5,7 @@ import 'package:korean_language_app/shared/models/book_related/book_chapter.dart
 
 abstract class PdfExtractorRepository {
   Future<List<PdfPageInfo>> loadPdfPages(File pdfFile);
+  Stream<double> loadPdfPagesWithProgress(File pdfFile);
   Future<List<File>> generateChapterPdfs(File sourcePdf, List<ChapterInfo> chapters);
   Future<void> clearCache(String pdfId);
   Future<Map<String, dynamic>> getCacheStats();

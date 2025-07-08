@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/repositories/pdf_extractor_repository.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/pdf_page_info.dart';
@@ -16,6 +17,60 @@ class PdfExtractorRepositoryImpl implements PdfExtractorRepository {
     required PdfCacheService pdfCacheService,
   }) : _pdfManipulationService = pdfManipulationService,
        _pdfCacheService = pdfCacheService;
+
+  @override
+  Stream<double> loadPdfPagesWithProgress(File pdfFile) async* {
+    final pdfId = _generatePdfId(pdfFile);
+    yield 0.1; // Started loading PDF info
+    
+    final pageCount = await _pdfManipulationService.getPdfPageCount(pdfFile);
+    
+    if (pageCount == 0) {
+      throw Exception('Invalid PDF file or failed to read pages');
+    }
+
+    yield 0.2; // Got page count
+
+    List<String> cachedPaths = [];
+    
+    if (await _pdfCacheService.isCached(pdfId)) {
+      cachedPaths = await _pdfCacheService.getCachedThumbnailPaths(pdfId);
+      yield 0.3; // Checked cache
+    }
+
+    if (cachedPaths.length != pageCount) {
+      yield 0.4; // Starting thumbnail generation
+      
+      int processedPages = 0;
+      final List<Uint8List> thumbnails = [];
+      
+      // Stream thumbnails and track progress
+      await for (final thumbnailBytes in _pdfManipulationService.generatePageThumbnailsStream(
+        pdfFile,
+        maxPages: pageCount,
+      )) {
+        processedPages++;
+        thumbnails.add(thumbnailBytes);
+        
+        // Calculate and yield progress (0.4 to 0.9)
+        final thumbnailProgress = processedPages / pageCount;
+        final overallProgress = 0.4 + (thumbnailProgress * 0.5);
+        yield overallProgress;
+        
+        // Add small delay to allow UI updates
+        await Future.delayed(const Duration(milliseconds: 10));
+      }
+      
+      // Cache all thumbnails at once
+      await _pdfCacheService.cachePdfThumbnails(pdfId, thumbnails);
+      
+      yield 0.95; // Thumbnails cached
+    } else {
+      yield 0.8; // Using cached thumbnails
+    }
+    
+    yield 1.0; // Completed
+  }
 
   @override
   Future<List<PdfPageInfo>> loadPdfPages(File pdfFile) async {

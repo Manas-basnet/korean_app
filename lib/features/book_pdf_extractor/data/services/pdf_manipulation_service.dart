@@ -98,25 +98,21 @@ class PureDartPdfManipulationService implements PdfManipulationService {
       
       for (int i = 0; i < pagesToProcess; i++) {
         try {
-          // Generate raster for single page
           await for (final page in Printing.raster(
             pdfBytes,
             pages: [i],
             dpi: thumbnailDpi,
           )) {
-            // Convert PdfRaster to PNG bytes
             final pngBytes = await page.toPng();
             thumbnails.add(pngBytes);
-            break; // Only need the first (and only) page
+            break;
           }
         } catch (e) {
           debugPrint('Error generating thumbnail for page ${i + 1}: $e');
-          // Continue with next page instead of failing completely
         }
         
         onProgress?.call((i + 1) / pagesToProcess);
         
-        // Add small delay every batch to prevent blocking UI
         if ((i + 1) % batchSize == 0) {
           await Future.delayed(const Duration(milliseconds: 10));
         }
@@ -149,14 +145,14 @@ class PureDartPdfManipulationService implements PdfManipulationService {
           )) {
             final pngBytes = await page.toPng();
             yield pngBytes;
-            break; // Only need the first (and only) page
+            break;
           }
         } catch (e) {
           debugPrint('Error generating thumbnail for page ${i + 1}: $e');
-          // Continue with next page
         }
         
-        onProgress?.call((i + 1) / pagesToProcess);
+        final progress = (i + 1) / pagesToProcess;
+        onProgress?.call(progress);
         
         if ((i + 1) % batchSize == 0) {
           await Future.delayed(const Duration(milliseconds: 10));
@@ -178,13 +174,11 @@ class PureDartPdfManipulationService implements PdfManipulationService {
       
       final pdfBytes = await pdfFile.readAsBytes();
       
-      // Convert to 0-based index for the raster API
       await for (final page in Printing.raster(
         pdfBytes,
         pages: [pageNumber - 1],
         dpi: thumbnailDpi,
       )) {
-        // Convert PdfRaster to PNG bytes and return
         return await page.toPng();
       }
       

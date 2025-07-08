@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/pdf_page_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/load_pdf_pages_usecase.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/load_pdf_pages_with_progress_usecase.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/generate_chapter_pdfs_usecase.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/convert_to_book_chapters_usecase.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
@@ -12,35 +14,72 @@ part 'pdf_extractor_state.dart';
 
 class PdfExtractorCubit extends Cubit<PdfExtractorState> {
   final LoadPdfPagesUseCase _loadPdfPagesUseCase;
+  final LoadPdfPagesWithProgressUseCase _loadPdfPagesWithProgressUseCase;
   final GenerateChapterPdfsUseCase _generateChapterPdfsUseCase;
   final ConvertToBookChaptersUseCase _convertToBookChaptersUseCase;
 
+  StreamSubscription<double>? _progressSubscription;
+
   PdfExtractorCubit({
     required LoadPdfPagesUseCase loadPdfPagesUseCase,
+    required LoadPdfPagesWithProgressUseCase loadPdfPagesWithProgressUseCase,
     required GenerateChapterPdfsUseCase generateChapterPdfsUseCase,
     required ConvertToBookChaptersUseCase convertToBookChaptersUseCase,
   }) : _loadPdfPagesUseCase = loadPdfPagesUseCase,
+       _loadPdfPagesWithProgressUseCase = loadPdfPagesWithProgressUseCase,
        _generateChapterPdfsUseCase = generateChapterPdfsUseCase,
        _convertToBookChaptersUseCase = convertToBookChaptersUseCase,
        super(PdfExtractorInitial());
 
+  @override
+  Future<void> close() {
+    _progressSubscription?.cancel();
+    return super.close();
+  }
+
   Future<void> loadPdfForEditing(File pdfFile) async {
     try {
-      emit(PdfExtractorLoading(message: 'Loading PDF...', progress: 0.1));
+      emit(PdfExtractorLoading(message: 'Initializing PDF...', progress: 0.0));
 
       final pdfId = _generatePdfId(pdfFile);
       
-      emit(PdfExtractorLoading(message: 'Loading pages...', progress: 0.5));
-      
-      final pages = await _loadPdfPagesUseCase(pdfFile);
+      _progressSubscription?.cancel();
+      _progressSubscription = _loadPdfPagesWithProgressUseCase(pdfFile).listen(
+        (progress) {
+          String message;
+          if (progress < 0.2) {
+            message = 'Reading PDF file...';
+          } else if (progress < 0.4) {
+            message = 'Analyzing PDF structure...';
+          } else if (progress < 0.9) {
+            message = 'Generating page thumbnails...';
+          } else {
+            message = 'Finalizing...';
+          }
+          
+          emit(PdfExtractorLoading(message: message, progress: progress));
+        },
+        onDone: () async {
+          try {
+            emit(PdfExtractorLoading(message: 'Loading page data...', progress: 0.95));
+            
+            final pages = await _loadPdfPagesUseCase(pdfFile);
 
-      emit(PdfExtractorLoaded(
-        sourcePdf: pdfFile,
-        pdfId: pdfId,
-        pages: pages,
-        chapters: const [],
-        selectedPageNumbers: const [],
-      ));
+            emit(PdfExtractorLoaded(
+              sourcePdf: pdfFile,
+              pdfId: pdfId,
+              pages: pages,
+              chapters: const [],
+              selectedPageNumbers: const [],
+            ));
+          } catch (e) {
+            emit(PdfExtractorError('Failed to load page data: $e'));
+          }
+        },
+        onError: (error) {
+          emit(PdfExtractorError('Failed to process PDF: $error'));
+        },
+      );
 
     } catch (e) {
       emit(PdfExtractorError('Failed to load PDF: $e'));
@@ -291,6 +330,7 @@ class PdfExtractorCubit extends Cubit<PdfExtractorState> {
   }
 
   void reset() {
+    _progressSubscription?.cancel();
     emit(PdfExtractorInitial());
   }
 }

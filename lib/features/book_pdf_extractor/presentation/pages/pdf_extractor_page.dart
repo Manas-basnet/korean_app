@@ -142,58 +142,226 @@ class _PdfExtractorPageState extends State<PdfExtractorPage> {
       progress = state.progress;
     }
 
+    // Create more descriptive progress messages based on progress value
+    String detailedMessage = message;
+    String subMessage = '';
+    
+    if (state is PdfExtractorLoading) {
+      if (progress < 0.15) {
+        detailedMessage = languageCubit.getLocalizedText(
+          korean: 'PDF 파일 읽는 중...',
+          english: 'Reading PDF file...',
+        );
+        subMessage = languageCubit.getLocalizedText(
+          korean: 'PDF 구조를 분석하고 있습니다',
+          english: 'Analyzing PDF structure',
+        );
+      } else if (progress < 0.25) {
+        detailedMessage = languageCubit.getLocalizedText(
+          korean: 'PDF 정보 확인 중...',
+          english: 'Checking PDF information...',
+        );
+        subMessage = languageCubit.getLocalizedText(
+          korean: '페이지 수와 내용을 확인하고 있습니다',
+          english: 'Verifying page count and content',
+        );
+      } else if (progress < 0.35) {
+        detailedMessage = languageCubit.getLocalizedText(
+          korean: '캐시 확인 중...',
+          english: 'Checking cache...',
+        );
+        subMessage = languageCubit.getLocalizedText(
+          korean: '이전에 생성된 썸네일이 있는지 확인합니다',
+          english: 'Looking for previously generated thumbnails',
+        );
+      } else if (progress < 0.9) {
+        final thumbnailProgress = ((progress - 0.4) / 0.5 * 100).round();
+        detailedMessage = languageCubit.getLocalizedText(
+          korean: '페이지 썸네일 생성 중...',
+          english: 'Generating page thumbnails...',
+        );
+        subMessage = languageCubit.getLocalizedText(
+          korean: '진행률: $thumbnailProgress% - 잠시만 기다려주세요',
+          english: 'Progress: $thumbnailProgress% - Please wait',
+        );
+      } else {
+        detailedMessage = languageCubit.getLocalizedText(
+          korean: '마무리 중...',
+          english: 'Finalizing...',
+        );
+        subMessage = languageCubit.getLocalizedText(
+          korean: '페이지 데이터를 준비하고 있습니다',
+          english: 'Preparing page data',
+        );
+      }
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Main loading indicator with progress
             Container(
-              width: 80,
-              height: 80,
+              width: 100,
+              height: 100,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: CircularProgressIndicator(
-                value: progress > 0 ? progress : null,
-                strokeWidth: 3,
-                color: theme.colorScheme.primary,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: progress > 0 ? progress : null,
+                    strokeWidth: 4,
+                    color: theme.colorScheme.primary,
+                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  ),
+                  Text(
+                    '${(progress * 100).toStringAsFixed(0)}%',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
               ),
             ),
+            
             const SizedBox(height: 32),
+            
+            // Main message
             Text(
-              message,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+              detailedMessage,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
-            if (progress > 0) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 200,
-                child: Column(
-                  children: [
-                    LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+            
+            const SizedBox(height: 12),
+            
+            // Sub message with additional details
+            if (subMessage.isNotEmpty)
+              Text(
+                subMessage,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
+                textAlign: TextAlign.center,
               ),
-            ],
+            
+            const SizedBox(height: 32),
+            
+            // Progress bar with detailed progress
+            Container(
+              width: 280,
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 8,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Progress steps indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildProgressStep(
+                        context,
+                        languageCubit.getLocalizedText(korean: '읽기', english: 'Read'),
+                        progress >= 0.2,
+                        progress < 0.2,
+                      ),
+                      _buildProgressStep(
+                        context,
+                        languageCubit.getLocalizedText(korean: '분석', english: 'Analyze'),
+                        progress >= 0.4,
+                        progress >= 0.2 && progress < 0.4,
+                      ),
+                      _buildProgressStep(
+                        context,
+                        languageCubit.getLocalizedText(korean: '생성', english: 'Generate'),
+                        progress >= 0.9,
+                        progress >= 0.4 && progress < 0.9,
+                      ),
+                      _buildProgressStep(
+                        context,
+                        languageCubit.getLocalizedText(korean: '완료', english: 'Done'),
+                        progress >= 1.0,
+                        progress >= 0.9 && progress < 1.0,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Additional info
+            Text(
+              languageCubit.getLocalizedText(
+                korean: 'PDF 크기에 따라 시간이 소요될 수 있습니다',
+                english: 'Processing time depends on PDF size',
+              ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProgressStep(BuildContext context, String label, bool completed, bool active) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    Color stepColor;
+    if (completed) {
+      stepColor = colorScheme.primary;
+    } else if (active) {
+      stepColor = colorScheme.secondary;
+    } else {
+      stepColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
+    }
+    
+    return Column(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: stepColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: stepColor,
+            fontWeight: completed ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
     );
   }
 
