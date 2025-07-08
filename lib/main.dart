@@ -17,14 +17,14 @@ import 'package:korean_language_app/shared/presentation/theme/bloc/theme_cubit.d
 import 'package:korean_language_app/shared/presentation/snackbar/widgets/snackbar_widget.dart';
 import 'package:korean_language_app/shared/presentation/update/bloc/update_cubit.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart' as shorebird;
-import 'package:url_strategy/url_strategy.dart';
+// import 'package:url_strategy/url_strategy.dart';
 
 void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
   if (kIsWeb) {
-    setPathUrlStrategy();
+    // setPathUrlStrategy();
   }
 
   await initializeFirebase();
