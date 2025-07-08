@@ -36,6 +36,9 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   int _currentPage = 1;
   int _totalPages = 0;
   AudioTrack? _currentlyPlayingTrack;
+  
+  // Cache the PDF viewer widget to prevent rebuilds and re-downloads
+  Widget? _cachedPdfViewer;
 
   BookChapter get currentChapter => widget.bookItem.chapters[widget.chapterIndex];
   String get bookId => widget.bookItem.id;
@@ -69,9 +72,60 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     );
     _animationController.forward();
 
+    // Initialize PDF viewer once
+    _initializePdfViewer();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeSession();
     });
+  }
+
+  void _initializePdfViewer() {
+    if (pdfPath != null && File(pdfPath!).existsSync()) {
+      _cachedPdfViewer = SfPdfViewer.file(
+        File(pdfPath!),
+        controller: _pdfViewerController,
+        onTap: (PdfGestureDetails details) {
+          _toggleOverlay();
+        },
+        onPageChanged: _onPageChanged,
+        onDocumentLoaded: _onDocumentLoaded,
+        onDocumentLoadFailed: (details) {
+          _snackBarCubit.showErrorLocalized(
+            korean: 'PDF를 불러올 수 없습니다',
+            english: 'Failed to load PDF',
+          );
+        },
+        onZoomLevelChanged: (PdfZoomDetails details) {
+          setState(() {
+            _currentZoom = details.newZoomLevel;
+          });
+        },
+        interactionMode: PdfInteractionMode.pan,
+      );
+    } else if (pdfUrl != null && pdfUrl!.isNotEmpty) {
+      _cachedPdfViewer = SfPdfViewer.network(
+        pdfUrl!,
+        controller: _pdfViewerController,
+        onTap: (PdfGestureDetails details) {
+          _toggleOverlay();
+        },
+        onPageChanged: _onPageChanged,
+        onDocumentLoaded: _onDocumentLoaded,
+        onDocumentLoadFailed: (details) {
+          _snackBarCubit.showErrorLocalized(
+            korean: 'PDF를 불러올 수 없습니다',
+            english: 'Failed to load PDF',
+          );
+        },
+        onZoomLevelChanged: (PdfZoomDetails details) {
+          setState(() {
+            _currentZoom = details.newZoomLevel;
+          });
+        },
+        interactionMode: PdfInteractionMode.pan,
+      );
+    }
   }
 
   void _initializeSession() {
@@ -177,207 +231,380 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     });
   }
 
-  Widget? _getPdfViewer() {
-    if (pdfPath != null && File(pdfPath!).existsSync()) {
-      return SfPdfViewer.file(
-        File(pdfPath!),
-        controller: _pdfViewerController,
-        onTap: (PdfGestureDetails details) {
-          _toggleOverlay();
-        },
-        onPageChanged: _onPageChanged,
-        onDocumentLoaded: _onDocumentLoaded,
-        onDocumentLoadFailed: (details) {
-          _snackBarCubit.showErrorLocalized(
-            korean: 'PDF를 불러올 수 없습니다',
-            english: 'Failed to load PDF',
-          );
-        },
-        onZoomLevelChanged: (PdfZoomDetails details) {
+  void _showPageNavigator(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => _PageNavigatorDialog(
+        currentPage: _currentPage,
+        totalPages: _totalPages,
+        languageCubit: _languageCubit,
+        onPageSelected: _goToPage,
+      ),
+    );
+  }
+
+  void _showAudioTracksDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AudioTracksBottomSheet(
+        audioTracks: audioTracks,
+        languageCubit: _languageCubit,
+        currentlyPlayingTrack: _currentlyPlayingTrack,
+        onPlayStateChanged: (track, isPlaying) {
           setState(() {
-            _currentZoom = details.newZoomLevel;
+            if (isPlaying) {
+              _currentlyPlayingTrack = track;
+            } else if (_currentlyPlayingTrack?.id == track.id) {
+              _currentlyPlayingTrack = null;
+            }
           });
         },
-        interactionMode: PdfInteractionMode.pan,
-      );
-    } else if (pdfUrl != null && pdfUrl!.isNotEmpty) {
-      return SfPdfViewer.network(
-        pdfUrl!,
-        controller: _pdfViewerController,
-        onTap: (PdfGestureDetails details) {
-          _toggleOverlay();
-        },
-        onPageChanged: _onPageChanged,
-        onDocumentLoaded: _onDocumentLoaded,
-        onDocumentLoadFailed: (details) {
-          _snackBarCubit.showErrorLocalized(
-            korean: 'PDF를 불러올 수 없습니다',
-            english: 'Failed to load PDF',
-          );
-        },
-        onZoomLevelChanged: (PdfZoomDetails details) {
-          setState(() {
-            _currentZoom = details.newZoomLevel;
-          });
-        },
-        interactionMode: PdfInteractionMode.pan,
-      );
-    }
-    return null;
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final pdfViewer = _getPdfViewer();
-    
-    if (pdfViewer == null) {
-      return _buildNoPdfScreen();
+    if (_cachedPdfViewer == null) {
+      return _NoPdfScreen(
+        chapterTitle: chapterTitle,
+        audioTracks: audioTracks,
+        languageCubit: _languageCubit,
+        currentlyPlayingTrack: _currentlyPlayingTrack,
+        isFirstChapter: isFirstChapter,
+        isLastChapter: isLastChapter,
+        onPlayStateChanged: (track, isPlaying) {
+          setState(() {
+            if (isPlaying) {
+              _currentlyPlayingTrack = track;
+            } else if (_currentlyPlayingTrack?.id == track.id) {
+              _currentlyPlayingTrack = null;
+            }
+          });
+        },
+        onNavigateToPrevious: _navigateToPreviousChapter,
+        onNavigateToNext: _navigateToNextChapter,
+      );
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          pdfViewer,
+          _cachedPdfViewer!,
 
-          // Persistent audio overlay (always visible when audio is playing)
+          // Persistent audio overlay
           if (_currentlyPlayingTrack != null)
             Positioned(
               top: MediaQuery.of(context).padding.top + 8,
               left: 16,
               right: 16,
-              child: _buildPersistentAudioOverlay(),
+              child: _PersistentAudioOverlay(
+                currentlyPlayingTrack: _currentlyPlayingTrack!,
+                languageCubit: _languageCubit,
+                onTap: () => _showAudioTracksDialog(context),
+              ),
             ),
 
           // Top overlay
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _isOverlayVisible ? _fadeAnimation.value : 0.0,
-                  child: IgnorePointer(
-                    ignoring: !_isOverlayVisible,
-                    child: Container(
-                      height: MediaQuery.of(context).padding.top + 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha:0.8),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                      child: SafeArea(
-                        child: Row(
-                          children: [
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '$_currentPage / $_totalPages',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (audioTracks.isNotEmpty)
-                              IconButton(
-                                onPressed: () => _showAudioTracksDialog(context),
-                                icon: const Icon(Icons.headphones, color: Colors.white),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+          _TopOverlay(
+            isVisible: _isOverlayVisible,
+            fadeAnimation: _fadeAnimation,
+            currentPage: _currentPage,
+            totalPages: _totalPages,
+            hasAudioTracks: audioTracks.isNotEmpty,
+            onBack: () => Navigator.of(context).pop(),
+            onAudioTracks: () => _showAudioTracksDialog(context),
           ),
 
           // Bottom overlay
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _isOverlayVisible ? _fadeAnimation.value : 0.0,
-                  child: IgnorePointer(
-                    ignoring: !_isOverlayVisible,
-                    child: Container(
-                      height: 80 + MediaQuery.of(context).padding.bottom,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Colors.black.withValues(alpha:0.8),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                      child: SafeArea(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            IconButton(
-                              onPressed: _zoomOut,
-                              icon: const Icon(Icons.zoom_out, color: Colors.white),
-                            ),
-                            IconButton(
-                              onPressed: _zoomIn,
-                              icon: const Icon(Icons.zoom_in, color: Colors.white),
-                            ),
-                            if (!isFirstChapter)
-                              IconButton(
-                                onPressed: _navigateToPreviousChapter,
-                                icon: const Icon(Icons.skip_previous, color: Colors.white),
-                                tooltip: _languageCubit.getLocalizedText(
-                                  korean: '이전 챕터',
-                                  english: 'Previous Chapter',
-                                ),
-                              ),
-                            if (!isLastChapter)
-                              IconButton(
-                                onPressed: _navigateToNextChapter,
-                                icon: const Icon(Icons.skip_next, color: Colors.white),
-                                tooltip: _languageCubit.getLocalizedText(
-                                  korean: '다음 챕터',
-                                  english: 'Next Chapter',
-                                ),
-                              ),
-                            IconButton(
-                              onPressed: () => _showPageNavigator(context),
-                              icon: const Icon(Icons.list, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+          _BottomOverlay(
+            isVisible: _isOverlayVisible,
+            fadeAnimation: _fadeAnimation,
+            isFirstChapter: isFirstChapter,
+            isLastChapter: isLastChapter,
+            languageCubit: _languageCubit,
+            onZoomIn: _zoomIn,
+            onZoomOut: _zoomOut,
+            onNavigateToPrevious: _navigateToPreviousChapter,
+            onNavigateToNext: _navigateToNextChapter,
+            onPageNavigator: () => _showPageNavigator(context),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildNoPdfScreen() {
+class _TopOverlay extends StatelessWidget {
+  final bool isVisible;
+  final Animation<double> fadeAnimation;
+  final int currentPage;
+  final int totalPages;
+  final bool hasAudioTracks;
+  final VoidCallback onBack;
+  final VoidCallback onAudioTracks;
+
+  const _TopOverlay({
+    required this.isVisible,
+    required this.fadeAnimation,
+    required this.currentPage,
+    required this.totalPages,
+    required this.hasAudioTracks,
+    required this.onBack,
+    required this.onAudioTracks,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: AnimatedBuilder(
+        animation: fadeAnimation,
+        builder: (context, child) {
+          return Opacity(
+            opacity: isVisible ? fadeAnimation.value : 0.0,
+            child: IgnorePointer(
+              ignoring: !isVisible,
+              child: Container(
+                height: MediaQuery.of(context).padding.top + 60,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.8),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: onBack,
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$currentPage / $totalPages',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (hasAudioTracks)
+                        IconButton(
+                          onPressed: onAudioTracks,
+                          icon: const Icon(Icons.headphones, color: Colors.white),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BottomOverlay extends StatelessWidget {
+  final bool isVisible;
+  final Animation<double> fadeAnimation;
+  final bool isFirstChapter;
+  final bool isLastChapter;
+  final LanguagePreferenceCubit languageCubit;
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+  final VoidCallback onNavigateToPrevious;
+  final VoidCallback onNavigateToNext;
+  final VoidCallback onPageNavigator;
+
+  const _BottomOverlay({
+    required this.isVisible,
+    required this.fadeAnimation,
+    required this.isFirstChapter,
+    required this.isLastChapter,
+    required this.languageCubit,
+    required this.onZoomIn,
+    required this.onZoomOut,
+    required this.onNavigateToPrevious,
+    required this.onNavigateToNext,
+    required this.onPageNavigator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: AnimatedBuilder(
+        animation: fadeAnimation,
+        builder: (context, child) {
+          return Opacity(
+            opacity: isVisible ? fadeAnimation.value : 0.0,
+            child: IgnorePointer(
+              ignoring: !isVisible,
+              child: Container(
+                height: 80 + MediaQuery.of(context).padding.bottom,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.8),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: onZoomOut,
+                        icon: const Icon(Icons.zoom_out, color: Colors.white),
+                      ),
+                      IconButton(
+                        onPressed: onZoomIn,
+                        icon: const Icon(Icons.zoom_in, color: Colors.white),
+                      ),
+                      if (!isFirstChapter)
+                        IconButton(
+                          onPressed: onNavigateToPrevious,
+                          icon: const Icon(Icons.skip_previous, color: Colors.white),
+                          tooltip: languageCubit.getLocalizedText(
+                            korean: '이전 챕터',
+                            english: 'Previous Chapter',
+                          ),
+                        ),
+                      if (!isLastChapter)
+                        IconButton(
+                          onPressed: onNavigateToNext,
+                          icon: const Icon(Icons.skip_next, color: Colors.white),
+                          tooltip: languageCubit.getLocalizedText(
+                            korean: '다음 챕터',
+                            english: 'Next Chapter',
+                          ),
+                        ),
+                      IconButton(
+                        onPressed: onPageNavigator,
+                        icon: const Icon(Icons.list, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PersistentAudioOverlay extends StatelessWidget {
+  final AudioTrack currentlyPlayingTrack;
+  final LanguagePreferenceCubit languageCubit;
+  final VoidCallback onTap;
+
+  const _PersistentAudioOverlay({
+    required this.currentlyPlayingTrack,
+    required this.languageCubit,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.music_note_rounded,
+              size: 16,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                currentlyPlayingTrack.title,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 16,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoPdfScreen extends StatelessWidget {
+  final String chapterTitle;
+  final List<AudioTrack> audioTracks;
+  final LanguagePreferenceCubit languageCubit;
+  final AudioTrack? currentlyPlayingTrack;
+  final bool isFirstChapter;
+  final bool isLastChapter;
+  final Function(AudioTrack, bool) onPlayStateChanged;
+  final VoidCallback onNavigateToPrevious;
+  final VoidCallback onNavigateToNext;
+
+  const _NoPdfScreen({
+    required this.chapterTitle,
+    required this.audioTracks,
+    required this.languageCubit,
+    required this.currentlyPlayingTrack,
+    required this.isFirstChapter,
+    required this.isLastChapter,
+    required this.onPlayStateChanged,
+    required this.onNavigateToPrevious,
+    required this.onNavigateToNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -403,7 +630,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             
             if (audioTracks.isNotEmpty) ...[
               Text(
-                _languageCubit.getLocalizedText(
+                languageCubit.getLocalizedText(
                   korean: '오디오 트랙',
                   english: 'Audio Tracks',
                 ),
@@ -414,17 +641,9 @@ class _PdfReadingPageState extends State<PdfReadingPage>
               const SizedBox(height: 12),
               AudioTracksWidget(
                 audioTracks: audioTracks,
-                languageCubit: _languageCubit,
-                currentlyPlayingTrack: _currentlyPlayingTrack,
-                onPlayStateChanged: (track, isPlaying) {
-                  setState(() {
-                    if (isPlaying) {
-                      _currentlyPlayingTrack = track;
-                    } else if (_currentlyPlayingTrack?.id == track.id) {
-                      _currentlyPlayingTrack = null;
-                    }
-                  });
-                },
+                languageCubit: languageCubit,
+                currentlyPlayingTrack: currentlyPlayingTrack,
+                onPlayStateChanged: onPlayStateChanged,
               ),
               const SizedBox(height: 20),
             ],
@@ -432,7 +651,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha:0.3),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -444,7 +663,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _languageCubit.getLocalizedText(
+                      languageCubit.getLocalizedText(
                         korean: '이 챕터에는 PDF 콘텐츠가 없습니다.',
                         english: 'This chapter does not contain PDF content.',
                       ),
@@ -459,11 +678,34 @@ class _PdfReadingPageState extends State<PdfReadingPage>
           ],
         ),
       ),
-      bottomNavigationBar: _buildNavigationBar(),
+      bottomNavigationBar: _NavigationBar(
+        isFirstChapter: isFirstChapter,
+        isLastChapter: isLastChapter,
+        languageCubit: languageCubit,
+        onNavigateToPrevious: onNavigateToPrevious,
+        onNavigateToNext: onNavigateToNext,
+      ),
     );
   }
+}
 
-  Widget _buildNavigationBar() {
+class _NavigationBar extends StatelessWidget {
+  final bool isFirstChapter;
+  final bool isLastChapter;
+  final LanguagePreferenceCubit languageCubit;
+  final VoidCallback onNavigateToPrevious;
+  final VoidCallback onNavigateToNext;
+
+  const _NavigationBar({
+    required this.isFirstChapter,
+    required this.isLastChapter,
+    required this.languageCubit,
+    required this.onNavigateToPrevious,
+    required this.onNavigateToNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -471,7 +713,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha:0.3)),
+          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
       ),
       child: SafeArea(
@@ -480,10 +722,10 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             if (!isFirstChapter) ...[
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _navigateToPreviousChapter,
+                  onPressed: onNavigateToPrevious,
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   label: Text(
-                    _languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
+                    languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
                   ),
                 ),
               ),
@@ -492,10 +734,10 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             if (!isLastChapter)
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: _navigateToNextChapter,
+                  onPressed: onNavigateToNext,
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: Text(
-                    _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
+                    languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
                   ),
                 ),
               ),
@@ -504,195 +746,161 @@ class _PdfReadingPageState extends State<PdfReadingPage>
       ),
     );
   }
+}
 
-  Widget _buildPersistentAudioOverlay() {
-    return GestureDetector(
-      onTap: () => _showAudioTracksDialog(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.music_note_rounded,
-              size: 16,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                _currentlyPlayingTrack?.title ?? 
-                _languageCubit.getLocalizedText(
-                  korean: '재생 중',
-                  english: 'Playing',
-                ),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha:0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.arrow_drop_down_rounded,
-                size: 16,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+class _PageNavigatorDialog extends StatefulWidget {
+  final int currentPage;
+  final int totalPages;
+  final LanguagePreferenceCubit languageCubit;
+  final Function(int) onPageSelected;
+
+  const _PageNavigatorDialog({
+    required this.currentPage,
+    required this.totalPages,
+    required this.languageCubit,
+    required this.onPageSelected,
+  });
+
+  @override
+  State<_PageNavigatorDialog> createState() => _PageNavigatorDialogState();
+}
+
+class _PageNavigatorDialogState extends State<_PageNavigatorDialog> {
+  late int _currentPage;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPage = widget.currentPage;
   }
 
-  void _showPageNavigator(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(_languageCubit.getLocalizedText(
-              korean: '페이지로 이동',
-              english: 'Go to Page',
-            )),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: _languageCubit.getLocalizedText(
-                      korean: '페이지 번호 (1-$_totalPages)',
-                      english: 'Page number (1-$_totalPages)',
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.languageCubit.getLocalizedText(
+        korean: '페이지로 이동',
+        english: 'Go to Page',
+      )),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: widget.languageCubit.getLocalizedText(
+                korean: '페이지 번호 (1-${widget.totalPages})',
+                english: 'Page number (1-${widget.totalPages})',
+              ),
+              border: const OutlineInputBorder(),
+            ),
+            onSubmitted: (value) {
+              int? page = int.tryParse(value);
+              if (page != null) {
+                widget.onPageSelected(page);
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          Slider(
+            value: _currentPage.toDouble(),
+            min: 1,
+            max: widget.totalPages.toDouble(),
+            divisions: widget.totalPages - 1,
+            label: _currentPage.toString(),
+            onChanged: (value) {
+              int newPage = value.round();
+              widget.onPageSelected(newPage);
+              setState(() {
+                _currentPage = newPage;
+              });
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(widget.languageCubit.getLocalizedText(
+            korean: '닫기',
+            english: 'Close',
+          )),
+        ),
+      ],
+    );
+  }
+}
+
+class _AudioTracksBottomSheet extends StatelessWidget {
+  final List<AudioTrack> audioTracks;
+  final LanguagePreferenceCubit languageCubit;
+  final AudioTrack? currentlyPlayingTrack;
+  final Function(AudioTrack, bool) onPlayStateChanged;
+
+  const _AudioTracksBottomSheet({
+    required this.audioTracks,
+    required this.languageCubit,
+    required this.currentlyPlayingTrack,
+    required this.onPlayStateChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.headphones_rounded,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    border: const OutlineInputBorder(),
-                  ),
-                  onSubmitted: (value) {
-                    int? page = int.tryParse(value);
-                    if (page != null) {
-                      _goToPage(page);
-                      Navigator.of(context).pop();
-                    }
-                  },
+                    const SizedBox(width: 8),
+                    Text(
+                      languageCubit.getLocalizedText(
+                        korean: '오디오 트랙',
+                        english: 'Audio Tracks',
+                      ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Slider(
-                  value: _currentPage.toDouble(),
-                  min: 1,
-                  max: _totalPages.toDouble(),
-                  divisions: _totalPages - 1,
-                  label: _currentPage.toString(),
-                  onChanged: (value) {
-                    int newPage = value.round();
-                    _goToPage(newPage);
-                    setDialogState(() {});
-                  },
+              ),
+              Expanded(
+                child: AudioTracksWidget(
+                  audioTracks: audioTracks,
+                  languageCubit: languageCubit,
+                  scrollController: scrollController,
+                  currentlyPlayingTrack: currentlyPlayingTrack,
+                  onPlayStateChanged: onPlayStateChanged,
                 ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(_languageCubit.getLocalizedText(
-                  korean: '닫기',
-                  english: 'Close',
-                )),
               ),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAudioTracksDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha:0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.headphones_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _languageCubit.getLocalizedText(
-                          korean: '오디오 트랙',
-                          english: 'Audio Tracks',
-                        ),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: AudioTracksWidget(
-                    audioTracks: audioTracks,
-                    languageCubit: _languageCubit,
-                    scrollController: scrollController,
-                    currentlyPlayingTrack: _currentlyPlayingTrack,
-                    onPlayStateChanged: (track, isPlaying) {
-                      setState(() {
-                        if (isPlaying) {
-                          _currentlyPlayingTrack = track;
-                        } else if (_currentlyPlayingTrack?.id == track.id) {
-                          _currentlyPlayingTrack = null;
-                        }
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

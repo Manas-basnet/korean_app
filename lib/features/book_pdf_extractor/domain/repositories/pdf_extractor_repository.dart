@@ -8,6 +8,7 @@ abstract class PdfExtractorRepository {
   Stream<double> loadPdfPagesWithProgress(File pdfFile);
   Future<List<File>> generateChapterPdfs(File sourcePdf, List<ChapterInfo> chapters);
   Future<void> clearCache(String pdfId);
+  Future<void> clearAllCache();
   Future<Map<String, dynamic>> getCacheStats();
   Future<List<BookChapter>> convertChaptersToBookChapters(
     List<ChapterInfo> chapterInfos, 

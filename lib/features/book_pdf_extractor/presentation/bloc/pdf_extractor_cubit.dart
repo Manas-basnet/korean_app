@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/chapter_info.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/entities/pdf_page_info.dart';
@@ -8,6 +9,7 @@ import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/load_pdf_pages_with_progress_usecase.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/generate_chapter_pdfs_usecase.dart';
 import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/convert_to_book_chapters_usecase.dart';
+import 'package:korean_language_app/features/book_pdf_extractor/domain/usecases/clear_all_cache_usecase.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 
 part 'pdf_extractor_state.dart';
@@ -17,6 +19,7 @@ class PdfExtractorCubit extends Cubit<PdfExtractorState> {
   final LoadPdfPagesWithProgressUseCase _loadPdfPagesWithProgressUseCase;
   final GenerateChapterPdfsUseCase _generateChapterPdfsUseCase;
   final ConvertToBookChaptersUseCase _convertToBookChaptersUseCase;
+  final ClearAllCacheUseCase _clearAllCacheUseCase;
 
   StreamSubscription<double>? _progressSubscription;
 
@@ -25,15 +28,23 @@ class PdfExtractorCubit extends Cubit<PdfExtractorState> {
     required LoadPdfPagesWithProgressUseCase loadPdfPagesWithProgressUseCase,
     required GenerateChapterPdfsUseCase generateChapterPdfsUseCase,
     required ConvertToBookChaptersUseCase convertToBookChaptersUseCase,
+    required ClearAllCacheUseCase clearAllCacheUseCase,
   }) : _loadPdfPagesUseCase = loadPdfPagesUseCase,
        _loadPdfPagesWithProgressUseCase = loadPdfPagesWithProgressUseCase,
        _generateChapterPdfsUseCase = generateChapterPdfsUseCase,
        _convertToBookChaptersUseCase = convertToBookChaptersUseCase,
+       _clearAllCacheUseCase = clearAllCacheUseCase,
        super(PdfExtractorInitial());
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
     _progressSubscription?.cancel();
+    try {
+      await _clearAllCacheUseCase();
+      debugPrint('All Cache cleared from pdf extractor');
+    } catch (e) {
+      debugPrint('Failed to clear cache: $e');
+    }
     return super.close();
   }
 

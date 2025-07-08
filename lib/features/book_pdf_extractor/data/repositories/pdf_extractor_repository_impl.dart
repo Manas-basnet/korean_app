@@ -21,7 +21,7 @@ class PdfExtractorRepositoryImpl implements PdfExtractorRepository {
   @override
   Stream<double> loadPdfPagesWithProgress(File pdfFile) async* {
     final pdfId = _generatePdfId(pdfFile);
-    yield 0.1; // Started loading PDF info
+    yield 0.1;
     
     final pageCount = await _pdfManipulationService.getPdfPageCount(pdfFile);
     
@@ -29,22 +29,21 @@ class PdfExtractorRepositoryImpl implements PdfExtractorRepository {
       throw Exception('Invalid PDF file or failed to read pages');
     }
 
-    yield 0.2; // Got page count
+    yield 0.2;
 
     List<String> cachedPaths = [];
     
     if (await _pdfCacheService.isCached(pdfId)) {
       cachedPaths = await _pdfCacheService.getCachedThumbnailPaths(pdfId);
-      yield 0.3; // Checked cache
+      yield 0.3;
     }
 
     if (cachedPaths.length != pageCount) {
-      yield 0.4; // Starting thumbnail generation
+      yield 0.4;
       
       int processedPages = 0;
       final List<Uint8List> thumbnails = [];
       
-      // Stream thumbnails and track progress
       await for (final thumbnailBytes in _pdfManipulationService.generatePageThumbnailsStream(
         pdfFile,
         maxPages: pageCount,
@@ -52,24 +51,21 @@ class PdfExtractorRepositoryImpl implements PdfExtractorRepository {
         processedPages++;
         thumbnails.add(thumbnailBytes);
         
-        // Calculate and yield progress (0.4 to 0.9)
         final thumbnailProgress = processedPages / pageCount;
         final overallProgress = 0.4 + (thumbnailProgress * 0.5);
         yield overallProgress;
         
-        // Add small delay to allow UI updates
         await Future.delayed(const Duration(milliseconds: 10));
       }
       
-      // Cache all thumbnails at once
       await _pdfCacheService.cachePdfThumbnails(pdfId, thumbnails);
       
-      yield 0.95; // Thumbnails cached
+      yield 0.95;
     } else {
-      yield 0.8; // Using cached thumbnails
+      yield 0.8;
     }
     
-    yield 1.0; // Completed
+    yield 1.0;
   }
 
   @override
@@ -139,6 +135,11 @@ class PdfExtractorRepositoryImpl implements PdfExtractorRepository {
   @override
   Future<void> clearCache(String pdfId) async {
     await _pdfCacheService.clearPdfCache(pdfId);
+  }
+
+  @override
+  Future<void> clearAllCache() async {
+    await _pdfCacheService.clearAllCache();
   }
 
   @override
