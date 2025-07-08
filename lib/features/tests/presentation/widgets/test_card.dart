@@ -26,61 +26,28 @@ class TestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TestCardContainer(
-      test: test,
-      canEdit: canEdit,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      onEdit: onEdit,
-      onDelete: onDelete,
-      onViewDetails: onViewDetails,
-    );
-  }
-}
-
-class _TestCardContainer extends StatelessWidget {
-  final TestItem test;
-  final bool canEdit;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onViewDetails;
-
-  const _TestCardContainer({
-    required this.test,
-    required this.canEdit,
-    required this.onTap,
-    this.onLongPress,
-    this.onEdit,
-    this.onDelete,
-    this.onViewDetails,
-  });
-
-  @override
-  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
-          width: 0.5,
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
         ),
       ),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: 45,
-              child: _TestCardHeader(
+              flex: 5,
+              child: _TestHeader(
                 test: test,
                 canEdit: canEdit,
                 onEdit: onEdit,
@@ -91,8 +58,8 @@ class _TestCardContainer extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 55,
-              child: _TestCardContent(
+              flex: 4,
+              child: _TestContent(
                 test: test,
                 theme: theme,
               ),
@@ -104,7 +71,7 @@ class _TestCardContainer extends StatelessWidget {
   }
 }
 
-class _TestCardHeader extends StatelessWidget {
+class _TestHeader extends StatelessWidget {
   final TestItem test;
   final bool canEdit;
   final VoidCallback? onEdit;
@@ -113,7 +80,7 @@ class _TestCardHeader extends StatelessWidget {
   final VoidCallback onTap;
   final ColorScheme colorScheme;
 
-  const _TestCardHeader({
+  const _TestHeader({
     required this.test,
     required this.canEdit,
     this.onEdit,
@@ -125,52 +92,63 @@ class _TestCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildImageSection(context),
-        if (canEdit)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: _MenuButton(
-              onEdit: onEdit,
-              onDelete: onDelete,
-              onViewDetails: onViewDetails,
-              onTap: onTap,
-              colorScheme: colorScheme,
-            ),
-          ),
-      ],
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildHeaderContent(),
+            if (canEdit)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: _MenuButton(
+                  onEdit: onEdit,
+                  onDelete: onDelete,
+                  onViewDetails: onViewDetails,
+                  onTap: onTap,
+                  colorScheme: colorScheme,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildImageSection(BuildContext context) {
+  Widget _buildHeaderContent() {
     if (test.imageUrl != null && test.imageUrl!.isNotEmpty) {
-      return _OptimizedTestImage(
+      return _TestCoverImage(
         imageUrl: test.imageUrl!,
         imagePath: test.imagePath,
         colorScheme: colorScheme,
       );
     } else if (test.imagePath != null && test.imagePath!.isNotEmpty) {
-      return _OptimizedTestImage(
+      return _TestCoverImage(
         imagePath: test.imagePath,
         colorScheme: colorScheme,
       );
     } else {
-      return _ImagePlaceholder(
+      return _TestPlaceholder(
+        category: test.category,
+        questionCount: test.questionCount,
         colorScheme: colorScheme,
       );
     }
   }
 }
 
-class _OptimizedTestImage extends StatelessWidget {
+class _TestCoverImage extends StatelessWidget {
   final String? imageUrl;
   final String? imagePath;
   final ColorScheme colorScheme;
 
-  const _OptimizedTestImage({
+  const _TestCoverImage({
     this.imageUrl,
     this.imagePath,
     required this.colorScheme,
@@ -179,117 +157,121 @@ class _OptimizedTestImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imagePath != null && imagePath!.isNotEmpty) {
-      return _buildLocalImage();
+      return Image.file(
+        File(imagePath!),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          if (imageUrl != null && imageUrl!.isNotEmpty) {
+            return _buildNetworkImage();
+          }
+          return _buildErrorPlaceholder();
+        },
+      );
     }
     
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return _buildNetworkImage();
     }
     
-    return _ImagePlaceholder(colorScheme: colorScheme);
-  }
-
-  Widget _buildLocalImage() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Image.file(
-          File(imagePath!),
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          cacheWidth: (constraints.maxWidth * 2).toInt(),
-          cacheHeight: (constraints.maxHeight * 2).toInt(),
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 150),
-              child: child,
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            if (imageUrl != null && imageUrl!.isNotEmpty) {
-              return _buildNetworkImage();
-            }
-            return _ImagePlaceholder(colorScheme: colorScheme);
-          },
-        );
-      },
-    );
+    return _buildErrorPlaceholder();
   }
 
   Widget _buildNetworkImage() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final targetWidth = (constraints.maxWidth * 2).toInt();
-        final targetHeight = (constraints.maxHeight * 2).toInt();
-        
-        return CachedNetworkImage(
-          imageUrl: imageUrl!,
-          fit: BoxFit.cover,
-          memCacheWidth: targetWidth.clamp(100, 200),
-          memCacheHeight: targetHeight.clamp(100, 200),
-          maxWidthDiskCache: targetWidth.clamp(100, 200),
-          maxHeightDiskCache: targetHeight.clamp(100, 200),
-          placeholder: (context, url) => _ImagePlaceholder(
-            colorScheme: colorScheme,
-            showLoading: true,
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: colorScheme.surfaceContainerHigh,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary,
+            ),
           ),
-          errorWidget: (context, url, error) => _ImagePlaceholder(
-            colorScheme: colorScheme,
-          ),
-          fadeInDuration: const Duration(milliseconds: 200),
-          fadeOutDuration: const Duration(milliseconds: 100),
-        );
-      },
+        ),
+      ),
+      errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+    );
+  }
+
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      color: colorScheme.surfaceContainerHigh,
+      child: Icon(
+        Icons.quiz_outlined,
+        color: colorScheme.onSurfaceVariant,
+        size: 32,
+      ),
     );
   }
 }
 
-class _ImagePlaceholder extends StatelessWidget {
+class _TestPlaceholder extends StatelessWidget {
+  final TestCategory category;
+  final int questionCount;
   final ColorScheme colorScheme;
-  final bool showLoading;
 
-  const _ImagePlaceholder({
+  const _TestPlaceholder({
+    required this.category,
+    required this.questionCount,
     required this.colorScheme,
-    this.showLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    IconData icon;
+    
+    switch (category) {
+      case TestCategory.topikI:
+        icon = Icons.quiz_outlined;
+        break;
+      case TestCategory.topikII:
+        icon = Icons.assignment_outlined;
+        break;
+      case TestCategory.practice:
+        icon = Icons.school_outlined;
+        break;
+      case TestCategory.ubt:
+        icon = Icons.fact_check_outlined;
+        break;
+      default:
+        icon = Icons.quiz_outlined;
+    }
+    
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.8),
-            colorScheme.primary.withValues(alpha: 0.6),
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Icon(
-              Icons.image_outlined,
-              size: 28,
-              color: Colors.white.withValues(alpha: 0.9),
+      color: colorScheme.primaryContainer.withValues(alpha: 0.2),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: colorScheme.primary,
             ),
-          ),
-          if (showLoading)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
+            const SizedBox(height: 6),
+            Text(
+              '$questionCount',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              'Questions',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -312,29 +294,26 @@ class _MenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: PopupMenuButton<String>(
-        icon: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.more_vert_rounded,
-            color: Colors.white,
-            size: 16,
-          ),
+        icon: const Icon(
+          Icons.more_vert,
+          size: 16,
+          color: Colors.white,
         ),
+        iconSize: 16,
+        padding: const EdgeInsets.all(4),
         onSelected: (value) => _handleMenuAction(context, value),
         itemBuilder: (context) => [
           const PopupMenuItem<String>(
             value: 'start',
             child: Row(
               children: [
-                Icon(Icons.play_arrow_rounded, size: 18),
+                Icon(Icons.play_arrow, size: 16),
                 SizedBox(width: 8),
                 Text('Start Test'),
               ],
@@ -344,9 +323,9 @@ class _MenuButton extends StatelessWidget {
             value: 'details',
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, size: 18),
+                Icon(Icons.info_outline, size: 16),
                 SizedBox(width: 8),
-                Text('View Details'),
+                Text('Details'),
               ],
             ),
           ),
@@ -355,7 +334,7 @@ class _MenuButton extends StatelessWidget {
               value: 'edit',
               child: Row(
                 children: [
-                  Icon(Icons.edit_rounded, size: 18),
+                  Icon(Icons.edit_outlined, size: 16),
                   SizedBox(width: 8),
                   Text('Edit'),
                 ],
@@ -367,8 +346,8 @@ class _MenuButton extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    Icons.delete_outline_rounded, 
-                    size: 18, 
+                    Icons.delete_outline, 
+                    size: 16, 
                     color: colorScheme.error
                   ),
                   const SizedBox(width: 8),
@@ -402,11 +381,11 @@ class _MenuButton extends StatelessWidget {
   }
 }
 
-class _TestCardContent extends StatelessWidget {
+class _TestContent extends StatelessWidget {
   final TestItem test;
   final ThemeData theme;
 
-  const _TestCardContent({
+  const _TestContent({
     required this.test,
     required this.theme,
   });
@@ -414,259 +393,131 @@ class _TestCardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = theme.colorScheme;
-    final screenSize = MediaQuery.sizeOf(context);
-    final isSmallScreen = screenSize.height < 700;
     
-    // Dynamic padding based on screen size
-    final horizontalPadding = screenSize.width * 0.025; // 2.5% of screen width
-    final verticalPadding = screenSize.height * 0.008;  // 0.8% of screen height
-    final titleToContentGap = screenSize.height * 0.004; // 0.4% of screen height
-    final statsToChipGap = screenSize.height * 0.002;    // 0.2% of screen height
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final availableWidth = constraints.maxWidth;
-        
-        // Allocate height dynamically
-        final paddingHeight = verticalPadding * 2;
-        final gapsHeight = titleToContentGap + statsToChipGap;
-        final contentHeight = availableHeight - paddingHeight - gapsHeight;
-        
-        // Dynamic text size based on available space
-        final titleFontSize = isSmallScreen 
-            ? (availableWidth * 0.035).clamp(10.0, 14.0)
-            : (availableWidth * 0.04).clamp(12.0, 16.0);
-            
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: verticalPadding,
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              test.title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          
+          const SizedBox(height: 8),
+          
+          Row(
             children: [
-              // Title section - flexible height
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: contentHeight * 0.45, // Max 45% of content height
-                  minHeight: contentHeight * 0.25, // Min 25% of content height
+              Icon(
+                Icons.quiz,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${test.questionCount}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.schedule,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
                 child: Text(
-                  test.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                    fontSize: titleFontSize,
-                    height: 1.1,
+                  test.formattedTimeLimit,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
-                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              
-              SizedBox(height: titleToContentGap),
-              
-              // Content section - remaining height
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, contentConstraints) {
-                    final remainingHeight = contentConstraints.maxHeight;
-                    
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Stats section - flexible
-                        Flexible(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: remainingHeight - statsToChipGap - (screenSize.height * 0.022), // Reserve space for chip
-                            ),
-                            child: _buildStatsSection(colorScheme, availableWidth, isSmallScreen),
-                          ),
-                        ),
-                        
-                        SizedBox(height: statsToChipGap),
-                        
-                        // Category chip - fixed height
-                        _CategoryChip(
-                          category: test.category,
-                          colorScheme: colorScheme,
-                          theme: theme,
-                          screenWidth: availableWidth,
-                          isSmallScreen: isSmallScreen,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatsSection(ColorScheme colorScheme, double availableWidth, bool isSmallScreen) {
-    final iconSize = isSmallScreen 
-        ? (availableWidth * 0.035).clamp(10.0, 12.0)
-        : (availableWidth * 0.04).clamp(12.0, 14.0);
-    final fontSize = isSmallScreen 
-        ? (availableWidth * 0.028).clamp(9.0, 11.0)
-        : (availableWidth * 0.032).clamp(10.0, 12.0);
-        
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 7,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          
+          const SizedBox(height: 8),
+          
+          Row(
             children: [
-              _StatRow(
-                icon: Icons.schedule_rounded,
-                text: _formatTimeLimit(test.formattedTimeLimit),
-                color: colorScheme.onSurfaceVariant,
-                theme: theme,
-                iconSize: iconSize,
-                fontSize: fontSize,
-              ),
-              if (test.rating > 0) ...[
-                SizedBox(height: availableWidth * 0.008), // Dynamic spacing
-                _StatRow(
-                  icon: Icons.star_rounded,
-                  text: test.formattedRating,
-                  color: Colors.amber[600]!,
-                  theme: theme,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _getCategoryColor(test.category),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Text(
+                  test.category.displayName,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (test.rating > 0) ...[
+                Icon(
+                  Icons.star,
+                  size: 12,
+                  color: Colors.amber.shade600,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  test.formattedRating,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
               ],
+              Icon(
+                Icons.visibility,
+                size: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 2),
+              Text(
+                test.formattedViewCount,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Align(
-            alignment: Alignment.topRight,
-            child: _StatRow(
-              icon: Icons.visibility_rounded,
-              text: test.formattedViewCount,
-              color: colorScheme.onSurfaceVariant,
-              theme: theme,
-              iconSize: iconSize,
-              fontSize: fontSize,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  String _formatTimeLimit(String timeLimit) {
-    return timeLimit
-        .replaceAll(' min', '분')
-        .replaceAll(' hour', '시간')
-        .replaceAll(' hours', '시간')
-        .replaceAll(' minutes', '분');
-  }
-}
-
-class _StatRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color color;
-  final ThemeData theme;
-  final double iconSize;
-  final double fontSize;
-
-  const _StatRow({
-    required this.icon,
-    required this.text,
-    required this.color,
-    required this.theme,
-    required this.iconSize,
-    required this.fontSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          size: iconSize,
-          color: color,
-        ),
-        SizedBox(width: iconSize * 0.3), // Dynamic spacing based on icon size
-        Flexible(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-              fontSize: fontSize,
-              height: 1.1,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final TestCategory category;
-  final ColorScheme colorScheme;
-  final ThemeData theme;
-  final double screenWidth;
-  final bool isSmallScreen;
-
-  const _CategoryChip({
-    required this.category,
-    required this.colorScheme,
-    required this.theme,
-    required this.screenWidth,
-    required this.isSmallScreen,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final horizontalPadding = screenWidth * 0.02; // 2% of screen width
-    final verticalPadding = screenWidth * 0.008;  // 0.8% of screen width
-    final fontSize = isSmallScreen 
-        ? (screenWidth * 0.025).clamp(8.0, 10.0)
-        : (screenWidth * 0.028).clamp(9.0, 11.0);
-    
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(screenWidth * 0.03), // Dynamic border radius
-      ),
-      child: Text(
-        category.displayName,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-          fontSize: fontSize,
-          height: 1.0,
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
-      ),
-    );
+  Color _getCategoryColor(TestCategory category) {
+    switch (category) {
+      case TestCategory.topikI:
+        return Colors.blue.shade600;
+      case TestCategory.topikII:
+        return Colors.indigo.shade600;
+      case TestCategory.practice:
+        return Colors.green.shade600;
+      case TestCategory.ubt:
+        return Colors.orange.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
   }
 }

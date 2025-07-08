@@ -140,6 +140,25 @@ class _BookCover extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             _buildCoverImage(context),
+            Positioned(
+              top: 6,
+              left: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _getCategoryColor(book.category),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  book.category.name.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
             if (canEdit)
               Positioned(
                 top: 6,
@@ -176,6 +195,21 @@ class _BookCover extends StatelessWidget {
         category: book.category,
         colorScheme: colorScheme,
       );
+    }
+  }
+
+  Color _getCategoryColor(CourseCategory category) {
+    switch (category) {
+      case CourseCategory.korean:
+        return Colors.blue.shade600;
+      case CourseCategory.global:
+        return Colors.green.shade600;
+      case CourseCategory.nepali:
+        return Colors.red.shade600;
+      case CourseCategory.test:
+        return Colors.purple.shade600;
+      default:
+        return Colors.grey.shade600;
     }
   }
 }
@@ -271,31 +305,50 @@ class _BookPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    Color spineColor;
+    Color categoryColor;
     switch (category) {
       case CourseCategory.korean:
-        spineColor = Colors.blue.shade600;
+        categoryColor = Colors.blue.shade600;
         break;
       case CourseCategory.global:
-        spineColor = Colors.green.shade600;
+        categoryColor = Colors.green.shade600;
         break;
       case CourseCategory.nepali:
-        spineColor = Colors.red.shade600;
+        categoryColor = Colors.red.shade600;
         break;
       case CourseCategory.test:
-        spineColor = Colors.purple.shade600;
+        categoryColor = Colors.purple.shade600;
         break;
       default:
-        spineColor = colorScheme.primary;
+        categoryColor = colorScheme.primary;
     }
     
     return Container(
-      color: spineColor.withValues(alpha: 0.1),
+      color: colorScheme.primaryContainer.withValues(alpha: 0.2),
       child: Stack(
         children: [
           Container(
             width: 8,
-            color: spineColor,
+            color: colorScheme.primary,
+          ),
+          Positioned(
+            top: 6,
+            left: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: categoryColor,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                category.name.toUpperCase(),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),
@@ -306,28 +359,12 @@ class _BookPlaceholder extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: spineColor,
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w600,
                     height: 1.2,
                   ),
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: spineColor,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    category.name.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -355,66 +392,72 @@ class _MenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert,
-        size: 16,
-        color: colorScheme.onSurface,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(6),
       ),
-      iconSize: 16,
-      padding: const EdgeInsets.all(4),
-      onSelected: (value) => _handleMenuAction(context, value),
-      itemBuilder: (context) => [
-        const PopupMenuItem<String>(
-          value: 'read',
-          child: Row(
-            children: [
-              Icon(Icons.menu_book_outlined, size: 16),
-              SizedBox(width: 8),
-              Text('Read'),
-            ],
-          ),
+      child: PopupMenuButton<String>(
+        icon: const Icon(
+          Icons.more_vert,
+          size: 16,
+          color: Colors.white,
         ),
-        const PopupMenuItem<String>(
-          value: 'details',
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, size: 16),
-              SizedBox(width: 8),
-              Text('Details'),
-            ],
-          ),
-        ),
-        if (onEdit != null)
+        iconSize: 16,
+        padding: const EdgeInsets.all(4),
+        onSelected: (value) => _handleMenuAction(context, value),
+        itemBuilder: (context) => [
           const PopupMenuItem<String>(
-            value: 'edit',
+            value: 'read',
             child: Row(
               children: [
-                Icon(Icons.edit_outlined, size: 16),
+                Icon(Icons.menu_book_outlined, size: 16),
                 SizedBox(width: 8),
-                Text('Edit'),
+                Text('Read'),
               ],
             ),
           ),
-        if (onDelete != null)
-          PopupMenuItem<String>(
-            value: 'delete',
+          const PopupMenuItem<String>(
+            value: 'details',
             child: Row(
               children: [
-                Icon(
-                  Icons.delete_outline, 
-                  size: 16, 
-                  color: colorScheme.error
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Delete',
-                  style: TextStyle(color: colorScheme.error),
-                ),
+                Icon(Icons.info_outline, size: 16),
+                SizedBox(width: 8),
+                Text('Details'),
               ],
             ),
           ),
-      ],
+          if (onEdit != null)
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 16),
+                  SizedBox(width: 8),
+                  Text('Edit'),
+                ],
+              ),
+            ),
+          if (onDelete != null)
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline, 
+                    size: 16, 
+                    color: colorScheme.error
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Delete',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -454,17 +497,21 @@ class _BookInfo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            book.title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
-              height: 1.2,
+          Expanded(
+            flex: 2,
+            child: Text(
+              book.title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          
           Row(
             children: [
               Icon(
@@ -495,11 +542,26 @@ class _BookInfo extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(width: 8),
               ],
+              Icon(
+                Icons.visibility,
+                size: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 2),
+              Text(
+                book.formattedViewCount,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ],
       ),
     );
   }
+
 }

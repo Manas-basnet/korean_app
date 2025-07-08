@@ -400,14 +400,14 @@ class _PdfExtractorPageState extends State<PdfExtractorPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              state.message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            // const SizedBox(height: 16),
+            // Text(
+            //   state.message,
+            //   style: theme.textTheme.bodyMedium?.copyWith(
+            //     color: colorScheme.onSurfaceVariant,
+            //   ),
+            //   textAlign: TextAlign.center,
+            // ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
