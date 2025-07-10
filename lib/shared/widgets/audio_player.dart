@@ -6,6 +6,7 @@ class AudioPlayerWidget extends StatefulWidget {
   final String? audioUrl;
   final String? audioPath;
   final String? label;
+  final double? height;
   final VoidCallback? onRemove;
   final VoidCallback? onEdit;
   final Function(bool)? onPlayStateChanged;
@@ -15,6 +16,7 @@ class AudioPlayerWidget extends StatefulWidget {
     this.audioUrl,
     this.audioPath,
     this.label,
+    this.height,
     this.onRemove,
     this.onEdit,
     this.onPlayStateChanged,
@@ -160,168 +162,173 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isTablet = screenWidth > 600;
+    final effectiveHeight = widget.height ?? (isTablet ? 60 : 50);
+    
     return Container(
-      padding: EdgeInsets.all(theme.spacing.medium),
+      height: effectiveHeight,
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 16 : 12,
+        vertical: isTablet ? 12 : 8,
+      ),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(theme.spacing.medium),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
         border: Border.all(
-          color: colorScheme.outline.withValues(alpha:0.2),
+          color: colorScheme.outline.withOpacity(0.2),
           width: 1,
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          if (widget.label != null || widget.onEdit != null || widget.onRemove != null)
-            Padding(
-              padding: EdgeInsets.only(bottom: theme.spacing.small),
-              child: Row(
-                children: [
-                  if (widget.label != null)
-                    Expanded(
+          // Play/Pause button
+          Container(
+            width: effectiveHeight * 0.6,
+            height: effectiveHeight * 0.6,
+            decoration: BoxDecoration(
+              color: _isPlaying ? colorScheme.primary : colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: _playPause,
+              icon: Icon(
+                _isLoading
+                    ? Icons.hourglass_empty
+                    : _isPlaying
+                        ? Icons.pause
+                        : Icons.play_arrow,
+                color: _isPlaying ? colorScheme.onPrimary : colorScheme.onPrimaryContainer,
+                size: (effectiveHeight * 0.35).clamp(16.0, 24.0),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(
+                minWidth: effectiveHeight * 0.6,
+                minHeight: effectiveHeight * 0.6,
+              ),
+            ),
+          ),
+          
+          SizedBox(width: isTablet ? 12 : 8),
+          
+          // Progress and controls
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Label (if provided and there's space)
+                if (widget.label != null && effectiveHeight > 45) ...[
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
                         widget.label!,
-                        style: textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w500,
                           color: colorScheme.onSurface,
+                          fontSize: isTablet ? 14 : 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  if (widget.onEdit != null)
-                    IconButton(
-                      onPressed: widget.onEdit,
-                      icon: const Icon(Icons.edit_outlined),
-                      iconSize: theme.iconSizes.small,
-                      visualDensity: VisualDensity.compact,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  if (widget.onRemove != null)
-                    IconButton(
-                      onPressed: widget.onRemove,
-                      icon: const Icon(Icons.close),
-                      iconSize: theme.iconSizes.small,
-                      visualDensity: VisualDensity.compact,
-                      color: colorScheme.error,
-                    ),
-                ],
-              ),
-            ),
-          
-          // Player controls
-          Row(
-            children: [
-              // Play/Pause button
-              Container(
-                decoration: BoxDecoration(
-                  color: _isPlaying ? colorScheme.primary : colorScheme.primaryContainer,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: _playPause,
-                  icon: Icon(
-                    _isLoading
-                        ? Icons.hourglass_empty
-                        : _isPlaying
-                            ? Icons.pause
-                            : Icons.play_arrow,
-                    color: _isPlaying ? colorScheme.onPrimary : colorScheme.onPrimaryContainer,
                   ),
-                  iconSize: theme.iconSizes.medium,
-                  padding: EdgeInsets.all(theme.spacing.small),
-                ),
-              ),
-              SizedBox(width: theme.spacing.medium),
-              
-              // Time and progress bar
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Progress bar
-                    SizedBox(
-                      height: theme.spacing.large,
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 4,
-                          thumbShape: RoundSliderThumbShape(
-                            enabledThumbRadius: theme.spacing.small,
-                          ),
-                          overlayShape: RoundSliderOverlayShape(
-                            overlayRadius: theme.spacing.medium,
-                          ),
-                          activeTrackColor: colorScheme.primary,
-                          inactiveTrackColor: colorScheme.primaryContainer,
-                          thumbColor: colorScheme.primary,
-                          overlayColor: colorScheme.primary.withValues(alpha:0.1),
-                        ),
-                        child: Slider(
-                          value: _duration.inSeconds > 0
-                              ? _position.inSeconds / _duration.inSeconds
-                              : 0.0,
-                          onChanged: _duration.inSeconds > 0 ? (value) => _seek(value) : null,
+                  SizedBox(height: isTablet ? 4 : 2),
+                ],
+                
+                // Progress bar and time
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Current time
+                      Text(
+                        _formatDuration(_position),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: isTablet ? 12 : 10,
                         ),
                       ),
-                    ),
-                    
-                    // Time labels
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: theme.spacing.small),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(_position),
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                      
+                      SizedBox(width: isTablet ? 8 : 6),
+                      
+                      // Progress bar
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: isTablet ? 4 : 3,
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: isTablet ? 8 : 6,
                             ),
-                          ),
-                          Text(
-                            _formatDuration(_duration),
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                            overlayShape: RoundSliderOverlayShape(
+                              overlayRadius: isTablet ? 14 : 12,
                             ),
+                            activeTrackColor: colorScheme.primary,
+                            inactiveTrackColor: colorScheme.primaryContainer,
+                            thumbColor: colorScheme.primary,
+                            overlayColor: colorScheme.primary.withOpacity(0.1),
                           ),
-                        ],
+                          child: Slider(
+                            value: _duration.inSeconds > 0
+                                ? _position.inSeconds / _duration.inSeconds
+                                : 0.0,
+                            onChanged: _duration.inSeconds > 0 ? (value) => _seek(value) : null,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      
+                      SizedBox(width: isTablet ? 8 : 6),
+                      
+                      // Total duration
+                      Text(
+                        _formatDuration(_duration),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: isTablet ? 12 : 10,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          
+          // Action buttons (if provided)
+          if (widget.onEdit != null || widget.onRemove != null) ...[
+            SizedBox(width: isTablet ? 8 : 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onEdit != null)
+                  IconButton(
+                    onPressed: widget.onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    iconSize: isTablet ? 18 : 16,
+                    color: colorScheme.onSurfaceVariant,
+                    padding: EdgeInsets.all(isTablet ? 4 : 2),
+                    constraints: BoxConstraints(
+                      minWidth: effectiveHeight * 0.4,
+                      minHeight: effectiveHeight * 0.4,
+                    ),
+                  ),
+                if (widget.onRemove != null)
+                  IconButton(
+                    onPressed: widget.onRemove,
+                    icon: const Icon(Icons.close),
+                    iconSize: isTablet ? 18 : 16,
+                    color: colorScheme.error,
+                    padding: EdgeInsets.all(isTablet ? 4 : 2),
+                    constraints: BoxConstraints(
+                      minWidth: effectiveHeight * 0.4,
+                      minHeight: effectiveHeight * 0.4,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
-}
-
-extension ThemeSpacing on ThemeData {
-  Spacing get spacing => Spacing(this);
-  IconSizes get iconSizes => IconSizes(this);
-}
-
-class Spacing {
-  final ThemeData theme;
-  
-  Spacing(this.theme);
-  
-  double get small => theme.textTheme.bodySmall?.fontSize ?? 12;
-  double get medium => theme.textTheme.bodyMedium?.fontSize ?? 14;
-  double get large => theme.textTheme.bodyLarge?.fontSize ?? 16;
-}
-
-class IconSizes {
-  final ThemeData theme;
-  
-  IconSizes(this.theme);
-  
-  double get small => (theme.textTheme.bodySmall?.fontSize ?? 12) * 1.5;
-  double get medium => (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.7;
-  double get large => (theme.textTheme.bodyLarge?.fontSize ?? 16) * 2;
 }

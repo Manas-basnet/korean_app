@@ -273,47 +273,149 @@ class TestPortraitModeWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildNonScrollableContent(BuildContext context, double availableHeight) {
-    final savedAnswer = session.getAnswerForQuestion(session.currentQuestionIndex);
+  int _calculateTextLines(String text, TextStyle? style, double maxWidth) {
+    if (text.isEmpty) return 0;
+    
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: null,
+      textDirection: TextDirection.ltr,
+    );
+    
+    textPainter.layout(maxWidth: maxWidth - 32);
+    final lineCount = textPainter.computeLineMetrics().length;
+    return lineCount;
+  }
+
+  double _calculateImageHeight(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    
+    final hasText = question.question.isNotEmpty || question.hasSubQuestion;
+    final hasAudio = (question.questionAudioUrl?.isNotEmpty == true) || 
+                    (question.questionAudioPath?.isNotEmpty == true);
+    
+    // For image-only questions, allow larger images
+    final maxImageHeight = (hasText || hasAudio) 
+        ? screenHeight * 0.25  // 25% when combined with other content
+        : screenHeight * 0.40; // 40% for image-only questions
+    
+    final minImageHeight = (hasText || hasAudio)
+        ? screenHeight * 0.15  // 15% when combined with other content
+        : screenHeight * 0.25; // 25% minimum for image-only
+    
+    // Calculate based on aspect ratio (assuming most images are wider than tall)
+    final aspectRatio = 4 / 3; // Common aspect ratio, adjust if needed
+    final calculatedHeight = screenWidth / aspectRatio;
+    
+    return calculatedHeight.clamp(minImageHeight, maxImageHeight);
+  }
+
+  double _calculateAudioHeight(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    return screenHeight * 0.08;
+  }
+
+  double _calculateQuestionContentHeight(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final theme = Theme.of(context);
+    
     final hasImage = (question.questionImageUrl?.isNotEmpty == true) || 
                     (question.questionImagePath?.isNotEmpty == true);
+    final hasAudio = (question.questionAudioUrl?.isNotEmpty == true) || 
+                    (question.questionAudioPath?.isNotEmpty == true);
+    final hasText = question.question.isNotEmpty || question.hasSubQuestion;
     
-    int questionFlex;
-    int answerFlex;
+    double totalHeight = 0;
     
-    if (hasImage) {
-      questionFlex = 4;
-      answerFlex = 4;
-    } else {
-      final textLength = (question.question.length + (question.subQuestion?.length ?? 0));
-      final hasAudio = (question.questionAudioUrl?.isNotEmpty == true) || 
-                      (question.questionAudioPath?.isNotEmpty == true);
-      
-      if (textLength > 200 || hasAudio) {
-        questionFlex = 4;
-        answerFlex = 4;
-      } else if (textLength > 100) {
-        questionFlex = 3;
-        answerFlex = 5;
-      } else {
-        questionFlex = 2;
-        answerFlex = 6;
-      }
+    // For image-only questions, don't force scrollable
+    if (hasImage && !hasText && !hasAudio) {
+      // Return a height that won't trigger scrollable mode
+      return MediaQuery.sizeOf(context).height * 0.4;
     }
+    
+    // Rest of the calculation remains the same...
+    if (hasImage) {
+      totalHeight += _calculateImageHeight(context);
+    }
+    
+    if (hasAudio) {
+      totalHeight += _calculateAudioHeight(context);
+      totalHeight += 16;
+    }
+    
+    if (hasText) {
+      totalHeight += 40; // Label container
+      
+      if (question.question.isNotEmpty) {
+        final questionStyle = theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700, 
+          height: 1.3
+        );
+        final questionLines = _calculateTextLines(
+          question.question, 
+          questionStyle,
+          screenWidth - 32
+        );
+        final lineHeight = (questionStyle?.fontSize ?? 16) * 1.3;
+        totalHeight += questionLines * lineHeight;
+        totalHeight += 16;
+      }
+      
+      if (question.hasSubQuestion) {
+        final subQuestionStyle = theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500, 
+          height: 1.3
+        );
+        final subQuestionLines = _calculateTextLines(
+          question.subQuestion ?? '',
+          subQuestionStyle,
+          screenWidth - 32
+        );
+        final lineHeight = (subQuestionStyle?.fontSize ?? 14) * 1.3;
+        totalHeight += subQuestionLines * lineHeight;
+        totalHeight += 40.0;
+      }
+      
+      totalHeight += 32.0;
+    }
+    
+    return totalHeight;
+  }
+
+  Widget _buildNonScrollableContent(BuildContext context, double availableHeight) {
+    final savedAnswer = session.getAnswerForQuestion(session.currentQuestionIndex);
+    final estimatedQuestionHeight = _calculateQuestionContentHeight(context);
+    final maxQuestionHeight = availableHeight * 0.5;
+    
+    final shouldMakeQuestionScrollable = estimatedQuestionHeight > maxQuestionHeight;
     
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Expanded(
-            flex: questionFlex,
-            child: _buildQuestionCard(context, isCompact: true),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            flex: answerFlex,
-            child: _buildAnswerOptionsWithNavigation(context, savedAnswer),
-          ),
+          if (shouldMakeQuestionScrollable) ...[
+            Container(
+              height: maxQuestionHeight,
+              child: _buildQuestionCard(context, isCompact: true, forceScrollable: true),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _buildAnswerOptionsWithNavigation(context, savedAnswer),
+            ),
+          ] else ...[
+            Container(
+              constraints: BoxConstraints(
+                minHeight: estimatedQuestionHeight,
+                maxHeight: maxQuestionHeight,
+              ),
+              child: _buildQuestionCard(context, isCompact: true),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _buildAnswerOptionsWithNavigation(context, savedAnswer),
+            ),
+          ],
           if (showingExplanation && question.explanation != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -424,7 +526,7 @@ class TestPortraitModeWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildQuestionCard(BuildContext context, {bool isCompact = false}) {
+Widget _buildQuestionCard(BuildContext context, {bool isCompact = false, bool forceScrollable = false}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final hasImage = (question.questionImageUrl?.isNotEmpty == true) || 
@@ -440,11 +542,69 @@ class TestPortraitModeWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
       ),
-      child: hasImage ? _buildImageQuestionLayout(context, hasAudio, hasText, isCompact) : _buildTextOnlyQuestionLayout(context, hasAudio, isCompact),
+      child: forceScrollable 
+          ? _buildScrollableQuestionLayout(context, hasImage, hasAudio, hasText)
+          : hasImage 
+              ? _buildImageQuestionLayout(context, hasAudio, hasText, isCompact) 
+              : _buildTextOnlyQuestionLayout(context, hasAudio, isCompact, forceScrollable),
+    );
+  }
+
+  Widget _buildScrollableQuestionLayout(BuildContext context, bool hasImage, bool hasAudio, bool hasText) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasImage)
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: _calculateImageHeight(context),
+                minHeight: _calculateImageHeight(context) * 0.6,
+              ),
+              child: _buildQuestionImage(context, question.questionImageUrl, question.questionImagePath),
+            ),
+          if (hasText || hasAudio)
+            _buildQuestionTextContent(context, hasAudio, true),
+        ],
+      ),
     );
   }
 
   Widget _buildImageQuestionLayout(BuildContext context, bool hasAudio, bool hasText, bool isCompact) {
+    // For image-only questions (no text, no audio), use full available space
+    if (!hasText && !hasAudio) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: _buildQuestionImage(
+          context, 
+          question.questionImageUrl, 
+          question.questionImagePath,
+          isFullHeight: true
+        ),
+      );
+    }
+    
+    // For compact mode or when there's additional content
+    if (isCompact && (hasAudio || hasText)) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxHeight: _calculateImageHeight(context),
+              minHeight: _calculateImageHeight(context) * 0.6,
+            ),
+            child: _buildQuestionImage(context, question.questionImageUrl, question.questionImagePath),
+          ),
+          if (hasText || hasAudio)
+            Flexible(
+              fit: FlexFit.loose,
+              child: _buildQuestionTextContent(context, hasAudio, isCompact),
+            ),
+        ],
+      );
+    }
     
     return Column(
       children: [
@@ -461,8 +621,13 @@ class TestPortraitModeWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTextOnlyQuestionLayout(BuildContext context, bool hasAudio, bool isCompact) {
-    return SizedBox(
+  Widget _buildTextOnlyQuestionLayout(BuildContext context, bool hasAudio, bool isCompact, bool forceScrollable) {
+    if (forceScrollable) {
+      return SingleChildScrollView(
+        child: _buildQuestionTextContent(context, hasAudio, isCompact),
+      );
+    }
+    return Container(
       width: double.infinity,
       child: _buildQuestionTextContent(context, hasAudio, isCompact),
     );
@@ -470,12 +635,14 @@ class TestPortraitModeWidget extends StatelessWidget {
 
   Widget _buildQuestionTextContent(BuildContext context, bool hasAudio, bool isCompact) {
     final theme = Theme.of(context);
+    final mediaQuerySize = MediaQuery.sizeOf(context);
     final colorScheme = theme.colorScheme;
     
     return Padding(
       padding: EdgeInsets.all(isCompact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -500,49 +667,58 @@ class TestPortraitModeWidget extends StatelessWidget {
                 korean: '문제 듣기',
                 english: 'Listen to Question',
               ),
-              height: isCompact ? 36 : 50,
+              height: mediaQuerySize.height * 0.08,
             ),
           ],
           if (question.question.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      question.question,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
-                      ),
-                    ),
-                    if (question.hasSubQuestion) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        question.subQuestion!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w400,
-                          height: 1.3,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+            Text(
+              question.question,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.3,
               ),
             ),
-          ] else if (question.hasSubQuestion) ...[
-            const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
+            if (question.hasSubQuestion) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
                 child: Text(
                   question.subQuestion!,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
                     height: 1.3,
-                    color: colorScheme.onSurfaceVariant,
+                    color: colorScheme.onSurface,
                   ),
+                ),
+              ),
+            ],
+          ] else if (question.hasSubQuestion) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                question.subQuestion!,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
@@ -552,7 +728,7 @@ class TestPortraitModeWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildQuestionImage(BuildContext context, String? imageUrl, String? imagePath) {
+  Widget _buildQuestionImage(BuildContext context, String? imageUrl, String? imagePath, {bool isFullHeight = false}) {
     return GestureDetector(
       onTap: () => DialogUtils.showFullScreenImage(context, imageUrl, imagePath),
       onLongPress: () {
@@ -564,8 +740,15 @@ class TestPortraitModeWidget extends StatelessWidget {
           heroTag: 'question_${imageUrl ?? imagePath}',
         );
       },
-      child: SizedBox(
+      child: Container(
         width: double.infinity,
+        height: isFullHeight ? double.infinity : null,
+        constraints: isFullHeight 
+            ? null 
+            : const BoxConstraints(
+                maxHeight: double.infinity,
+                minHeight: 150,
+              ),
         child: Stack(
           children: [
             CustomCachedImage(
@@ -573,7 +756,7 @@ class TestPortraitModeWidget extends StatelessWidget {
               imagePath: imagePath,
               fit: BoxFit.contain,
               width: double.infinity,
-              height: double.infinity,
+              height: isFullHeight ? double.infinity : null,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             Positioned(
@@ -702,7 +885,7 @@ class TestPortraitModeWidget extends StatelessWidget {
         onTap: () => onAnswerSelected(index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.only(left: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor, width: 1.5),
@@ -714,7 +897,6 @@ class TestPortraitModeWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildOptionSelector(context, index, isSelected || wasSelectedAnswer, borderColor),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildOptionContent(context, index, option),
                   ),
@@ -921,6 +1103,7 @@ class TestPortraitModeWidget extends StatelessWidget {
 
   Widget _buildOptionContent(BuildContext context, int index, AnswerOption option, {bool isGrid = false}) {
     final theme = Theme.of(context);
+    final mediaQuerySize = MediaQuery.sizeOf(context);
     
     if (option.isAudio) {
       return Column(
@@ -934,7 +1117,7 @@ class TestPortraitModeWidget extends StatelessWidget {
               korean: '선택지 ${String.fromCharCode(65 + index)} 듣기',
               english: 'Listen to Option ${String.fromCharCode(65 + index)}',
             ),
-            height: 40,
+            height: mediaQuerySize.height * 0.06,
           ),
           if (option.text.isNotEmpty) ...[
             const SizedBox(height: 8),

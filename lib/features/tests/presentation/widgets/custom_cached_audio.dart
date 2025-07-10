@@ -183,6 +183,7 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
   Widget _buildLocalAudio(BuildContext context, String path) {
     return AudioPlayerWidget(
       audioPath: path,
+      height: height,
       label: label,
     );
   }
@@ -190,6 +191,7 @@ class _CustomCachedAudioState extends State<CustomCachedAudio> {
   Widget _buildNetworkAudio(BuildContext context, String url) {
     return AudioPlayerWidget(
       audioUrl: url,
+      height: height,
       label: label,
     );
   }

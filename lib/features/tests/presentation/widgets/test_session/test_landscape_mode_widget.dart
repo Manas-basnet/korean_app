@@ -561,7 +561,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
         onTap: () => onAnswerSelected(index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: EdgeInsets.all(isCompact ? 6 : 8),
+          padding: const EdgeInsets.only(left: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: borderColor, width: 1.2),
@@ -573,7 +573,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildCompactOptionSelector(context, index, isSelected || wasSelectedAnswer, borderColor),
-                  const SizedBox(width: 8),
+                  // const SizedBox(width: 8),
                   Expanded(
                     child: _buildCompactOptionContent(context, index, option),
                   ),
@@ -617,6 +617,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
 
   Widget _buildCompactOptionContent(BuildContext context, int index, AnswerOption option) {
     final theme = Theme.of(context);
+    final mediaQuerySize = MediaQuery.sizeOf(context);
     
     if (option.isAudio) {
       return Column(
@@ -630,7 +631,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
               korean: '선택지 ${String.fromCharCode(65 + index)} 듣기',
               english: 'Listen to Option ${String.fromCharCode(65 + index)}',
             ),
-            height: 40,
+            height: mediaQuerySize.height * 0.14,
           ),
           if (option.text.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -717,6 +718,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
 
   Widget _buildLandscapeQuestionContent(BuildContext context) {
     final theme = Theme.of(context);
+    final mediaQuerySize = MediaQuery.sizeOf(context);
     final colorScheme = theme.colorScheme;
     final hasImage = (question.questionImageUrl?.isNotEmpty == true) || 
                     (question.questionImagePath?.isNotEmpty == true);
@@ -744,7 +746,7 @@ class TestLandscapeModeWidget extends StatelessWidget {
                 korean: '문제 듣기',
                 english: 'Listen to Question',
               ),
-              height: 40,
+              height: mediaQuerySize.height * 0.2,
             ),
           ],
         
