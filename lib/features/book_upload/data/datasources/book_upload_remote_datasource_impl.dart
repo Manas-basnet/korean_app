@@ -924,7 +924,8 @@ class FirestoreBookUploadDataSourceImpl implements BookUploadRemoteDataSource {
 
   bool _isCachedFile(String path) {
     return path.startsWith('/') && 
-          (path.contains('books_files_cache'));
+          (path.contains('books_pdf_cache') || 
+            path.contains('books_audio_cache'));
   }
 
   bool _isFirebaseStoragePath(String path) {

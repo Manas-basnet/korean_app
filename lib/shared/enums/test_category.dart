@@ -1,5 +1,6 @@
 enum TestCategory {
   all,
+  epsTopik,
   topikI,
   topikII,
   practice,
@@ -9,6 +10,8 @@ enum TestCategory {
 extension TestCategoryExtension on TestCategory {
   String get displayName {
     switch (this) {
+      case TestCategory.epsTopik:
+        return 'EPS-TOPIK';
       case TestCategory.topikI:
         return 'TOPIK I';
       case TestCategory.topikII:
@@ -28,6 +31,11 @@ extension TestCategoryExtension on TestCategory {
         return getLocalizedText(
           korean: '전체',
           english: 'All',
+        );
+      case TestCategory.epsTopik:
+        return getLocalizedText(
+          korean: 'EPS-TOPIK',
+          english: 'EPS-TOPIK',
         );
       case TestCategory.practice:
         return getLocalizedText(

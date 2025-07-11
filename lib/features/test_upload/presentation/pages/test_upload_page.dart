@@ -30,7 +30,7 @@ class _TestUploadPageState extends State<TestUploadPage> {
   final _passingScoreController = TextEditingController(text: '60');
   
   BookLevel _selectedLevel = BookLevel.beginner;
-  TestCategory _selectedCategory = TestCategory.practice;
+  TestCategory _selectedCategory = TestCategory.epsTopik;
   final String _selectedLanguage = 'Korean';
   File? _selectedImage;
   bool _isPublished = true;

@@ -305,7 +305,7 @@ class TestPortraitModeWidget extends StatelessWidget {
         : screenHeight * 0.25; // 25% minimum for image-only
     
     // Calculate based on aspect ratio (assuming most images are wider than tall)
-    final aspectRatio = 4 / 3; // Common aspect ratio, adjust if needed
+    const aspectRatio = 4 / 3; // Common aspect ratio, adjust if needed
     final calculatedHeight = screenWidth / aspectRatio;
     
     return calculatedHeight.clamp(minImageHeight, maxImageHeight);
@@ -328,13 +328,10 @@ class TestPortraitModeWidget extends StatelessWidget {
     
     double totalHeight = 0;
     
-    // For image-only questions, don't force scrollable
     if (hasImage && !hasText && !hasAudio) {
-      // Return a height that won't trigger scrollable mode
       return MediaQuery.sizeOf(context).height * 0.4;
     }
     
-    // Rest of the calculation remains the same...
     if (hasImage) {
       totalHeight += _calculateImageHeight(context);
     }
@@ -345,7 +342,7 @@ class TestPortraitModeWidget extends StatelessWidget {
     }
     
     if (hasText) {
-      totalHeight += 40; // Label container
+      totalHeight += 40; 
       
       if (question.question.isNotEmpty) {
         final questionStyle = theme.textTheme.titleMedium?.copyWith(
@@ -395,7 +392,7 @@ class TestPortraitModeWidget extends StatelessWidget {
       child: Column(
         children: [
           if (shouldMakeQuestionScrollable) ...[
-            Container(
+            SizedBox(
               height: maxQuestionHeight,
               child: _buildQuestionCard(context, isCompact: true, forceScrollable: true),
             ),
@@ -468,7 +465,7 @@ class TestPortraitModeWidget extends StatelessWidget {
     final isLastQuestion = session.currentQuestionIndex == session.totalQuestions - 1;
 
     return SizedBox(
-      height: 48,
+      height: 42,
       child: Row(
         children: [
           if (!isFirstQuestion) ...[
