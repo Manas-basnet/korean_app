@@ -12,6 +12,7 @@ import 'package:korean_language_app/features/books/data/repositories/book_reposi
 import 'package:korean_language_app/features/books/domain/repositories/book_repository.dart';
 import 'package:korean_language_app/features/books/domain/usecase/check_book_permission_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/get_book_by_id_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecase/get_book_with_cached_paths_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/load_books_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/search_books_usecase.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
@@ -30,6 +31,7 @@ void registerBooksDependencies(GetIt sl) {
     loadBooksUseCase: sl(),
     checkEditPermissionUseCase: sl(),
     getBookByIdUseCase: sl(),
+    getBookWithCachedPathsUseCase: sl<GetBookWithCachedPathsUseCase>(),
     networkInfo: sl()
   ));
 
@@ -62,6 +64,12 @@ void registerBooksDependencies(GetIt sl) {
     repository: sl(),
     authService: sl(),
   ));
+    
+  sl.registerLazySingleton<GetBookWithCachedPathsUseCase>(
+    () => GetBookWithCachedPathsUseCase(
+      repository: sl<BooksRepository>(),
+    ),
+  );
   
   // Repositories
   sl.registerLazySingleton<BookUploadRepository>(

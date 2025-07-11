@@ -212,7 +212,7 @@ class AppRouter {
           }
           
           return PdfReadingPage(
-            bookItem: bookItem,
+            bookId: bookItem.id,
             chapterIndex: chapterIndex,
           );
         },

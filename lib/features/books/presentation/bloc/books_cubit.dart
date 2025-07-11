@@ -7,6 +7,7 @@ import 'package:korean_language_app/core/errors/api_result.dart';
 import 'package:korean_language_app/core/network/network_info.dart';
 import 'package:korean_language_app/features/books/domain/usecase/check_book_permission_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/get_book_by_id_usecase.dart';
+import 'package:korean_language_app/features/books/domain/usecase/get_book_with_cached_paths_usecase.dart';
 import 'package:korean_language_app/features/books/domain/usecase/load_books_usecase.dart';
 import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/enums/test_category.dart';
@@ -19,6 +20,7 @@ class BooksCubit extends Cubit<BooksState> {
   final LoadBooksUseCase loadBooksUseCase;
   final CheckBookEditPermissionUseCase checkEditPermissionUseCase;
   final GetBookByIdUseCase getBookByIdUseCase;
+  final GetBookWithCachedPathsUseCase getBookWithCachedPathsUseCase;
   final NetworkInfo networkInfo;
   
   int _currentPage = 0;
@@ -35,6 +37,7 @@ class BooksCubit extends Cubit<BooksState> {
     required this.loadBooksUseCase,
     required this.checkEditPermissionUseCase,
     required this.getBookByIdUseCase,
+    required this.getBookWithCachedPathsUseCase,
     required this.networkInfo,
   }) : super(const BooksInitial()) {
     _initializeConnectivityListener();
@@ -190,6 +193,19 @@ class BooksCubit extends Cubit<BooksState> {
       _operationStopwatch.stop();
       debugPrint('Error loading books by category after ${_operationStopwatch.elapsedMilliseconds}ms: $e');
       _handleError('Failed to load books: $e', BooksOperationType.loadBooks);
+    }
+  }
+
+  Future<BookItem> getBookWithCachedPaths(BookItem book) async {
+    try {
+      final result = await getBookWithCachedPathsUseCase.execute(book);
+      return result.fold(
+        onSuccess: (processedBook) => processedBook,
+        onFailure: (_, __) => book,
+      );
+    } catch (e) {
+      debugPrint('Error getting book with cached paths: $e');
+      return book;
     }
   }
 

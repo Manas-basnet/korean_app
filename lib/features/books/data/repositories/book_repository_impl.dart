@@ -505,6 +505,17 @@ class BooksRepositoryImpl extends BaseRepository implements BooksRepository {
   }
 
   @override
+  Future<ApiResult<BookItem>> getBookWithCachedPaths(BookItem book) async {
+    try {
+      final processedBooks = await _processBookWithAllMedia([book]);
+      return ApiResult.success(processedBooks.isNotEmpty ? processedBooks.first : book);
+    } catch (e) {
+      debugPrint('Error processing book with cached paths: $e');
+      return ApiResult.success(book);
+    }
+  }
+
+  @override
   Future<ApiResult<void>> recordBookView(String bookId, String userId) async {
     return handleRepositoryCall<void>(
       () async {

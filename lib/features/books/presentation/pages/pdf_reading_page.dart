@@ -11,14 +11,15 @@ import 'package:korean_language_app/shared/models/book_related/book_chapter.dart
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
+import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
 
 class PdfReadingPage extends StatefulWidget {
-  final BookItem bookItem;
+  final String bookId;
   final int chapterIndex;
 
   const PdfReadingPage({
     super.key,
-    required this.bookItem,
+    required this.bookId,
     required this.chapterIndex,
   });
 
@@ -37,23 +38,29 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   int _totalPages = 0;
   AudioTrack? _currentlyPlayingTrack;
   
-  // Cache the PDF viewer widget to prevent rebuilds and re-downloads
   Widget? _cachedPdfViewer;
+  BookItem? _currentBookItem;
+  bool _isLoadingBook = true;
+  bool _hasError = false;
+  String? _errorMessage;
 
-  BookChapter get currentChapter => widget.bookItem.chapters[widget.chapterIndex];
-  String get bookId => widget.bookItem.id;
-  String get bookTitle => widget.bookItem.title;
-  String get chapterTitle => currentChapter.title;
-  String? get pdfPath => currentChapter.pdfPath;
-  String? get pdfUrl => currentChapter.pdfUrl;
-  List<AudioTrack> get audioTracks => currentChapter.audioTracks;
-  int get totalChapters => widget.bookItem.chapters.length;
+  BookChapter? get currentChapter => _currentBookItem != null && 
+      widget.chapterIndex < _currentBookItem!.chapters.length 
+      ? _currentBookItem!.chapters[widget.chapterIndex] 
+      : null;
+  String get bookTitle => _currentBookItem?.title ?? '';
+  String get chapterTitle => currentChapter?.title ?? '';
+  String? get pdfPath => currentChapter?.pdfPath;
+  String? get pdfUrl => currentChapter?.pdfUrl;
+  List<AudioTrack> get audioTracks => currentChapter?.audioTracks ?? [];
+  int get totalChapters => _currentBookItem?.chapters.length ?? 0;
   bool get isFirstChapter => widget.chapterIndex == 0;
   bool get isLastChapter => widget.chapterIndex == totalChapters - 1;
 
   late LanguagePreferenceCubit _languageCubit;
   late SnackBarCubit _snackBarCubit;
   late BookSessionCubit _bookSessionCubit;
+  late BooksCubit _booksCubit;
 
   @override
   void initState() {
@@ -62,6 +69,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     _languageCubit = context.read<LanguagePreferenceCubit>();
     _snackBarCubit = context.read<SnackBarCubit>();
     _bookSessionCubit = context.read<BookSessionCubit>();
+    _booksCubit = context.read<BooksCubit>();
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -72,15 +80,92 @@ class _PdfReadingPageState extends State<PdfReadingPage>
     );
     _animationController.forward();
 
-    // Initialize PDF viewer once
-    _initializePdfViewer();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeSession();
+      _loadBookAndCheckCachedPaths();
     });
   }
 
+  Future<void> _loadBookAndCheckCachedPaths() async {
+    try {
+      setState(() {
+        _isLoadingBook = true;
+        _hasError = false;
+        _errorMessage = null;
+      });
+
+      final booksState = _booksCubit.state;
+      BookItem? book;
+
+      if (booksState.selectedBook?.id == widget.bookId) {
+        book = booksState.selectedBook;
+      } else {
+        await _booksCubit.loadBookById(widget.bookId);
+        final updatedState = _booksCubit.state;
+        
+        if (updatedState.hasError || updatedState.selectedBook == null) {
+          setState(() {
+            _hasError = true;
+            _errorMessage = updatedState.error ?? _languageCubit.getLocalizedText(
+              korean: '도서를 불러올 수 없습니다',
+              english: 'Failed to load book',
+            );
+            _isLoadingBook = false;
+          });
+          return;
+        }
+        book = updatedState.selectedBook;
+      }
+
+      if (book == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = _languageCubit.getLocalizedText(
+            korean: '도서를 찾을 수 없습니다',
+            english: 'Book not found',
+          );
+          _isLoadingBook = false;
+        });
+        return;
+      }
+
+      if (widget.chapterIndex >= book.chapters.length) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = _languageCubit.getLocalizedText(
+            korean: '챕터를 찾을 수 없습니다',
+            english: 'Chapter not found',
+          );
+          _isLoadingBook = false;
+        });
+        return;
+      }
+
+      final processedBook = await _booksCubit.getBookWithCachedPaths(book);
+
+      setState(() {
+        _currentBookItem = processedBook;
+        _isLoadingBook = false;
+      });
+
+      _initializePdfViewer();
+      _initializeSession();
+
+    } catch (e) {
+      debugPrint('Error loading book and checking cached paths: $e');
+      setState(() {
+        _hasError = true;
+        _errorMessage = _languageCubit.getLocalizedText(
+          korean: '오류가 발생했습니다: $e',
+          english: 'An error occurred: $e',
+        );
+        _isLoadingBook = false;
+      });
+    }
+  }
+
   void _initializePdfViewer() {
+    if (currentChapter == null) return;
+
     if (pdfPath != null && File(pdfPath!).existsSync()) {
       _cachedPdfViewer = SfPdfViewer.file(
         File(pdfPath!),
@@ -129,23 +214,27 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   }
 
   void _initializeSession() {
+    if (_currentBookItem == null) return;
+
     _bookSessionCubit.startReadingSession(
-      bookId,
+      widget.bookId,
       bookTitle,
       widget.chapterIndex,
       chapterTitle,
-      bookItem: widget.bookItem,
+      bookItem: _currentBookItem,
     );
   }
 
   @override
   void deactivate() {
-    _bookSessionCubit.updateReadingProgress(
-      widget.chapterIndex,
-      _currentPage,
-      _totalPages,
-    );
-    _bookSessionCubit.pauseSession();
+    if (!_isLoadingBook && !_hasError) {
+      _bookSessionCubit.updateReadingProgress(
+        widget.chapterIndex,
+        _currentPage,
+        _totalPages,
+      );
+      _bookSessionCubit.pauseSession();
+    }
     super.deactivate();
   }
 
@@ -186,8 +275,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   void _navigateToPreviousChapter() {
     if (!isFirstChapter) {
       context.pushReplacement(
-        Routes.bookChapterReading(bookId, widget.chapterIndex - 1), 
-        extra: widget.bookItem,
+        Routes.bookChapterReading(widget.bookId, widget.chapterIndex - 1),
       );
     }
   }
@@ -195,8 +283,7 @@ class _PdfReadingPageState extends State<PdfReadingPage>
   void _navigateToNextChapter() {
     if (!isLastChapter) {
       context.pushReplacement(
-        Routes.bookChapterReading(bookId, widget.chapterIndex + 1), 
-        extra: widget.bookItem,
+        Routes.bookChapterReading(widget.bookId, widget.chapterIndex + 1),
       );
     }
   }
@@ -267,6 +354,20 @@ class _PdfReadingPageState extends State<PdfReadingPage>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingBook) {
+      return _LoadingScreen(
+        languageCubit: _languageCubit,
+      );
+    }
+
+    if (_hasError) {
+      return _ErrorScreen(
+        languageCubit: _languageCubit,
+        errorMessage: _errorMessage ?? 'Unknown error',
+        onRetry: _loadBookAndCheckCachedPaths,
+      );
+    }
+
     if (_cachedPdfViewer == null) {
       return _NoPdfScreen(
         chapterTitle: chapterTitle,
@@ -295,7 +396,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
         children: [
           _cachedPdfViewer!,
 
-          // Persistent audio overlay
           if (_currentlyPlayingTrack != null)
             Positioned(
               top: MediaQuery.of(context).padding.top + 8,
@@ -308,7 +408,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
               ),
             ),
 
-          // Top overlay
           _TopOverlay(
             isVisible: _isOverlayVisible,
             fadeAnimation: _fadeAnimation,
@@ -319,7 +418,6 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             onAudioTracks: () => _showAudioTracksDialog(context),
           ),
 
-          // Bottom overlay
           _BottomOverlay(
             isVisible: _isOverlayVisible,
             fadeAnimation: _fadeAnimation,
@@ -333,6 +431,158 @@ class _PdfReadingPageState extends State<PdfReadingPage>
             onPageNavigator: () => _showPageNavigator(context),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingScreen extends StatelessWidget {
+  final LanguagePreferenceCubit languageCubit;
+
+  const _LoadingScreen({
+    required this.languageCubit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: colorScheme.primary,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              languageCubit.getLocalizedText(
+                korean: '챕터를 준비하고 있습니다...',
+                english: 'Preparing chapter...',
+              ),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorScreen extends StatelessWidget {
+  final LanguagePreferenceCubit languageCubit;
+  final String errorMessage;
+  final VoidCallback onRetry;
+
+  const _ErrorScreen({
+    required this.languageCubit,
+    required this.errorMessage,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 40,
+                  color: colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                languageCubit.getLocalizedText(
+                  korean: '오류 발생',
+                  english: 'Error Occurred',
+                ),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: Text(
+                      languageCubit.getLocalizedText(
+                        korean: '돌아가기',
+                        english: 'Go Back',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  FilledButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(
+                      languageCubit.getLocalizedText(
+                        korean: '다시 시도',
+                        english: 'Retry',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

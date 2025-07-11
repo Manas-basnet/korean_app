@@ -34,6 +34,8 @@ abstract class BooksRepository {
   
   Future<ApiResult<List<BookItem>>> searchBooks(String query);
   Future<ApiResult<BookItem?>> getBookById(String bookId);
+
+  Future<ApiResult<BookItem>> getBookWithCachedPaths(BookItem book);
   
   Future<ApiResult<void>> recordBookView(String bookId, String userId);
   Future<ApiResult<void>> rateBook(String bookId, String userId, double rating);
