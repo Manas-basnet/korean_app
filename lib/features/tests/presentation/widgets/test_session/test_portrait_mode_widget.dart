@@ -1114,7 +1114,7 @@ Widget _buildQuestionCard(BuildContext context, {bool isCompact = false, bool fo
               korean: '선택지 ${String.fromCharCode(65 + index)} 듣기',
               english: 'Listen to Option ${String.fromCharCode(65 + index)}',
             ),
-            height: mediaQuerySize.height * 0.06,
+            height: mediaQuerySize.height * 0.055,
           ),
           if (option.text.isNotEmpty) ...[
             const SizedBox(height: 8),
