@@ -35,4 +35,5 @@ abstract class VocabulariesLocalDataSource {
   Future<String?> getCachedImagePath(String imageUrl, String vocabularyId, String imageType);
   Future<String?> getCachedAudioPath(String audioUrl, String vocabularyId, String audioType);
   Future<String?> getCachedPdfPath(String pdfUrl, String vocabularyId, String filename);
+
 }

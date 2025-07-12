@@ -10,7 +10,13 @@ import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_
 import 'package:korean_language_app/shared/enums/book_level.dart';
 import 'package:korean_language_app/shared/enums/supported_language.dart';
 
+
+
 class VocabulariesLocalDataSourceImpl implements VocabulariesLocalDataSource {
+  
+  VocabulariesLocalDataSourceImpl({required StorageService storageService})
+      : _storageService = storageService;
+
   final StorageService _storageService;
   
   static const String vocabulariesKey = 'CACHED_VOCABULARIES';
@@ -22,13 +28,11 @@ class VocabulariesLocalDataSourceImpl implements VocabulariesLocalDataSource {
   static const String imageMetadataKey = 'VOCABULARY_IMAGE_METADATA';
   static const String audioMetadataKey = 'VOCABULARY_AUDIO_METADATA';
   static const String pdfMetadataKey = 'VOCABULARY_PDF_METADATA';
-  
+
   Directory? _imagesCacheDir;
   Directory? _audioCacheDir;
   Directory? _pdfsCacheDir;
 
-  VocabulariesLocalDataSourceImpl({required StorageService storageService})
-      : _storageService = storageService;
 
   Future<Directory> get _imagesCacheDirectory async {
     if (_imagesCacheDir != null) return _imagesCacheDir!;
@@ -756,4 +760,5 @@ class VocabulariesLocalDataSourceImpl implements VocabulariesLocalDataSource {
       debugPrint('Error saving PDF metadata: $e');
     }
   }
+
 }

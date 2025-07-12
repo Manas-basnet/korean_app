@@ -558,10 +558,10 @@ class _WordEditorPageState extends State<WordEditorPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (meaning.hasImage)
-                        Icon(Icons.image, size: 16, color: Colors.blue),
+                        const Icon(Icons.image, size: 16, color: Colors.blue),
                       if (meaning.hasAudio) ...[
                         if (meaning.hasImage) const SizedBox(width: 4),
-                        Icon(Icons.audiotrack, size: 16, color: Colors.green),
+                        const Icon(Icons.audiotrack, size: 16, color: Colors.green),
                       ],
                     ],
                   ),
@@ -716,10 +716,10 @@ class _WordEditorPageState extends State<WordEditorPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (example.hasImage)
-                        Icon(Icons.image, size: 16, color: Colors.blue),
+                        const Icon(Icons.image, size: 16, color: Colors.blue),
                       if (example.hasAudio) ...[
                         if (example.hasImage) const SizedBox(width: 4),
-                        Icon(Icons.audiotrack, size: 16, color: Colors.green),
+                        const Icon(Icons.audiotrack, size: 16, color: Colors.green),
                       ],
                     ],
                   ),

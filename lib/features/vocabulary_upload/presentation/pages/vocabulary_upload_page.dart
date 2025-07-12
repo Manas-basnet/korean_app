@@ -110,7 +110,7 @@ class _VocabularyUploadPageState extends State<VocabularyUploadPage> {
               korean: '어휘집이 성공적으로 업로드되었습니다',
               english: 'Vocabulary uploaded successfully',
             );
-            context.go(Routes.vocabulary); //TODO: go to vocabulary page
+            // context.go(Routes.vocabulary); //TODO: go to vocabulary page
           } else if (state.currentOperation.status == VocabularyUploadOperationStatus.failed) {
             _snackBarCubit.showErrorLocalized(
               korean: state.error ?? '어휘집 업로드에 실패했습니다',
