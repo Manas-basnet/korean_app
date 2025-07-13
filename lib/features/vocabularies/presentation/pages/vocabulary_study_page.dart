@@ -1,14 +1,18 @@
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/widgets/simple_audio_player.dart';
+import 'package:korean_language_app/shared/enums/supported_language.dart';
 import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_item.dart';
 import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_chapter.dart';
 import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_word.dart';
+import 'package:korean_language_app/shared/models/vocabulary_related/word_meaning.dart';
+import 'package:korean_language_app/shared/models/vocabulary_related/word_example.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabulary_session/vocabulary_session_cubit.dart';
 import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabularies_cubit.dart';
-import 'package:korean_language_app/features/vocabularies/presentation/widgets/word_study_widget.dart';
 import 'package:korean_language_app/features/vocabularies/presentation/widgets/vocabulary_rating_dialog.dart';
 
 class VocabularyStudyPage extends StatefulWidget {
@@ -28,11 +32,13 @@ class VocabularyStudyPage extends StatefulWidget {
 class _VocabularyStudyPageState extends State<VocabularyStudyPage>
     with TickerProviderStateMixin {
   late PageController _pageController;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
   int _currentWordIndex = 0;
-  bool _isControlsVisible = true;
+  bool _showMeanings = false;
+  bool _showExamples = false;
+  final Set<int> _studiedWords = {};
+  String _searchQuery = '';
   
   VocabularyItem? _currentVocabularyItem;
   bool _isLoadingVocabulary = true;
@@ -47,15 +53,20 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
   String get chapterTitle => currentChapter?.title ?? '';
   List<VocabularyWord> get words => currentChapter?.words ?? [];
   int get totalWords => words.length;
-  bool get isFirstWord => _currentWordIndex == 0;
-  bool get isLastWord => _currentWordIndex == totalWords - 1;
-  bool get isFirstChapter => widget.chapterIndex == 0;
-  bool get isLastChapter => widget.chapterIndex == (_currentVocabularyItem?.chapters.length ?? 1) - 1;
+  VocabularyWord? get currentWord => _currentWordIndex < words.length ? words[_currentWordIndex] : null;
 
   late LanguagePreferenceCubit _languageCubit;
   late SnackBarCubit _snackBarCubit;
   late VocabularySessionCubit _vocabularySessionCubit;
   late VocabulariesCubit _vocabulariesCubit;
+
+  List<VocabularyWord> get _filteredWords {
+    if (_searchQuery.isEmpty) return words;
+    return words.where((word) {
+      return word.word.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+             (word.pronunciation?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -67,14 +78,6 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
     _vocabulariesCubit = context.read<VocabulariesCubit>();
 
     _pageController = PageController();
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-    _fadeController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadVocabularyAndInitializeSession();
@@ -178,7 +181,9 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
   }
 
   @override
-  void deactivate() {
+  void dispose() {
+    _pageController.dispose();
+    
     if (!_isLoadingVocabulary && !_hasError) {
       _vocabularySessionCubit.updateStudyProgress(
         widget.chapterIndex,
@@ -187,58 +192,15 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
       );
       _vocabularySessionCubit.pauseSession();
     }
-    super.deactivate();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _fadeController.dispose();
     super.dispose();
-  }
-
-  void _toggleControls() {
-    setState(() {
-      _isControlsVisible = !_isControlsVisible;
-    });
-    if (_isControlsVisible) {
-      _fadeController.forward();
-    } else {
-      _fadeController.reverse();
-    }
-  }
-
-  void _goToWord(int index) {
-    if (index >= 0 && index < totalWords) {
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _navigateToPreviousChapter() {
-    if (!isFirstChapter) {
-      context.pushReplacement(
-        '/vocabulary/${widget.vocabularyId}/chapter/${widget.chapterIndex - 1}/study',
-      );
-    }
-  }
-
-  void _navigateToNextChapter() {
-    if (!isLastChapter) {
-      context.pushReplacement(
-        '/vocabulary/${widget.vocabularyId}/chapter/${widget.chapterIndex + 1}/study',
-      );
-    } else {
-      _showCompletionDialog();
-    }
   }
 
   void _onWordChanged(int index) {
     setState(() {
       _currentWordIndex = index;
+      _showMeanings = false;
+      _showExamples = false;
+      _studiedWords.add(index);
     });
     
     if (index < words.length) {
@@ -257,16 +219,46 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
     }
   }
 
-  void _showWordNavigator(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => _WordNavigatorDialog(
-        currentWordIndex: _currentWordIndex,
-        totalWords: totalWords,
-        words: words,
-        languageCubit: _languageCubit,
-        onWordSelected: _goToWord,
-      ),
+  void _toggleMeanings() {
+    setState(() {
+      _showMeanings = !_showMeanings;
+      if (_showMeanings) _showExamples = false;
+    });
+  }
+
+  void _toggleExamples() {
+    setState(() {
+      _showExamples = !_showExamples;
+      if (_showExamples) _showMeanings = false;
+    });
+  }
+
+  void _nextWord() {
+    if (_currentWordIndex < totalWords - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      _showCompletionDialog();
+    }
+  }
+
+  void _previousWord() {
+    if (_currentWordIndex > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _goToWord(int index) {
+    Navigator.of(context).pop();
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -285,8 +277,8 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
         ),
         content: Text(
           _languageCubit.getLocalizedText(
-            korean: '모든 단어장을 완료했습니다. 단어장을 평가해주세요.',
-            english: 'You have completed all chapters. Please rate this vocabulary.',
+            korean: '모든 단어를 완료했습니다. 단어장을 평가해주세요.',
+            english: 'You have completed all words. Please rate this vocabulary.',
           ),
         ),
         actions: [
@@ -352,60 +344,798 @@ class _VocabularyStudyPageState extends State<VocabularyStudyPage>
     if (words.isEmpty) {
       return _NoWordsScreen(
         chapterTitle: chapterTitle,
-        vocabularyTitle: vocabularyTitle,
         languageCubit: _languageCubit,
-        isFirstChapter: isFirstChapter,
-        isLastChapter: isLastChapter,
-        onNavigateToPrevious: _navigateToPreviousChapter,
-        onNavigateToNext: _navigateToNextChapter,
       );
     }
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: totalWords,
-            onPageChanged: _onWordChanged,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: _toggleControls,
-                child: WordStudyWidget(
-                  word: words[index],
-                  wordIndex: index,
-                  totalWords: totalWords,
-                  languageCubit: _languageCubit,
+      key: _scaffoldKey,
+      backgroundColor: colorScheme.surface,
+      endDrawer: _buildWordListDrawer(theme, colorScheme),
+      onEndDrawerChanged: (isOpened) {
+        if (!isOpened) {
+          setState(() {
+            _searchQuery = '';
+          });
+        }
+      },
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity! < -300) {
+            _scaffoldKey.currentState?.openEndDrawer();
+          }
+        },
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(theme, colorScheme),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: totalWords,
+                  onPageChanged: _onWordChanged,
+                  itemBuilder: (context, index) {
+                    return _buildWordCard(words[index], theme, colorScheme);
+                  },
                 ),
-              );
-            },
+              ),
+              _buildBottomControls(theme, colorScheme),
+            ],
           ),
+        ),
+      ),
+    );
+  }
 
-          _TopOverlay(
-            isVisible: _isControlsVisible,
-            fadeAnimation: _fadeAnimation,
-            currentWordIndex: _currentWordIndex,
-            totalWords: totalWords,
-            chapterTitle: chapterTitle,
-            onBack: () => Navigator.of(context).pop(),
+  Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+            width: 1,
           ),
-
-          _BottomOverlay(
-            isVisible: _isControlsVisible,
-            fadeAnimation: _fadeAnimation,
-            isFirstWord: isFirstWord,
-            isLastWord: isLastWord,
-            isFirstChapter: isFirstChapter,
-            isLastChapter: isLastChapter,
-            languageCubit: _languageCubit,
-            onNavigateToPrevious: _navigateToPreviousChapter,
-            onNavigateToNext: _navigateToNextChapter,
-            onWordNavigator: () => _showWordNavigator(context),
-            onPreviousWord: () => _goToWord(_currentWordIndex - 1),
-            onNextWord: () => _goToWord(_currentWordIndex + 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back),
+            iconSize: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  chapterTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${_currentWordIndex + 1} / $totalWords',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+            icon: const Icon(Icons.list),
+            iconSize: 20,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWordListDrawer(ThemeData theme, ColorScheme colorScheme) {
+    return Drawer(
+      width: MediaQuery.of(context).size.width * 0.85,
+      child: Column(
+        children: [
+          Container(
+            height: 100,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withOpacity(0.3),
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.list,
+                    color: colorScheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _languageCubit.getLocalizedText(
+                        korean: '단어 목록',
+                        english: 'Word List',
+                      ),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    iconSize: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                hintText: _languageCubit.getLocalizedText(
+                  korean: '단어 검색...',
+                  english: 'Search words...',
+                ),
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        onPressed: () => setState(() => _searchQuery = ''),
+                        icon: const Icon(Icons.clear, size: 20),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _filteredWords.length,
+              itemBuilder: (context, index) {
+                final word = _filteredWords[index];
+                final originalIndex = words.indexOf(word);
+                final isStudied = _studiedWords.contains(originalIndex);
+                final isCurrent = originalIndex == _currentWordIndex;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? colorScheme.primary
+                            : isStudied
+                                ? Colors.green.withOpacity(0.2)
+                                : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: isCurrent
+                            ? Icon(
+                                Icons.play_arrow,
+                                color: colorScheme.onPrimary,
+                                size: 18,
+                              )
+                            : isStudied
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.green,
+                                    size: 18,
+                                  )
+                                : Text(
+                                    '${originalIndex + 1}',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                      ),
+                    ),
+                    title: Text(
+                      word.word,
+                      style: TextStyle(
+                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+                        color: isCurrent
+                            ? colorScheme.primary
+                            : colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: word.pronunciation != null
+                        ? Text(
+                            word.pronunciation!,
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                            ),
+                          )
+                        : null,
+                    trailing: word.hasAudio
+                        ? Icon(
+                            Icons.volume_up,
+                            color: colorScheme.onSurfaceVariant,
+                            size: 16,
+                          )
+                        : null,
+                    onTap: () => _goToWord(originalIndex),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    tileColor: isCurrent
+                        ? colorScheme.primaryContainer.withOpacity(0.3)
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWordCard(VocabularyWord word, ThemeData theme, ColorScheme colorScheme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildMainWordSection(word, theme, colorScheme),
+          const SizedBox(height: 24),
+          _buildActionButtons(word, theme, colorScheme),
+          const SizedBox(height: 16),
+          _buildExpandableSections(word, theme, colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainWordSection(VocabularyWord word, ThemeData theme, ColorScheme colorScheme) {
+    return SimpleAudioPlayer(
+      audioUrl: word.audioUrl,
+      audioPath: word.audioPath,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          children: [
+            if (word.hasImage) ...[
+              _buildWordImage(word, colorScheme),
+              const SizedBox(height: 16),
+            ],
+            
+            Text(
+              word.word,
+              style: theme.textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+                fontSize: 36,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            if (word.hasPronunciation) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  word.pronunciation!,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWordImage(VocabularyWord word, ColorScheme colorScheme) {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: _buildImageContent(word, colorScheme),
+      ),
+    );
+  }
+
+  Widget _buildImageContent(VocabularyWord word, ColorScheme colorScheme) {
+    if (word.imagePath != null && word.imagePath!.isNotEmpty) {
+      return Image.file(
+        File(word.imagePath!),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          if (word.imageUrl != null && word.imageUrl!.isNotEmpty) {
+            return _buildNetworkImage(word.imageUrl!);
+          }
+          return _buildImagePlaceholder(colorScheme);
+        },
+      );
+    }
+    
+    if (word.imageUrl != null && word.imageUrl!.isNotEmpty) {
+      return _buildNetworkImage(word.imageUrl!);
+    }
+    
+    return _buildImagePlaceholder(colorScheme);
+  }
+
+  Widget _buildNetworkImage(String imageUrl) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      errorWidget: (context, url, error) => _buildImagePlaceholder(
+        Theme.of(context).colorScheme,
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder(ColorScheme colorScheme) {
+    return Container(
+      color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 48,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(VocabularyWord word, ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            onTap: _toggleMeanings,
+            icon: Icons.lightbulb_outline,
+            label: _languageCubit.getLocalizedText(
+              korean: '의미',
+              english: 'Meanings',
+            ),
+            count: word.meanings.length,
+            isActive: _showMeanings,
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildActionButton(
+            onTap: _toggleExamples,
+            icon: Icons.format_quote,
+            label: _languageCubit.getLocalizedText(
+              korean: '예문',
+              english: 'Examples',
+            ),
+            count: word.examples.length,
+            isActive: _showExamples,
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+    required int count,
+    required bool isActive,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive 
+              ? colorScheme.primary 
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive 
+                ? colorScheme.primary 
+                : colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isActive ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: isActive ? colorScheme.onPrimary : colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isActive 
+                      ? colorScheme.onPrimary.withOpacity(0.2)
+                      : colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isActive ? colorScheme.onPrimary : colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableSections(VocabularyWord word, ThemeData theme, ColorScheme colorScheme) {
+    return Column(
+      children: [
+        if (_showMeanings && word.meanings.isNotEmpty)
+          _buildMeaningsSection(word.meanings, theme, colorScheme),
+        if (_showExamples && word.examples.isNotEmpty)
+          _buildExamplesSection(word.examples, theme, colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildMeaningsSection(List<WordMeaning> meanings, ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                color: colorScheme.primary,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _languageCubit.getLocalizedText(
+                  korean: '의미',
+                  english: 'Meanings',
+                ),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...meanings.asMap().entries.map((entry) {
+            final index = entry.key;
+            final meaning = entry.value;
+            return _buildMeaningCard(meaning, index, theme, colorScheme);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMeaningCard(WordMeaning meaning, int index, ThemeData theme, ColorScheme colorScheme) {
+    return SimpleAudioPlayer(
+      audioUrl: meaning.audioUrl,
+      audioPath: meaning.audioPath,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.1),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        meaning.language.flag,
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        meaning.language.name.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              meaning.meaning,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExamplesSection(List<WordExample> examples, ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.format_quote,
+                color: colorScheme.tertiary,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _languageCubit.getLocalizedText(
+                  korean: '예문',
+                  english: 'Examples',
+                ),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...examples.asMap().entries.map((entry) {
+            final index = entry.key;
+            final example = entry.value;
+            return _buildExampleCard(example, index, theme, colorScheme);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExampleCard(WordExample example, int index, ThemeData theme, ColorScheme colorScheme) {
+    return SimpleAudioPlayer(
+      audioUrl: example.audioUrl,
+      audioPath: example.audioPath,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.1),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.tertiary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.tertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.format_quote,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.tertiaryContainer.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                example.example,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  height: 1.4,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            if (example.hasTranslation) ...[
+              const SizedBox(height: 6),
+              Text(
+                example.translation!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomControls(ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _currentWordIndex > 0 ? _previousWord : null,
+              icon: const Icon(Icons.chevron_left),
+              iconSize: 28,
+              style: IconButton.styleFrom(
+                backgroundColor: _currentWordIndex > 0 
+                    ? colorScheme.surfaceContainerHighest 
+                    : colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                foregroundColor: _currentWordIndex > 0 
+                    ? colorScheme.onSurface 
+                    : colorScheme.onSurface.withOpacity(0.3),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _nextWord,
+                icon: Icon(_currentWordIndex == totalWords - 1 ? Icons.check : Icons.chevron_right),
+                label: Text(
+                  _currentWordIndex == totalWords - 1
+                      ? _languageCubit.getLocalizedText(korean: '완료', english: 'Complete')
+                      : _languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -423,28 +1153,13 @@ class _LoadingScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: colorScheme.primary,
-                  strokeWidth: 3,
-                ),
-              ),
+            CircularProgressIndicator(
+              color: colorScheme.primary,
+              strokeWidth: 3,
             ),
             const SizedBox(height: 32),
             Text(
@@ -482,29 +1197,16 @@ class _ErrorScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: colorScheme.errorContainer.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.error_outline_rounded,
-                  size: 40,
-                  color: colorScheme.error,
-                ),
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: colorScheme.error,
               ),
               const SizedBox(height: 32),
               Text(
@@ -532,7 +1234,7 @@ class _ErrorScreen extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: const Icon(Icons.arrow_back),
                     label: Text(
                       languageCubit.getLocalizedText(
                         korean: '돌아가기',
@@ -543,7 +1245,7 @@ class _ErrorScreen extends StatelessWidget {
                   const SizedBox(width: 16),
                   FilledButton.icon(
                     onPressed: onRetry,
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(Icons.refresh),
                     label: Text(
                       languageCubit.getLocalizedText(
                         korean: '다시 시도',
@@ -563,21 +1265,11 @@ class _ErrorScreen extends StatelessWidget {
 
 class _NoWordsScreen extends StatelessWidget {
   final String chapterTitle;
-  final String vocabularyTitle;
   final LanguagePreferenceCubit languageCubit;
-  final bool isFirstChapter;
-  final bool isLastChapter;
-  final VoidCallback onNavigateToPrevious;
-  final VoidCallback onNavigateToNext;
 
   const _NoWordsScreen({
     required this.chapterTitle,
-    required this.vocabularyTitle,
     required this.languageCubit,
-    required this.isFirstChapter,
-    required this.isLastChapter,
-    required this.onNavigateToPrevious,
-    required this.onNavigateToNext,
   });
 
   @override
@@ -629,369 +1321,6 @@ class _NoWordsScreen extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: _NavigationBar(
-        isFirstChapter: isFirstChapter,
-        isLastChapter: isLastChapter,
-        languageCubit: languageCubit,
-        onNavigateToPrevious: onNavigateToPrevious,
-        onNavigateToNext: onNavigateToNext,
-      ),
-    );
-  }
-}
-
-class _TopOverlay extends StatelessWidget {
-  final bool isVisible;
-  final Animation<double> fadeAnimation;
-  final int currentWordIndex;
-  final int totalWords;
-  final String chapterTitle;
-  final VoidCallback onBack;
-
-  const _TopOverlay({
-    required this.isVisible,
-    required this.fadeAnimation,
-    required this.currentWordIndex,
-    required this.totalWords,
-    required this.chapterTitle,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: AnimatedBuilder(
-        animation: fadeAnimation,
-        builder: (context, child) {
-          return Opacity(
-            opacity: isVisible ? fadeAnimation.value : 0.0,
-            child: IgnorePointer(
-              ignoring: !isVisible,
-              child: Container(
-                height: MediaQuery.of(context).padding.top + 60,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.8),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: onBack,
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      ),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              chapterTitle,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${currentWordIndex + 1} / $totalWords',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _BottomOverlay extends StatelessWidget {
-  final bool isVisible;
-  final Animation<double> fadeAnimation;
-  final bool isFirstWord;
-  final bool isLastWord;
-  final bool isFirstChapter;
-  final bool isLastChapter;
-  final LanguagePreferenceCubit languageCubit;
-  final VoidCallback onNavigateToPrevious;
-  final VoidCallback onNavigateToNext;
-  final VoidCallback onWordNavigator;
-  final VoidCallback onPreviousWord;
-  final VoidCallback onNextWord;
-
-  const _BottomOverlay({
-    required this.isVisible,
-    required this.fadeAnimation,
-    required this.isFirstWord,
-    required this.isLastWord,
-    required this.isFirstChapter,
-    required this.isLastChapter,
-    required this.languageCubit,
-    required this.onNavigateToPrevious,
-    required this.onNavigateToNext,
-    required this.onWordNavigator,
-    required this.onPreviousWord,
-    required this.onNextWord,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: AnimatedBuilder(
-        animation: fadeAnimation,
-        builder: (context, child) {
-          return Opacity(
-            opacity: isVisible ? fadeAnimation.value : 0.0,
-            child: IgnorePointer(
-              ignoring: !isVisible,
-              child: Container(
-                height: 80 + MediaQuery.of(context).padding.bottom,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.8),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      if (!isFirstWord)
-                        IconButton(
-                          onPressed: onPreviousWord,
-                          icon: const Icon(Icons.chevron_left, color: Colors.white),
-                          tooltip: languageCubit.getLocalizedText(
-                            korean: '이전 단어',
-                            english: 'Previous Word',
-                          ),
-                        ),
-                      if (!isFirstChapter)
-                        IconButton(
-                          onPressed: onNavigateToPrevious,
-                          icon: const Icon(Icons.skip_previous, color: Colors.white),
-                          tooltip: languageCubit.getLocalizedText(
-                            korean: '이전 챕터',
-                            english: 'Previous Chapter',
-                          ),
-                        ),
-                      IconButton(
-                        onPressed: onWordNavigator,
-                        icon: const Icon(Icons.list, color: Colors.white),
-                        tooltip: languageCubit.getLocalizedText(
-                          korean: '단어 목록',
-                          english: 'Word List',
-                        ),
-                      ),
-                      if (!isLastChapter)
-                        IconButton(
-                          onPressed: onNavigateToNext,
-                          icon: const Icon(Icons.skip_next, color: Colors.white),
-                          tooltip: languageCubit.getLocalizedText(
-                            korean: '다음 챕터',
-                            english: 'Next Chapter',
-                          ),
-                        ),
-                      if (!isLastWord)
-                        IconButton(
-                          onPressed: onNextWord,
-                          icon: const Icon(Icons.chevron_right, color: Colors.white),
-                          tooltip: languageCubit.getLocalizedText(
-                            korean: '다음 단어',
-                            english: 'Next Word',
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _NavigationBar extends StatelessWidget {
-  final bool isFirstChapter;
-  final bool isLastChapter;
-  final LanguagePreferenceCubit languageCubit;
-  final VoidCallback onNavigateToPrevious;
-  final VoidCallback onNavigateToNext;
-
-  const _NavigationBar({
-    required this.isFirstChapter,
-    required this.isLastChapter,
-    required this.languageCubit,
-    required this.onNavigateToPrevious,
-    required this.onNavigateToNext,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            if (!isFirstChapter) ...[
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onNavigateToPrevious,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: Text(
-                    languageCubit.getLocalizedText(korean: '이전', english: 'Previous'),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            if (!isLastChapter)
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onNavigateToNext,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                    languageCubit.getLocalizedText(korean: '다음', english: 'Next'),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WordNavigatorDialog extends StatefulWidget {
-  final int currentWordIndex;
-  final int totalWords;
-  final List<VocabularyWord> words;
-  final LanguagePreferenceCubit languageCubit;
-  final Function(int) onWordSelected;
-
-  const _WordNavigatorDialog({
-    required this.currentWordIndex,
-    required this.totalWords,
-    required this.words,
-    required this.languageCubit,
-    required this.onWordSelected,
-  });
-
-  @override
-  State<_WordNavigatorDialog> createState() => _WordNavigatorDialogState();
-}
-
-class _WordNavigatorDialogState extends State<_WordNavigatorDialog> {
-  late int _currentWordIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentWordIndex = widget.currentWordIndex;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return AlertDialog(
-      title: Text(widget.languageCubit.getLocalizedText(
-        korean: '단어 목록',
-        english: 'Word List',
-      )),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 300,
-        child: ListView.builder(
-          itemCount: widget.words.length,
-          itemBuilder: (context, index) {
-            final word = widget.words[index];
-            final isSelected = index == _currentWordIndex;
-            
-            return Card(
-              color: isSelected ? colorScheme.primaryContainer : null,
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isSelected ? colorScheme.primary : colorScheme.outline,
-                  foregroundColor: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-                  child: Text('${index + 1}'),
-                ),
-                title: Text(
-                  word.word,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    color: isSelected ? colorScheme.onPrimaryContainer : null,
-                  ),
-                ),
-                subtitle: word.pronunciation != null 
-                    ? Text(
-                        word.pronunciation!,
-                        style: TextStyle(
-                          color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-                        ),
-                      ) 
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _currentWordIndex = index;
-                  });
-                  widget.onWordSelected(index);
-                  Navigator.of(context).pop();
-                },
-              ),
-            );
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(widget.languageCubit.getLocalizedText(
-            korean: '닫기',
-            english: 'Close',
-          )),
-        ),
-      ],
     );
   }
 }

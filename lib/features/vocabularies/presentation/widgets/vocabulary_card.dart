@@ -243,8 +243,6 @@ class _VocabularyCover extends StatelessWidget {
         return Colors.orange.shade600;
       case SupportedLanguage.hindi:
         return Colors.purple.shade600;
-      default:
-        return Colors.grey.shade600;
     }
   }
 }
@@ -434,8 +432,6 @@ class _VocabularyPlaceholder extends StatelessWidget {
         return Colors.orange.shade700;
       case SupportedLanguage.hindi:
         return Colors.purple.shade700;
-      default:
-        return Colors.grey.shade700;
     }
   }
 }
