@@ -78,7 +78,7 @@ class VocabulariesCubit extends Cubit<VocabulariesState> {
         ),
       ));
       
-      final result = await loadVocabulariesUseCase.execute(LoadVocabulariesParams(
+      final result = await loadVocabulariesUseCase.execute(const LoadVocabulariesParams(
         page: 0,
         pageSize: _pageSize,
       ));
@@ -434,6 +434,7 @@ class VocabulariesCubit extends Cubit<VocabulariesState> {
     try {
       emit(state.copyWith(
         selectedVocabulary: null,
+        isLoading: true,
         currentOperation: VocabulariesOperation(
           type: VocabulariesOperationType.loadVocabularyById,
           status: VocabulariesOperationStatus.inProgress,

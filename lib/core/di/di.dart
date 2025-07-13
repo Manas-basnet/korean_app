@@ -13,6 +13,7 @@ import 'package:korean_language_app/core/di/profile_di.dart';
 import 'package:korean_language_app/core/di/test_results_di.dart';
 import 'package:korean_language_app/core/di/tests_di.dart';
 import 'package:korean_language_app/core/di/test_upload_di.dart';
+import 'package:korean_language_app/core/di/vocabularies_di.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final sl = GetIt.instance;
@@ -34,6 +35,7 @@ Future<void> init() async {
   registerUnpublishedTestsDependencies(sl);
   registerTestUploadDependencies(sl);
   registerTestResultsDependencies(sl);
+  registerVocabulariesDependencies(sl);
 }
    
 Future<void> _registerExternalDependencies() async {

@@ -43,3 +43,84 @@ class VocabularySearchOperation {
   @override
   int get hashCode => type.hashCode ^ status.hashCode ^ (message?.hashCode ?? 0) ^ (query?.hashCode ?? 0);
 }
+
+class VocabularySearchState extends BaseState {
+  final List<VocabularyItem> searchResults;
+  final String currentQuery;
+  final bool isSearching;
+  final VocabularySearchOperation currentOperation;
+
+  const VocabularySearchState({
+    super.isLoading = false,
+    super.error,
+    super.errorType,
+    this.searchResults = const [],
+    this.currentQuery = '',
+    this.isSearching = false,
+    required this.currentOperation,
+  });
+
+  @override
+  VocabularySearchState copyWithBaseState({
+    bool? isLoading,
+    String? error,
+    FailureType? errorType,
+  }) {
+    return VocabularySearchState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      errorType: errorType,
+      searchResults: searchResults,
+      currentQuery: currentQuery,
+      isSearching: isSearching,
+      currentOperation: currentOperation,
+    );
+  }
+
+  VocabularySearchState copyWith({
+    bool? isLoading,
+    String? error,
+    FailureType? errorType,
+    List<VocabularyItem>? searchResults,
+    String? currentQuery,
+    bool? isSearching,
+    VocabularySearchOperation? currentOperation,
+  }) {
+    return VocabularySearchState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      errorType: errorType,
+      searchResults: searchResults ?? this.searchResults,
+      currentQuery: currentQuery ?? this.currentQuery,
+      isSearching: isSearching ?? this.isSearching,
+      currentOperation: currentOperation ?? this.currentOperation,
+    );
+  }
+
+  VocabularySearchState copyWithOperation(VocabularySearchOperation operation) {
+    return VocabularySearchState(
+      isLoading: isLoading,
+      error: error,
+      errorType: errorType,
+      searchResults: searchResults,
+      currentQuery: currentQuery,
+      isSearching: isSearching,
+      currentOperation: operation,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        ...super.props,
+        searchResults,
+        currentQuery,
+        isSearching,
+        currentOperation,
+      ];
+}
+
+class VocabularySearchInitial extends VocabularySearchState {
+  const VocabularySearchInitial() : super(
+    currentOperation: const VocabularySearchOperation(status: VocabularySearchOperationStatus.none),
+  );
+}

@@ -5,7 +5,13 @@ import 'package:korean_language_app/core/di/di.dart';
 import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
 import 'package:korean_language_app/features/books/presentation/pages/chapter_list_page.dart';
 import 'package:korean_language_app/features/books/presentation/pages/pdf_reading_page.dart';
-import 'package:korean_language_app/shared/models/book_related/book_item.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabulary_search/vocabulary_search_cubit.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/pages/vocabularies_page.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/pages/vocabulary_chapter_list_page.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/pages/vocabulary_study_page.dart';
+import 'package:korean_language_app/features/vocabulary_upload/presentation/bloc/vocabulary_upload_cubit.dart';
+import 'package:korean_language_app/features/vocabulary_upload/presentation/pages/vocabulary_edit_page.dart';
+import 'package:korean_language_app/features/vocabulary_upload/presentation/pages/vocabulary_upload_page.dart';
 import 'package:korean_language_app/shared/models/test_related/test_result.dart';
 import 'package:korean_language_app/features/admin/presentation/bloc/admin_permission_cubit.dart';
 import 'package:korean_language_app/features/admin/presentation/pages/admin_management_page.dart';
@@ -57,6 +63,7 @@ class AppRouter {
   static final _homeNavigatorKey = GlobalKey<NavigatorState>();
   static final _testsNavigatorKey = GlobalKey<NavigatorState>();
   static final _booksNavigatorKey = GlobalKey<NavigatorState>();
+  static final _vocabulariesNavigatorKey = GlobalKey<NavigatorState>();
   static final _profileNavigatorKey = GlobalKey<NavigatorState>();
 
   static final GoRouter router = GoRouter(
@@ -181,42 +188,37 @@ class AppRouter {
         builder: (context, state) {
           final bookId = state.pathParameters['bookId']!;
           final chapterIndex = int.parse(state.pathParameters['chapterIndex']!);
-          final bookItem = state.extra as BookItem?;
-          
-          if (bookItem == null) {
-            // Fallback: redirect to chapter list if BookItem is not provided
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Loading...'),
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go(Routes.bookChapters(bookId)),
-                ),
-              ),
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    const Text('Loading book...'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => context.go(Routes.bookChapters(bookId)),
-                      child: const Text('Go to Chapter List'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
           
           return PdfReadingPage(
-            bookId: bookItem.id,
+            bookId: bookId,
             chapterIndex: chapterIndex,
           );
         },
       ),
+
+      // Vocabulary routes (outside main navigation)
+      GoRoute(
+        path: '/vocabulary/:vocabularyId/chapters',
+        name: 'vocabularyChapters',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final vocabularyId = state.pathParameters['vocabularyId']!;
+          return VocabularyChapterListPage(vocabularyId: vocabularyId);
+        },
+      ),
+      GoRoute(
+        path: '/vocabulary/:vocabularyId/chapter/:chapterIndex',
+        name: 'vocabularyChapterReading',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final vocabularyId = state.pathParameters['vocabularyId']!;
+          final chapterIndex = int.parse(state.pathParameters['chapterIndex']!);
+          return VocabularyStudyPage(vocabularyId: vocabularyId, chapterIndex: chapterIndex);
+        },
+      ),
+      
+
+
 
       // Main stateful shell with bottom navigation
       StatefulShellRoute.indexedStack(
@@ -352,6 +354,48 @@ class AppRouter {
             ],
           ),
 
+          // Vocabularies branch
+          StatefulShellBranch(
+            navigatorKey: _vocabulariesNavigatorKey,
+            routes: [
+              ShellRoute(
+                builder: (context, state, child) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider<VocabularySearchCubit>(
+                      create: (context) => sl<VocabularySearchCubit>(),
+                    ),
+                    BlocProvider<VocabularyUploadCubit>(
+                      create: (context) => sl<VocabularyUploadCubit>(),
+                    ),
+                  ],
+                  child: child,
+                ),
+                routes: [
+                  GoRoute(
+                    path: '/vocabularies',
+                    name: 'vocabularies',
+                    builder: (context, state) => const VocabulariesPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'upload',
+                        name: 'vocabularyUpload',
+                        builder: (context, state) => const VocabularyUploadPage(),
+                      ),
+                      GoRoute(
+                        path: 'edit/:vocabularyId',
+                        name: 'vocabularyEdit',
+                        builder: (context, state) {
+                          final vocabularyId = state.pathParameters['vocabularyId']!;
+                          return VocabularyEditPage(vocabularyId: vocabularyId);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
           // Profile branch
           StatefulShellBranch(
             navigatorKey: _profileNavigatorKey,
@@ -426,6 +470,8 @@ class Routes {
   static const forgotPassword = '/forgot-password';
   static const home = '/home';
 
+
+  //Tests routes
   static const tests = '/tests';
   static const testUpload = '/tests/upload';
   static const testResults = '/tests/results';
@@ -438,6 +484,11 @@ class Routes {
   static const books = '/books';
   static const bookUpload = '/books/upload';
 
+  // Vocabularies routes
+  static const vocabularies = '/vocabularies';
+  static const vocabularyUpload = '/vocabularies/upload';
+
+  // Profile routes
   static const profile = '/profile';
   static const languagePreferences = '/profile/language-preferences';
   static const adminManagement = '/profile/admin-management';
@@ -449,10 +500,14 @@ class Routes {
   static String testTaking(String testId) => '/tests/taking/$testId';
   static String testEdit(String testId) => '/tests/edit/$testId';
   static String bookEdit(String bookId) => '/books/edit/$bookId';
+  static String vocabularyEdit(String vocabularyId) => '/vocabularies/edit/$vocabularyId';
   
   // Book reading routes (at root level for direct access)
   static String bookChapters(String bookId) => '/book/$bookId/chapters';
   static String bookChapterReading(String bookId, int chapterIndex) => '/book/$bookId/chapter/$chapterIndex';
+
+  static String vocabularyChapters(String vocabularyId) => '/vocabulary/$vocabularyId/chapters';
+  static String vocabularyChapterReading(String vocabularyId, int chapterIndex) => '/vocabulary/$vocabularyId/chapter/$chapterIndex';
 }
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {
@@ -559,6 +614,10 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
                   BottomNavigationBarItem(
                     icon: Icon(Icons.menu_book_rounded),
                     label: 'Books',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.book_rounded),
+                    label: 'Vocabulary',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.person_rounded),

@@ -11,7 +11,6 @@ import 'package:korean_language_app/shared/enums/course_category.dart';
 import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
 import 'package:korean_language_app/shared/models/book_related/book_item.dart';
 import 'package:korean_language_app/shared/enums/book_level.dart';
-import 'package:korean_language_app/shared/enums/test_category.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/core/utils/dialog_utils.dart';
@@ -399,11 +398,11 @@ class _BookEditPageState extends State<BookEditPage> {
                   ),
                 ),
                 items: CourseCategory.values
-                    .where((cat) => cat != TestCategory.all)
+                    .where((e) => e != CourseCategory.all)
                     .map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category.name),
+                    child: Text(category.getDisplayName(_languageCubit.getLocalizedText)),
                   );
                 }).toList(),
                 onChanged: (value) {

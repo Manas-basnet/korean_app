@@ -2,53 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/features/books/data/model/book_progress.dart';
-import 'package:korean_language_app/features/books/data/model/chapter_progress.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
-import 'package:korean_language_app/shared/models/book_related/book_item.dart';
-import 'package:korean_language_app/shared/models/book_related/book_chapter.dart';
+import 'package:korean_language_app/features/vocabularies/data/models/vocabulary_progress.dart';
+import 'package:korean_language_app/features/vocabularies/data/models/vocabulary_chapter_progress.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabularies_cubit.dart';
+import 'package:korean_language_app/shared/enums/supported_language.dart';
+import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_item.dart';
+import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_chapter.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/features/tests/presentation/widgets/custom_cached_image.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_session/book_session_cubit.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabulary_session/vocabulary_session_cubit.dart';
 
-class ChapterListPage extends StatefulWidget {
-  final String bookId;
+class VocabularyChapterListPage extends StatefulWidget {
+  final String vocabularyId;
 
-  const ChapterListPage({super.key, required this.bookId});
+  const VocabularyChapterListPage({super.key, required this.vocabularyId});
 
   @override
-  State<ChapterListPage> createState() => _ChapterListPageState();
+  State<VocabularyChapterListPage> createState() => _VocabularyChapterListPageState();
 }
 
-class _ChapterListPageState extends State<ChapterListPage> {
-  late BooksCubit _booksCubit;
+class _VocabularyChapterListPageState extends State<VocabularyChapterListPage> {
+  late VocabulariesCubit _vocabulariesCubit;
   late LanguagePreferenceCubit _languageCubit;
   late SnackBarCubit _snackBarCubit;
 
   @override
   void initState() {
     super.initState();
-    _booksCubit = context.read<BooksCubit>();
+    _vocabulariesCubit = context.read<VocabulariesCubit>();
     _languageCubit = context.read<LanguagePreferenceCubit>();
     _snackBarCubit = context.read<SnackBarCubit>();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBook();
+      _loadVocabulary();
     });
   }
 
-  Future<void> _loadBook() async {
-    final booksState = _booksCubit.state;
+  Future<void> _loadVocabulary() async {
+    final vocabulariesState = _vocabulariesCubit.state;
     
-    if (booksState.selectedBook?.id != widget.bookId) {
-      await _booksCubit.loadBookById(widget.bookId);
+    if (vocabulariesState.selectedVocabulary?.id != widget.vocabularyId) {
+      await _vocabulariesCubit.loadVocabularyById(widget.vocabularyId);
       
-      final updatedState = _booksCubit.state;
-      if (updatedState.hasError || updatedState.selectedBook == null) {
+      final updatedState = _vocabulariesCubit.state;
+      if (updatedState.hasError || updatedState.selectedVocabulary == null) {
         _snackBarCubit.showErrorLocalized(
-          korean: '도서를 불러올 수 없습니다',
-          english: 'Failed to load book',
+          korean: '단어장을 불러올 수 없습니다',
+          english: 'Failed to load vocabulary',
         );
         if (mounted) {
           context.pop();
@@ -57,30 +58,31 @@ class _ChapterListPageState extends State<ChapterListPage> {
     }
   }
 
-  void _navigateToChapterReading(BookItem book, int chapterIndex) {
+  void _navigateToChapterStudy(VocabularyItem vocabulary, int chapterIndex) {
     context.push(
-      Routes.bookChapterReading(book.id, chapterIndex),
+      Routes.vocabularyChapterReading(vocabulary.id, chapterIndex),
+      extra: vocabulary,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BooksCubit, BooksState>(
+    return BlocBuilder<VocabulariesCubit, VocabulariesState>(
       builder: (context, state) {
-        if (state.isLoading && state.selectedBook == null) {
+        if (state.isLoading && state.selectedVocabulary == null) {
           return _buildLoadingScreen();
         }
 
-        if (state.hasError && state.selectedBook == null) {
+        if (state.hasError && state.selectedVocabulary == null) {
           return _buildErrorScreen();
         }
 
-        final book = state.selectedBook;
-        if (book == null) {
+        final vocabulary = state.selectedVocabulary;
+        if (vocabulary == null) {
           return _buildErrorScreen();
         }
 
-        return _buildChapterListScreen(book);
+        return _buildChapterListScreen(vocabulary);
       },
     );
   }
@@ -117,8 +119,8 @@ class _ChapterListPageState extends State<ChapterListPage> {
             const SizedBox(height: 32),
             Text(
               _languageCubit.getLocalizedText(
-                korean: '도서를 불러오고 있습니다...',
-                english: 'Loading book...',
+                korean: '단어장을 불러오고 있습니다...',
+                english: 'Loading vocabulary...',
               ),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -164,8 +166,8 @@ class _ChapterListPageState extends State<ChapterListPage> {
               const SizedBox(height: 32),
               Text(
                 _languageCubit.getLocalizedText(
-                  korean: '도서를 불러올 수 없습니다',
-                  english: 'Failed to load book',
+                  korean: '단어장을 불러올 수 없습니다',
+                  english: 'Failed to load vocabulary',
                 ),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   color: colorScheme.onSurface,
@@ -191,7 +193,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
     );
   }
 
-  Widget _buildChapterListScreen(BookItem book) {
+  Widget _buildChapterListScreen(VocabularyItem vocabulary) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final screenSize = MediaQuery.sizeOf(context);
@@ -206,34 +208,34 @@ class _ChapterListPageState extends State<ChapterListPage> {
             backgroundColor: colorScheme.surface,
             surfaceTintColor: Colors.transparent,
             flexibleSpace: FlexibleSpaceBar(
-              background: _buildBookHeader(book, screenSize, colorScheme),
+              background: _buildVocabularyHeader(vocabulary, screenSize, colorScheme),
             ),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
-            sliver: BlocBuilder<BookSessionCubit, BookSessionState>(
+            sliver: BlocBuilder<VocabularySessionCubit, VocabularySessionState>(
               builder: (context, sessionState) {
-                BookProgress? bookProgress;
+                VocabularyProgress? vocabularyProgress;
                 
-                if ((sessionState is BookSessionActive && sessionState.currentSession.bookId == book.id) ||
-                    (sessionState is BookSessionPaused && sessionState.pausedSession.bookId == book.id)) {
-                  bookProgress = sessionState is BookSessionActive 
-                      ? sessionState.currentBookProgress
-                      : (sessionState as BookSessionPaused).currentBookProgress;
-                } else if (sessionState is BookSessionIdle) {
-                  bookProgress = sessionState.recentlyReadBooks
-                      .where((progress) => progress.bookId == book.id)
+                if ((sessionState is VocabularySessionActive && sessionState.currentSession.vocabularyId == vocabulary.id) ||
+                    (sessionState is VocabularySessionPaused && sessionState.pausedSession.vocabularyId == vocabulary.id)) {
+                  vocabularyProgress = sessionState is VocabularySessionActive 
+                      ? sessionState.currentVocabularyProgress
+                      : (sessionState as VocabularySessionPaused).currentVocabularyProgress;
+                } else if (sessionState is VocabularySessionIdle) {
+                  vocabularyProgress = sessionState.recentlyStudiedVocabularies
+                      .where((progress) => progress.vocabularyId == vocabulary.id)
                       .firstOrNull;
                 }
 
                 return SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final chapter = book.chapters[index];
-                      final chapterProgress = bookProgress?.chapters[index];
+                      final chapter = vocabulary.chapters[index];
+                      final chapterProgress = vocabularyProgress?.chapters[index];
                       
                       return _buildChapterCard(
-                        book, 
+                        vocabulary, 
                         chapter, 
                         index, 
                         theme, 
@@ -241,7 +243,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
                         chapterProgress,
                       );
                     },
-                    childCount: book.chapters.length,
+                    childCount: vocabulary.chapters.length,
                   ),
                 );
               },
@@ -252,7 +254,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
     );
   }
 
-  Widget _buildBookHeader(BookItem book, Size screenSize, ColorScheme colorScheme) {
+  Widget _buildVocabularyHeader(VocabularyItem vocabulary, Size screenSize, ColorScheme colorScheme) {
     final theme = Theme.of(context);
 
     return Container(
@@ -265,7 +267,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (book.imageUrl != null || book.imagePath != null)
+                if (vocabulary.imageUrl != null || vocabulary.imagePath != null)
                   Container(
                     width: 80,
                     height: 120,
@@ -273,8 +275,8 @@ class _ChapterListPageState extends State<ChapterListPage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: CustomCachedImage(
-                        imageUrl: book.imageUrl,
-                        imagePath: book.imagePath,
+                        imageUrl: vocabulary.imageUrl,
+                        imagePath: vocabulary.imagePath,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -284,7 +286,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        book.title,
+                        vocabulary.title,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: colorScheme.onSurface,
@@ -294,7 +296,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        book.description,
+                        vocabulary.description,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -307,17 +309,22 @@ class _ChapterListPageState extends State<ChapterListPage> {
                         children: [
                           _buildInfoChip(
                             Icons.book_outlined,
-                            '${book.chapterCount} ${_languageCubit.getLocalizedText(korean: "챕터", english: "chapters")}',
+                            '${vocabulary.chapterCount} ${_languageCubit.getLocalizedText(korean: "챕터", english: "chapters")}',
                             colorScheme.primary,
                             theme,
                           ),
-                          if (book.totalDuration > 0)
-                            _buildInfoChip(
-                              Icons.access_time_rounded,
-                              book.formattedDuration,
-                              colorScheme.secondary,
-                              theme,
-                            ),
+                          _buildInfoChip(
+                            Icons.translate,
+                            '${vocabulary.totalWords} ${_languageCubit.getLocalizedText(korean: "단어", english: "words")}',
+                            colorScheme.secondary,
+                            theme,
+                          ),
+                          _buildInfoChip(
+                            Icons.language,
+                            vocabulary.primaryLanguage.flag,
+                            colorScheme.tertiary,
+                            theme,
+                          ),
                         ],
                       ),
                     ],
@@ -356,16 +363,17 @@ class _ChapterListPageState extends State<ChapterListPage> {
   }
 
   Widget _buildChapterCard(
-    BookItem book, 
-    BookChapter chapter, 
+    VocabularyItem vocabulary, 
+    VocabularyChapter chapter, 
     int index, 
     ThemeData theme, 
     ColorScheme colorScheme,
-    ChapterProgress? chapterProgress,
+    VocabularyChapterProgress? chapterProgress,
   ) {
     final isCompleted = chapterProgress?.isCompleted ?? false;
-    final progress = chapterProgress?.progress ?? 0.0;
+    final progress = chapterProgress?.progressPercentage ?? 0.0;
     final hasProgress = progress > 0.0;
+    final studiedWordsCount = chapterProgress?.studiedWordsCount ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -382,7 +390,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
           ),
         ),
         child: InkWell(
-          onTap: () => _navigateToChapterReading(book, index),
+          onTap: () => _navigateToChapterStudy(vocabulary, index),
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -447,63 +455,33 @@ class _ChapterListPageState extends State<ChapterListPage> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              if (chapter.hasPdf)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.picture_as_pdf_rounded,
-                                        size: 12,
-                                        color: colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        'PDF',
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
-                              if (chapter.hasAudioTracks) ...[
-                                if (chapter.hasPdf) const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.headphones_rounded,
-                                        size: 12,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.translate,
+                                      size: 12,
+                                      color: colorScheme.secondary,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${chapter.wordCount}',
+                                      style: theme.textTheme.labelSmall?.copyWith(
                                         color: colorScheme.secondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 10,
                                       ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        '${chapter.audioTracks.length}',
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: colorScheme.secondary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                              if (chapter.duration > 0) ...[
+                              ),
+                              if (chapter.totalMeanings > 0) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -511,13 +489,24 @@ class _ChapterListPageState extends State<ChapterListPage> {
                                     color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: Text(
-                                    chapter.formattedDuration,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: colorScheme.onTertiaryContainer,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 10,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.book,
+                                        size: 12,
+                                        color: colorScheme.tertiary,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '${chapter.totalMeanings}',
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: colorScheme.tertiary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -534,7 +523,7 @@ class _ChapterListPageState extends State<ChapterListPage> {
                                   child: Text(
                                     isCompleted 
                                         ? _languageCubit.getLocalizedText(korean: '완료', english: 'Done')
-                                        : chapterProgress!.formattedProgress,
+                                        : '$studiedWordsCount/${chapter.wordCount}',
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: isCompleted ? Colors.green : colorScheme.primary,
                                       fontWeight: FontWeight.w600,

@@ -394,6 +394,7 @@ class BooksCubit extends Cubit<BooksState> {
     try {
       emit(state.copyWith(
         selectedBook: null,
+        isLoading: true,
         currentOperation: BooksOperation(
           type: BooksOperationType.loadBookById,
           status: BooksOperationStatus.inProgress,

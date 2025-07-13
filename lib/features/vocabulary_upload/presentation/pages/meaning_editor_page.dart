@@ -151,13 +151,7 @@ class _MeaningEditorPageState extends State<MeaningEditorPage> {
           items: SupportedLanguage.values.map((language) {
             return DropdownMenuItem(
               value: language,
-              child: Row(
-                children: [
-                  Text(language.flag, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(language.displayName)),
-                ],
-              ),
+              child: Text("${language.flag} (${language.name})"),
             );
           }).toList(),
           onChanged: (value) {

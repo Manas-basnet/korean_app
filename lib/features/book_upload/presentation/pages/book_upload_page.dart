@@ -325,7 +325,7 @@ class _BookUploadPageState extends State<BookUploadPage> {
                     english: 'Category',
                   ),
                 ),
-                items: CourseCategory.values.map((e) => DropdownMenuItem(value: e,child: Text(e.name),)).toList(),
+                items: CourseCategory.values.where((e) => e != CourseCategory.all).map((e) => DropdownMenuItem(value: e,child: Text(e.getDisplayName(_languageCubit.getLocalizedText)),)).toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {

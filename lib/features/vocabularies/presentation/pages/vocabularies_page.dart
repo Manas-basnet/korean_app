@@ -5,34 +5,33 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:korean_language_app/core/routes/app_router.dart';
-import 'package:korean_language_app/features/book_upload/presentation/bloc/book_upload_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/widgets/book_card.dart';
-import 'package:korean_language_app/features/books/presentation/widgets/book_detail_bottomsheet.dart';
-import 'package:korean_language_app/features/books/presentation/widgets/book_grid_skeleton.dart';
-import 'package:korean_language_app/features/books/presentation/widgets/book_search_delegate.dart';
-import 'package:korean_language_app/features/tests/presentation/widgets/sort_bottomsheet.dart';
-import 'package:korean_language_app/shared/enums/course_category.dart';
-import 'package:korean_language_app/shared/enums/test_sort_type.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/widgets/vocabulary_card.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/widgets/vocabulary_detail_bottomsheet.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/widgets/vocabulary_grid_skeleton.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/widgets/vocabulary_search_delegate.dart';
+import 'package:korean_language_app/shared/enums/book_level.dart';
+import 'package:korean_language_app/shared/enums/supported_language.dart';
 import 'package:korean_language_app/shared/presentation/language_preference/bloc/language_preference_cubit.dart';
 import 'package:korean_language_app/shared/presentation/snackbar/bloc/snackbar_cubit.dart';
 import 'package:korean_language_app/shared/presentation/widgets/errors/error_widget.dart';
-import 'package:korean_language_app/shared/models/book_related/book_item.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/books_cubit.dart';
-import 'package:korean_language_app/features/books/presentation/bloc/book_search/book_search_cubit.dart';
+import 'package:korean_language_app/shared/models/vocabulary_related/vocabulary_item.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabularies_cubit.dart';
+import 'package:korean_language_app/features/vocabularies/presentation/bloc/vocabulary_search/vocabulary_search_cubit.dart';
 
-class BooksPage extends StatefulWidget {
-  const BooksPage({super.key});
+class VocabulariesPage extends StatefulWidget {
+  const VocabulariesPage({super.key});
 
   @override
-  State<BooksPage> createState() => _BooksPageState();
+  State<VocabulariesPage> createState() => _VocabulariesPageState();
 }
 
-class _BooksPageState extends State<BooksPage> {
+class _VocabulariesPageState extends State<VocabulariesPage> {
   late ScrollController _scrollController;
   bool _isRefreshing = false;
   bool _isInitialized = false;
-  CourseCategory _selectedCategory = CourseCategory.all;
-  TestSortType _selectedSortType = TestSortType.recent;
+  BookLevel _selectedLevel = BookLevel.beginner;
+  SupportedLanguage _selectedLanguage = SupportedLanguage.korean;
+  String _filterType = 'all';
   String _searchQuery = '';
   bool _isSearching = false;
   
@@ -40,9 +39,8 @@ class _BooksPageState extends State<BooksPage> {
   static const Duration _scrollDebounceDelay = Duration(milliseconds: 100);
   bool _hasTriggeredLoadMore = false;
   
-  BooksCubit get _booksCubit => context.read<BooksCubit>();
-  BookUploadCubit get _bookUploadCubit => context.read<BookUploadCubit>();
-  BookSearchCubit get _bookSearchCubit => context.read<BookSearchCubit>();
+  VocabulariesCubit get _vocabulariesCubit => context.read<VocabulariesCubit>();
+  VocabularySearchCubit get _vocabularySearchCubit => context.read<VocabularySearchCubit>();
   LanguagePreferenceCubit get _languageCubit => context.read<LanguagePreferenceCubit>();
   SnackBarCubit get _snackBarCubit => context.read<SnackBarCubit>();
   
@@ -52,7 +50,7 @@ class _BooksPageState extends State<BooksPage> {
     _scrollController = ScrollController();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _booksCubit.loadInitialBooks();
+      _vocabulariesCubit.loadInitialVocabularies();
       setState(() {
         _isInitialized = true;
       });
@@ -76,14 +74,14 @@ class _BooksPageState extends State<BooksPage> {
       if (!mounted) return;
       
       if (_isNearBottom()) {
-        final state = _booksCubit.state;
+        final state = _vocabulariesCubit.state;
         
         if (state.hasMore && 
             !state.currentOperation.isInProgress && 
             !_hasTriggeredLoadMore) {
           
           _hasTriggeredLoadMore = true;
-          _booksCubit.requestLoadMoreBooks();
+          _vocabulariesCubit.requestLoadMoreVocabularies();
           
           Timer(const Duration(seconds: 1), () {
             if (mounted) {
@@ -111,9 +109,9 @@ class _BooksPageState extends State<BooksPage> {
     
     try {
       if (_isSearching) {
-        _bookSearchCubit.searchBooks(_searchQuery);
+        _vocabularySearchCubit.searchVocabularies(_searchQuery);
       } else {
-        await _booksCubit.hardRefresh();
+        await _vocabulariesCubit.hardRefresh();
       }
       _hasTriggeredLoadMore = false;
     } finally {
@@ -121,56 +119,59 @@ class _BooksPageState extends State<BooksPage> {
     }
   }
 
-  void _onCategoryChanged(CourseCategory category) {
-    if (_selectedCategory == category) return;
+  void _onFilterChanged(String filterType) {
+    if (_filterType == filterType) return;
     
     setState(() {
-      _selectedCategory = category;
+      _filterType = filterType;
       _isSearching = false;
       _searchQuery = '';
       _hasTriggeredLoadMore = false;
     });
     
-    if (category == CourseCategory.all) {
-      _booksCubit.loadInitialBooks(sortType: _selectedSortType);
-    } else {
-      _booksCubit.loadBooksByCategory(category, sortType: _selectedSortType);
+    if (filterType == 'all') {
+      _vocabulariesCubit.loadInitialVocabularies();
+    } else if (filterType == 'level') {
+      _vocabulariesCubit.loadVocabulariesByLevel(_selectedLevel);
+    } else if (filterType == 'language') {
+      _vocabulariesCubit.loadVocabulariesByLanguage(_selectedLanguage);
     }
   }
 
-  void _onSortTypeChanged(TestSortType sortType) {
-    if (_selectedSortType == sortType) return;
+  void _onLevelChanged(BookLevel level) {
+    if (_selectedLevel == level) return;
     
     setState(() {
-      _selectedSortType = sortType;
+      _selectedLevel = level;
       _hasTriggeredLoadMore = false;
     });
     
-    _booksCubit.changeSortType(sortType);
+    if (_filterType == 'level') {
+      _vocabulariesCubit.loadVocabulariesByLevel(level);
+    }
   }
 
-  void _showSortBottomSheet() {
-    SortBottomSheet.show(
-      context,
-      selectedSortType: _selectedSortType,
-      languageCubit: _languageCubit,
-      onSortTypeChanged: _onSortTypeChanged,
-    );
+  void _onLanguageChanged(SupportedLanguage language) {
+    if (_selectedLanguage == language) return;
+    
+    setState(() {
+      _selectedLanguage = language;
+      _hasTriggeredLoadMore = false;
+    });
+    
+    if (_filterType == 'language') {
+      _vocabulariesCubit.loadVocabulariesByLanguage(language);
+    }
   }
 
   void _showSearchDelegate() {
     showSearch(
       context: context,
-      delegate: BookSearchDelegate(
-        bookSearchCubit: _bookSearchCubit,
+      delegate: VocabularySearchDelegate(
+        vocabularySearchCubit: _vocabularySearchCubit,
         languageCubit: _languageCubit,
-        onBookSelected: _goToChapters,
-        checkEditPermission: (book) async {
-          return await _booksCubit.canUserEditBook(book);
-        },
-        onEditBook: _editBook,
-        onDeleteBook: _deleteBook,
-        onViewDetails: _viewBookDetails,
+        onVocabularySelected: _goToChapters,
+        onViewDetails: _viewVocabularyDetails,
       ),
     );
   }
@@ -190,11 +191,11 @@ class _BooksPageState extends State<BooksPage> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       floatingActionButton: FloatingActionButton(
-        heroTag: "books_page_fab",
-        onPressed: () => context.push(Routes.bookUpload),
+        heroTag: "vocabularies_page_fab",
+        onPressed: () => context.push(Routes.vocabularyUpload),
         tooltip: _languageCubit.getLocalizedText(
-          korean: '책 만들기',
-          english: 'Create Book',
+          korean: '단어장 만들기',
+          english: 'Create Vocabulary',
         ),
         child: const Icon(Icons.add),
       ),
@@ -255,8 +256,8 @@ class _BooksPageState extends State<BooksPage> {
                                 const SizedBox(width: 12),
                                 Text(
                                   _languageCubit.getLocalizedText(
-                                    korean: '도서관',
-                                    english: 'Books',
+                                    korean: '단어장',
+                                    english: 'Vocabularies',
                                   ),
                                   style: theme.textTheme.headlineMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
@@ -271,7 +272,7 @@ class _BooksPageState extends State<BooksPage> {
                                   IconButton(
                                     icon: const Icon(Icons.refresh_outlined),
                                     onPressed: () {
-                                      context.read<BooksCubit>().hardRefresh();
+                                      context.read<VocabulariesCubit>().hardRefresh();
                                     },
                                     tooltip: _languageCubit.getLocalizedText(
                                       korean: '새로고침',
@@ -294,10 +295,10 @@ class _BooksPageState extends State<BooksPage> {
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.person_outline),
-                                  onPressed: () => context.push('/my-books'),
+                                  onPressed: () => context.push('/my-vocabularies'),
                                   tooltip: _languageCubit.getLocalizedText(
-                                    korean: '내 도서',
-                                    english: 'My Books',
+                                    korean: '내 단어장',
+                                    english: 'My Vocabularies',
                                   ),
                                   style: IconButton.styleFrom(
                                     foregroundColor: colorScheme.onSurfaceVariant,
@@ -311,10 +312,10 @@ class _BooksPageState extends State<BooksPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _buildCategoryTabs(theme),
+                              child: _buildFilterTabs(theme),
                             ),
                             const SizedBox(width: 12),
-                            _buildSortButton(theme, colorScheme),
+                            _buildFilterButton(theme, colorScheme),
                           ],
                         ),
                       ],
@@ -329,20 +330,26 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildCategoryTabs(ThemeData theme) {
+  Widget _buildFilterTabs(ThemeData theme) {
+    final filters = [
+      {'key': 'all', 'label': _languageCubit.getLocalizedText(korean: '전체', english: 'All')},
+      {'key': 'level', 'label': _languageCubit.getLocalizedText(korean: '레벨', english: 'Level')},
+      {'key': 'language', 'label': _languageCubit.getLocalizedText(korean: '언어', english: 'Language')},
+    ];
+
     return SizedBox(
       height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        itemCount: CourseCategory.values.length,
+        itemCount: filters.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final category = CourseCategory.values[index];
-          final isSelected = _selectedCategory == category;
+          final filter = filters[index];
+          final isSelected = _filterType == filter['key'];
 
           return GestureDetector(
-            onTap: () => _onCategoryChanged(category),
+            onTap: () => _onFilterChanged(filter['key']!),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -358,7 +365,7 @@ class _BooksPageState extends State<BooksPage> {
                 ),
               ),
               child: Text(
-                category.getDisplayName(_languageCubit.getLocalizedText),
+                filter['label']!,
                 style: TextStyle(
                   color: isSelected
                       ? theme.colorScheme.onPrimary
@@ -374,55 +381,88 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildSortButton(ThemeData theme, ColorScheme colorScheme) {
-    return OutlinedButton.icon(
-      onPressed: _showSortBottomSheet,
+  Widget _buildFilterButton(ThemeData theme, ColorScheme colorScheme) {
+    return PopupMenuButton<String>(
       icon: Icon(
-        _getSortTypeIcon(_selectedSortType),
-        size: 16,
+        Icons.filter_list,
+        color: colorScheme.onSurfaceVariant,
       ),
-      label: const Icon(Icons.sort, size: 16),
-      style: OutlinedButton.styleFrom(
+      onSelected: (value) {
+        if (_filterType == 'level') {
+          if (value.startsWith('level_')) {
+            final levelName = value.substring(6);
+            final level = BookLevel.values.firstWhere((e) => e.name == levelName);
+            _onLevelChanged(level);
+          }
+        } else if (_filterType == 'language') {
+          if (value.startsWith('lang_')) {
+            final langName = value.substring(5);
+            final language = SupportedLanguage.values.firstWhere((e) => e.name == langName);
+            _onLanguageChanged(language);
+          }
+        }
+      },
+      itemBuilder: (context) {
+        if (_filterType == 'level') {
+          return BookLevel.values.map((level) {
+            return PopupMenuItem<String>(
+              value: 'level_${level.name}',
+              child: Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: level.getColor(),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(level.getName(_languageCubit)),
+                ],
+              ),
+            );
+          }).toList();
+        } else if (_filterType == 'language') {
+          return SupportedLanguage.values.map((language) {
+            return PopupMenuItem<String>(
+              value: 'lang_${language.name}',
+              child: Row(
+                children: [
+                  Text(language.flag, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Text(language.displayName),
+                ],
+              ),
+            );
+          }).toList();
+        }
+        return [];
+      },
+      style: IconButton.styleFrom(
         foregroundColor: colorScheme.onSurfaceVariant,
-        side: BorderSide(
-          color: colorScheme.outline.withValues(alpha: 0.3),
-        ),
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.all(8),
       ),
     );
   }
   
-  IconData _getSortTypeIcon(TestSortType sortType) {
-    switch (sortType) {
-      case TestSortType.recent:
-        return Icons.schedule_outlined;
-      case TestSortType.popular:
-        return Icons.trending_up_outlined;
-      case TestSortType.rating:
-        return Icons.star_outline;
-      case TestSortType.viewCount:
-        return Icons.visibility_outlined;
-    }
-  }
-  
   Widget _buildSliverContent() {
-    return BlocConsumer<BooksCubit, BooksState>(
+    return BlocConsumer<VocabulariesCubit, VocabulariesState>(
       listener: (context, state) {
         final operation = state.currentOperation;
         
-        if (operation.status == BooksOperationStatus.failed) {
+        if (operation.status == VocabulariesOperationStatus.failed) {
           String errorMessage = operation.message ?? 'Operation failed';
           
           switch (operation.type) {
-            case BooksOperationType.loadBooks:
-              errorMessage = 'Failed to load books';
+            case VocabulariesOperationType.loadVocabularies:
+              errorMessage = 'Failed to load vocabularies';
               break;
-            case BooksOperationType.loadMoreBooks:
-              errorMessage = 'Failed to load more books';
+            case VocabulariesOperationType.loadMoreVocabularies:
+              errorMessage = 'Failed to load more vocabularies';
               break;
-            case BooksOperationType.refreshBooks:
-              errorMessage = 'Failed to refresh books';
+            case VocabulariesOperationType.refreshVocabularies:
+              errorMessage = 'Failed to refresh vocabularies';
               break;
             default:
               break;
@@ -444,16 +484,16 @@ class _BooksPageState extends State<BooksPage> {
       builder: (context, state) {
         final screenSize = MediaQuery.sizeOf(context);
         
-        if (state.isLoading && state.books.isEmpty) {
+        if (state.isLoading && state.vocabularies.isEmpty) {
           return SliverToBoxAdapter(
             child: SizedBox(
               height: screenSize.height * 0.6,
-              child: const BookGridSkeleton(),
+              child: const VocabularyGridSkeleton(),
             ),
           );
         }
         
-        if (state.hasError && state.books.isEmpty) {
+        if (state.hasError && state.vocabularies.isEmpty) {
           return SliverToBoxAdapter(
             child: SizedBox(
               height: screenSize.height * 0.7,
@@ -461,10 +501,12 @@ class _BooksPageState extends State<BooksPage> {
                 message: state.error ?? '',
                 errorType: state.errorType,
                 onRetry: () {
-                  if (_selectedCategory == CourseCategory.all) {
-                    _booksCubit.loadInitialBooks(sortType: _selectedSortType);
-                  } else {
-                    _booksCubit.loadBooksByCategory(_selectedCategory, sortType: _selectedSortType);
+                  if (_filterType == 'all') {
+                    _vocabulariesCubit.loadInitialVocabularies();
+                  } else if (_filterType == 'level') {
+                    _vocabulariesCubit.loadVocabulariesByLevel(_selectedLevel);
+                  } else if (_filterType == 'language') {
+                    _vocabulariesCubit.loadVocabulariesByLanguage(_selectedLanguage);
                   }
                 },
               ),
@@ -472,14 +514,14 @@ class _BooksPageState extends State<BooksPage> {
           );
         }
         
-        return _buildSliverBooksList(state, screenSize);
+        return _buildSliverVocabulariesList(state, screenSize);
       },
     );
   }
   
-  Widget _buildSliverBooksList(BooksState state, Size screenSize) {
-    if (state.books.isEmpty) {
-      return SliverToBoxAdapter(child: _buildEmptyBooksView());
+  Widget _buildSliverVocabulariesList(VocabulariesState state, Size screenSize) {
+    if (state.vocabularies.isEmpty) {
+      return SliverToBoxAdapter(child: _buildEmptyVocabulariesView());
     }
     
     final isTablet = screenSize.width > 600;
@@ -500,17 +542,17 @@ class _BooksPageState extends State<BooksPage> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 20,
             ),
-            itemCount: state.books.length,
+            itemCount: state.vocabularies.length,
             itemBuilder: (context, index) {
-              final book = state.books[index];
-              return BookCard(
-                book: book,
+              final vocabulary = state.vocabularies[index];
+              return VocabularyCard(
+                vocabulary: vocabulary,
                 canEdit: true,
-                onTap: () => _goToChapters(book),
-                onLongPress: () => _viewBookDetails(book),
-                onEdit: () => _editBook(book),
-                onDelete: () => _deleteBook(book),
-                onViewDetails: () => _viewBookDetails(book),
+                onTap: () => _goToChapters(vocabulary),
+                onLongPress: () => _viewVocabularyDetails(vocabulary),
+                onEdit: () => _editVocabulary(vocabulary),
+                onDelete: () => _deleteVocabulary(vocabulary),
+                onViewDetails: () => _viewVocabularyDetails(vocabulary),
               );
             },
           ),
@@ -520,9 +562,9 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
 
-  Widget _buildLoadMoreIndicator(BooksState state) {
-    final isLoadingMore = state.currentOperation.type == BooksOperationType.loadMoreBooks &&
-        state.currentOperation.status == BooksOperationStatus.inProgress;
+  Widget _buildLoadMoreIndicator(VocabulariesState state) {
+    final isLoadingMore = state.currentOperation.type == VocabulariesOperationType.loadMoreVocabularies &&
+        state.currentOperation.status == VocabulariesOperationStatus.inProgress;
     
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -544,8 +586,8 @@ class _BooksPageState extends State<BooksPage> {
             const SizedBox(width: 12),
             Text(
               _languageCubit.getLocalizedText(
-                korean: '더 많은 도서를 불러오는 중...',
-                english: 'Loading more books...',
+                korean: '더 많은 단어장을 불러오는 중...',
+                english: 'Loading more vocabularies...',
               ),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -556,7 +598,7 @@ class _BooksPageState extends State<BooksPage> {
       );
     }
     
-    if (!state.hasMore && state.books.isNotEmpty) {
+    if (!state.hasMore && state.vocabularies.isNotEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Column(
@@ -578,8 +620,8 @@ class _BooksPageState extends State<BooksPage> {
                   const SizedBox(width: 8),
                   Text(
                     _languageCubit.getLocalizedText(
-                      korean: '무한 도서가 없습니다',
-                      english: 'No more books',
+                      korean: '더 이상 단어장이 없습니다',
+                      english: 'No more vocabularies',
                     ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -597,7 +639,7 @@ class _BooksPageState extends State<BooksPage> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildEmptyBooksView() {
+  Widget _buildEmptyVocabulariesView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final screenSize = MediaQuery.sizeOf(context);
@@ -610,15 +652,15 @@ class _BooksPageState extends State<BooksPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.library_books_outlined,
+            Icons.school_outlined,
             size: 64,
             color: colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 24),
           Text(
             _languageCubit.getLocalizedText(
-              korean: '도서가 없습니다',
-              english: 'No books available',
+              korean: '단어장이 없습니다',
+              english: 'No vocabularies available',
             ),
             style: theme.textTheme.titleLarge?.copyWith(
               color: colorScheme.onSurface,
@@ -628,8 +670,8 @@ class _BooksPageState extends State<BooksPage> {
           const SizedBox(height: 8),
           Text(
             _languageCubit.getLocalizedText(
-              korean: '새 도서를 만들어보세요',
-              english: 'Create your first book',
+              korean: '새 단어장을 만들어보세요',
+              english: 'Create your first vocabulary',
             ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -638,12 +680,12 @@ class _BooksPageState extends State<BooksPage> {
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: () => context.push(Routes.bookUpload),
+            onPressed: () => context.push(Routes.vocabularyUpload),
             icon: const Icon(Icons.add),
             label: Text(
               _languageCubit.getLocalizedText(
-                korean: '도서 만들기',
-                english: 'Create Book',
+                korean: '단어장 만들기',
+                english: 'Create Vocabulary',
               ),
             ),
           ),
@@ -652,75 +694,57 @@ class _BooksPageState extends State<BooksPage> {
     );
   }
   
-  void _goToChapters(BookItem book) async {
-    if (book.id.isEmpty) {
+  void _goToChapters(VocabularyItem vocabulary) async {
+    if (vocabulary.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
-        korean: '도서 ID가 유효하지 않습니다',
-        english: 'Invalid book ID',
+        korean: '단어장 ID가 유효하지 않습니다',
+        english: 'Invalid vocabulary ID',
       );
       return;
     }
-    context.push(Routes.bookChapters(book.id));
+    context.push(Routes.vocabularyChapters(vocabulary.id));
   }
     
-  void _viewBookDetails(BookItem book) {
+  void _viewVocabularyDetails(VocabularyItem vocabulary) {
     HapticFeedback.lightImpact();
-    BookDetailsBottomSheet.show(
+    VocabularyDetailsBottomSheet.show(
       context, 
-      book: book,
+      vocabulary: vocabulary,
       languageCubit: _languageCubit,
-      onStartReading: () => _goToChapters(book),
+      onStartStudying: () => _goToChapters(vocabulary),
     );
   }
   
-  void _editBook(BookItem book) async {
-    if (book.id.isEmpty) {
+  void _editVocabulary(VocabularyItem vocabulary) async {
+    if (vocabulary.id.isEmpty) {
       _snackBarCubit.showErrorLocalized(
-        korean: '도서 ID가 유효하지 않습니다',
-        english: 'Invalid book ID',
+        korean: '단어장 ID가 유효하지 않습니다',
+        english: 'Invalid vocabulary ID',
       );
       return;
     }
 
-    final hasPermission = await _booksCubit.canUserEditBook(book);
-    if (!hasPermission) {
-      _snackBarCubit.showErrorLocalized(
-        korean: '이 도서를 편집할 권한이 없습니다',
-        english: 'You do not have permission to edit this book',
-      );
-      return;
-    }
-
-    final result = await context.push(Routes.bookEdit(book.id));
+    final result = await context.push(Routes.vocabularyEdit(vocabulary.id));
 
     if (result == true) {
       _refreshData();
     }
   }
 
-  void _deleteBook(BookItem book) async {
-    final hasPermission = await _booksCubit.canUserDeleteBook(book);
-    if (!hasPermission) {
-      _snackBarCubit.showErrorLocalized(
-        korean: '이 도서를 삭제할 권한이 없습니다',
-        english: 'You do not have permission to delete this book',
-      );
-      return;
-    }
-
+  void _deleteVocabulary(VocabularyItem vocabulary) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
           _languageCubit.getLocalizedText(
-            korean: '도서 삭제',
-            english: 'Delete Book',
+            korean: '단어장 삭제',
+            english: 'Delete Vocabulary',
           ),
         ),
         content: Text(
           _languageCubit.getLocalizedText(
-            korean: '"${book.title}"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
-            english: 'Are you sure you want to delete "${book.title}"? This action cannot be undone.',
+            korean: '"${vocabulary.title}"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
+            english: 'Are you sure you want to delete "${vocabulary.title}"? This action cannot be undone.',
           ),
         ),
         actions: [
@@ -750,10 +774,9 @@ class _BooksPageState extends State<BooksPage> {
     ) ?? false;
 
     if (confirmed) {
-      await _bookUploadCubit.deleteBook(book.id);
       _snackBarCubit.showSuccessLocalized(
-        korean: '도서가 성공적으로 삭제되었습니다',
-        english: 'Book deleted successfully',
+        korean: '단어장이 성공적으로 삭제되었습니다',
+        english: 'Vocabulary deleted successfully',
       );
       
       _refreshData();
